@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Bar Manager</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+    <header>
+        <h1>Bar Manager - Licobar52</h1>
+        <button id="editModeBtn">Modo Edición: OFF</button>
+
+    </header>
+
+    <main>
+        <button id="addTableBtn">➕ Agregar Mesa</button>
+        <button id="deleteModeBtn">🗑️ Modo Eliminar</button>
+
+       <button id="refresh-orders-btn" class="hidden">
+  🔄 Actualizar pedidos
+</button>
+
+<span id="update-feedback" class="update-feedback"></span>
+    
+
+        <div class="income-panel">
+           💰 <span id="dailyIncome"></span>
+            <button id="resetIncomeBtn">Reiniciar Día</button>
+        </div>
+
+        <div id="grid-container"></div>
+    </main>
+
+    <div id="orderModal" class="modal hidden">
+    <div class="modal-content">
+        <h2 id="modalTitle"></h2>
+
+        <div id="orderList"></div>
+
+        <select id="productSelect"></select>
+        <button id="addProductBtn">Agregar</button>
+
+        <h3 id="unitsTotal"></h3>
+        <h3 id="moneyTotal"></h3>
+
+        <button id="closeTableBtn">Cerrar Mesa</button>
+        <button id="closeModalBtn">Salir</button>
+    </div>
+</div>
+
+  <script type="module" src="js/main.js"></script>
+    
+</body>
+</html>
