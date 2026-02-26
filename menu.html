@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Menu</title>
+</head>
+//Gestion de productos, precios y stock
+
+<h2>Gestión de Productos</h2>
+
+<input type="text" id="productName" placeholder="Nombre">
+<input type="number" id="productPrice" placeholder="Precio">
+<button id="addProduct">Agregar</button>
+
+<div id="productList"></div>
+<body>
+    
+    <script type="module">
+    import { setupMenuManager } from "./js/modules/menuManager.js";
+    setupMenuManager();
+</script>
+</body>
+</html>
