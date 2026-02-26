@@ -1,0 +1,36 @@
+
+Table clientes {
+  id_cliente_PK integer [primary key, auto_increment]
+  id_pedido_FK integer [ref: > administradores.id_pedido_PK]
+  total_comprado integer [not null]
+  fecha timestamp [not null]
+}
+
+Table productos {
+  id_producto_PK integer [primary key, not null] 
+  nombre_producto varchar [not null]
+  disponibilidad varchar   [not null]
+  precio_producto integer [not null]
+  cant_dispo_producto integer [not null]
+
+}
+
+Table administradores {
+  id_mesa_FK integer [ref: > clientes.id_mesa_PK]
+  id_mesero varchar [not null]
+  id_pedido_PK integer [primary key] 
+  nombre varchar [not null]
+  apellido  varchar
+  total_vendido integer
+
+}
+
+
+Table mesas {
+  id_mesa_PK integer [primary key]
+  id_pedido_FK integer [ref: > administradores.id_pedido_PK]
+  total_comprado integer [not null]
+  fecha timestamp [not null]
+}
+
+https://dbdiagram.io/d
