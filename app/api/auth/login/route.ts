@@ -14,10 +14,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const users = await sql`SELECT * FROM users WHERE email = ${email} LIMIT 1`;
-    console.log("[v0] Query result:", users);
-    console.log("[v0] Email searched:", email);
-    const user = users[0];
+    const result = await sql`SELECT * FROM users WHERE email = ${email} LIMIT 1`;
+    console.log("[v0] Full result object:", JSON.stringify(result));
+    console.log("[v0] Result type:", typeof result);
+    console.log("[v0] Result is array?:", Array.isArray(result));
+    
+    // Neon returns { rows: [...] } format
+    const users = Array.isArray(result) ? result : (result.rows || result);
+    console.log("[v0] Processed users:", users);
+    const user = Array.isArray(users) ? users[0] : users;
 
     if (!user) {
       return NextResponse.json(
