@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthUser } from "@/lib/auth";
-import { prisma } from "@/lib/db";
+import { sql } from "@/lib/db";
 
 export async function GET(request: NextRequest) {
   try {
@@ -13,54 +13,34 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
-
-    // Get default location (for now)
-    const location = await prisma.location.findFirst();
-
-    if (!location) {
-      return NextResponse.json(
-        {
-          totalRevenue: 0,
-          ordersToday: 0,
-          tablesOccupied: 0,
-          totalTables: 0,
-        },
-        { status: 200 }
-      );
-    }
-
     // Get orders from today
-    const ordersToday = await prisma.order.findMany({
-      where: {
-        createdAt: {
-          gte: today,
-          lt: tomorrow,
-        },
-      },
-      include: { items: true },
-    });
+    const ordersToday = await sql`
+      SELECT * FROM orders 
+      WHERE created_at >= CURRENT_DATE 
+      AND created_at < CURRENT_DATE + INTERVAL '1 day'
+    `;
 
-    const totalRevenue = ordersToday
-      .filter((o) => o.status === "paid" || o.status === "closed")
-      .reduce((sum, order) => sum + order.total_amount, 0);
+    // Calculate total revenue from closed orders
+    const revenueResult = await sql`
+      SELECT COALESCE(SUM(total_amount), 0) as total 
+      FROM orders 
+      WHERE created_at >= CURRENT_DATE 
+      AND created_at < CURRENT_DATE + INTERVAL '1 day'
+      AND status IN ('closed', 'paid')
+    `;
+    const totalRevenue = parseFloat(revenueResult[0]?.total || 0);
 
-    // Get occupied tables
-    const openOrders = await prisma.order.findMany({
-      where: {
-        status: "open",
-      },
-    });
-
-    const occupiedTableIds = new Set(openOrders.map((o) => o.table_id));
-    const tablesOccupied = occupiedTableIds.size;
+    // Get occupied tables (tables with open orders)
+    const occupiedResult = await sql`
+      SELECT COUNT(DISTINCT table_id) as count 
+      FROM orders 
+      WHERE status = 'open'
+    `;
+    const tablesOccupied = parseInt(occupiedResult[0]?.count || 0);
 
     // Get total tables
-    const totalTables = await prisma.table.count();
+    const tablesResult = await sql`SELECT COUNT(*) as count FROM tables`;
+    const totalTables = parseInt(tablesResult[0]?.count || 0);
 
     return NextResponse.json(
       {

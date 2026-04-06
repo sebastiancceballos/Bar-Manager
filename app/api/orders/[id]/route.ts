@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthUser } from "@/lib/auth";
-import { prisma } from "@/lib/db";
+import { sql } from "@/lib/db";
 
 export async function PUT(
   request: NextRequest,
@@ -23,21 +23,36 @@ export async function PUT(
       );
     }
 
-    const order = await prisma.order.update({
-      where: { id: parseInt(id) },
-      data: {
-        status,
-        ...(status === "closed" && { closed_at: new Date() }),
-      },
-      include: {
-        items: {
-          include: {
-            product: true,
-          },
-        },
-        table: true,
-      },
-    });
+    let orders;
+    if (status === "closed") {
+      orders = await sql`
+        UPDATE orders 
+        SET status = ${status}, closed_at = NOW(), updated_at = NOW()
+        WHERE id = ${parseInt(id)}
+        RETURNING *
+      `;
+    } else {
+      orders = await sql`
+        UPDATE orders 
+        SET status = ${status}, updated_at = NOW()
+        WHERE id = ${parseInt(id)}
+        RETURNING *
+      `;
+    }
+
+    const order = orders[0];
+
+    // Get items
+    const items = await sql`
+      SELECT oi.*, p.name as product_name, p.category
+      FROM order_items oi
+      JOIN products p ON oi.product_id = p.id
+      WHERE oi.order_id = ${parseInt(id)}
+    `;
+    order.items = items.map(item => ({
+      ...item,
+      product: { name: item.product_name, price: item.price, category: item.category }
+    }));
 
     return NextResponse.json({ order }, { status: 200 });
   } catch (error) {
@@ -62,21 +77,24 @@ export async function GET(
 
     const { id } = await params;
 
-    const order = await prisma.order.findUnique({
-      where: { id: parseInt(id) },
-      include: {
-        items: {
-          include: {
-            product: true,
-          },
-        },
-        table: true,
-      },
-    });
+    const orders = await sql`SELECT * FROM orders WHERE id = ${parseInt(id)}`;
+    const order = orders[0];
 
     if (!order) {
       return NextResponse.json({ error: "Order not found" }, { status: 404 });
     }
+
+    // Get items
+    const items = await sql`
+      SELECT oi.*, p.name as product_name, p.category
+      FROM order_items oi
+      JOIN products p ON oi.product_id = p.id
+      WHERE oi.order_id = ${parseInt(id)}
+    `;
+    order.items = items.map(item => ({
+      ...item,
+      product: { name: item.product_name, price: item.price, category: item.category }
+    }));
 
     return NextResponse.json({ order }, { status: 200 });
   } catch (error) {

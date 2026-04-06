@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthUser } from "@/lib/auth";
-import { prisma } from "@/lib/db";
+import { sql } from "@/lib/db";
 
 export async function GET(request: NextRequest) {
   try {
@@ -16,68 +16,40 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const range = searchParams.get("range") || "week";
 
-    // Calculate date range
-    const now = new Date();
-    let startDate = new Date();
-
+    // Calculate interval based on range
+    let interval = "7 days";
     switch (range) {
       case "month":
-        startDate.setDate(now.getDate() - 30);
+        interval = "30 days";
         break;
       case "year":
-        startDate.setFullYear(now.getFullYear() - 1);
+        interval = "365 days";
         break;
       case "week":
       default:
-        startDate.setDate(now.getDate() - 7);
+        interval = "7 days";
     }
 
-    startDate.setHours(0, 0, 0, 0);
+    // Get orders grouped by date
+    const reports = await sql`
+      SELECT 
+        DATE(created_at) as date,
+        COALESCE(SUM(total_amount), 0) as total,
+        COUNT(*) as order_count
+      FROM orders
+      WHERE created_at >= CURRENT_DATE - ${interval}::interval
+      AND status IN ('closed', 'paid')
+      GROUP BY DATE(created_at)
+      ORDER BY date ASC
+    `;
 
-    // Get location
-    const location = await prisma.location.findFirst();
-
-    if (!location) {
-      return NextResponse.json({ reports: [] }, { status: 200 });
-    }
-
-    // Get orders in range
-    const orders = await prisma.order.findMany({
-      where: {
-        locationId: location.id,
-        createdAt: {
-          gte: startDate,
-        },
-        status: {
-          in: ["closed", "paid"],
-        },
-      },
-      include: { items: true },
-    });
-
-    // Group by date
-    const reportMap = new Map<string, { total: number; count: number }>();
-
-    orders.forEach((order) => {
-      const date = order.createdAt.toISOString().split("T")[0];
-      if (!reportMap.has(date)) {
-        reportMap.set(date, { total: 0, count: 0 });
-      }
-      const current = reportMap.get(date)!;
-      current.total += order.total;
-      current.count += 1;
-    });
-
-    // Convert to array and sort
-    const reports = Array.from(reportMap.entries())
-      .map(([date, data]) => ({
-        date,
-        total: data.total,
-        orderCount: data.count,
+    return NextResponse.json({ 
+      reports: reports.map(r => ({
+        date: r.date,
+        total: parseFloat(r.total),
+        orderCount: parseInt(r.order_count)
       }))
-      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-
-    return NextResponse.json({ reports }, { status: 200 });
+    }, { status: 200 });
   } catch (error) {
     console.error("Reports error:", error);
     return NextResponse.json(

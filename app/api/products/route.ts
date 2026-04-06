@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthUser } from "@/lib/auth";
-import { prisma } from "@/lib/db";
+import { sql } from "@/lib/db";
 
 export async function GET(request: NextRequest) {
   try {
@@ -10,17 +10,10 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Get first location (for now, single location)
-    const location = await prisma.location.findFirst();
-
-    if (!location) {
-      return NextResponse.json({ products: [] }, { status: 200 });
-    }
-
-    const products = await prisma.product.findMany({
-      where: { location_id: location.id },
-      orderBy: { category: "asc" },
-    });
+    const products = await sql`
+      SELECT * FROM products 
+      ORDER BY category ASC, name ASC
+    `;
 
     return NextResponse.json({ products }, { status: 200 });
   } catch (error) {
@@ -53,7 +46,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Get first location
-    const location = await prisma.location.findFirst();
+    const locations = await sql`SELECT id FROM locations LIMIT 1`;
+    const location = locations[0];
 
     if (!location) {
       return NextResponse.json(
@@ -62,16 +56,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const product = await prisma.product.create({
-      data: {
-        location_id: location.id,
-        name,
-        category,
-        price: parseFloat(price),
-      },
-    });
+    const products = await sql`
+      INSERT INTO products (location_id, name, category, price)
+      VALUES (${location.id}, ${name}, ${category}, ${parseFloat(price)})
+      RETURNING *
+    `;
 
-    return NextResponse.json({ product }, { status: 201 });
+    return NextResponse.json({ product: products[0] }, { status: 201 });
   } catch (error) {
     console.error("Create product error:", error);
     return NextResponse.json(

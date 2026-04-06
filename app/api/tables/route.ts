@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthUser } from "@/lib/auth";
-import { prisma } from "@/lib/db";
+import { sql } from "@/lib/db";
 
 export async function GET(request: NextRequest) {
   try {
@@ -10,17 +10,10 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Get first location
-    const location = await prisma.location.findFirst();
-
-    if (!location) {
-      return NextResponse.json({ tables: [] }, { status: 200 });
-    }
-
-    const tables = await prisma.table.findMany({
-      where: { location_id: location.id },
-      orderBy: { table_number: "asc" },
-    });
+    const tables = await sql`
+      SELECT * FROM tables 
+      ORDER BY table_number ASC
+    `;
 
     return NextResponse.json({ tables }, { status: 200 });
   } catch (error) {
@@ -53,7 +46,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Get first location
-    const location = await prisma.location.findFirst();
+    const locations = await sql`SELECT id FROM locations LIMIT 1`;
+    const location = locations[0];
 
     if (!location) {
       return NextResponse.json(
@@ -62,17 +56,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const table = await prisma.table.create({
-      data: {
-        location_id: location.id,
-        table_number: table_number.toString(),
-        capacity: capacity || 4,
-        x_position: x_position || 0,
-        y_position: y_position || 0,
-      },
-    });
+    const tables = await sql`
+      INSERT INTO tables (location_id, table_number, capacity, x_position, y_position)
+      VALUES (${location.id}, ${table_number.toString()}, ${capacity || 4}, ${x_position || 0}, ${y_position || 0})
+      RETURNING *
+    `;
 
-    return NextResponse.json({ table }, { status: 201 });
+    return NextResponse.json({ table: tables[0] }, { status: 201 });
   } catch (error) {
     console.error("Create table error:", error);
     return NextResponse.json(

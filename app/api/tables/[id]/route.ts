@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthUser } from "@/lib/auth";
-import { prisma } from "@/lib/db";
+import { sql } from "@/lib/db";
 
 export async function PUT(
   request: NextRequest,
@@ -17,20 +17,21 @@ export async function PUT(
     }
 
     const { id } = await params;
-    const { number, seats, x, y, active } = await request.json();
+    const { table_number, capacity, x_position, y_position } = await request.json();
 
-    const table = await prisma.table.update({
-      where: { id },
-      data: {
-        ...(number !== undefined && { number }),
-        ...(seats !== undefined && { seats }),
-        ...(x !== undefined && { x }),
-        ...(y !== undefined && { y }),
-        ...(active !== undefined && { active }),
-      },
-    });
+    const tables = await sql`
+      UPDATE tables 
+      SET 
+        table_number = COALESCE(${table_number}, table_number),
+        capacity = COALESCE(${capacity}, capacity),
+        x_position = COALESCE(${x_position}, x_position),
+        y_position = COALESCE(${y_position}, y_position),
+        updated_at = NOW()
+      WHERE id = ${parseInt(id)}
+      RETURNING *
+    `;
 
-    return NextResponse.json({ table }, { status: 200 });
+    return NextResponse.json({ table: tables[0] }, { status: 200 });
   } catch (error) {
     console.error("Update table error:", error);
     return NextResponse.json(
@@ -56,9 +57,7 @@ export async function DELETE(
 
     const { id } = await params;
 
-    await prisma.table.delete({
-      where: { id },
-    });
+    await sql`DELETE FROM tables WHERE id = ${parseInt(id)}`;
 
     return NextResponse.json(
       { message: "Table deleted" },

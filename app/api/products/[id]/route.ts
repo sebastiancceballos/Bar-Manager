@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthUser } from "@/lib/auth";
-import { prisma } from "@/lib/db";
+import { sql } from "@/lib/db";
 
 export async function PUT(
   request: NextRequest,
@@ -17,19 +17,20 @@ export async function PUT(
     }
 
     const { id } = await params;
-    const { name, category, price, active } = await request.json();
+    const { name, category, price } = await request.json();
 
-    const product = await prisma.product.update({
-      where: { id },
-      data: {
-        ...(name && { name }),
-        ...(category && { category }),
-        ...(price !== undefined && { price: parseFloat(price) }),
-        ...(active !== undefined && { active }),
-      },
-    });
+    const products = await sql`
+      UPDATE products 
+      SET 
+        name = COALESCE(${name}, name),
+        category = COALESCE(${category}, category),
+        price = COALESCE(${price !== undefined ? parseFloat(price) : null}, price),
+        updated_at = NOW()
+      WHERE id = ${parseInt(id)}
+      RETURNING *
+    `;
 
-    return NextResponse.json({ product }, { status: 200 });
+    return NextResponse.json({ product: products[0] }, { status: 200 });
   } catch (error) {
     console.error("Update product error:", error);
     return NextResponse.json(
@@ -55,9 +56,7 @@ export async function DELETE(
 
     const { id } = await params;
 
-    await prisma.product.delete({
-      where: { id },
-    });
+    await sql`DELETE FROM products WHERE id = ${parseInt(id)}`;
 
     return NextResponse.json(
       { message: "Product deleted" },
