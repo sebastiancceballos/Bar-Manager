@@ -18,8 +18,8 @@ export async function GET(request: NextRequest) {
     }
 
     const tables = await prisma.table.findMany({
-      where: { locationId: location.id },
-      orderBy: { number: "asc" },
+      where: { location_id: location.id },
+      orderBy: { table_number: "asc" },
     });
 
     return NextResponse.json({ tables }, { status: 200 });
@@ -43,9 +43,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { number, seats, x, y } = await request.json();
+    const { table_number, capacity, x_position, y_position } = await request.json();
 
-    if (number === undefined) {
+    if (table_number === undefined) {
       return NextResponse.json(
         { error: "Table number is required" },
         { status: 400 }
@@ -64,11 +64,11 @@ export async function POST(request: NextRequest) {
 
     const table = await prisma.table.create({
       data: {
-        locationId: location.id,
-        number,
-        seats: seats || 4,
-        x: x || 0,
-        y: y || 0,
+        location_id: location.id,
+        table_number: table_number.toString(),
+        capacity: capacity || 4,
+        x_position: x_position || 0,
+        y_position: y_position || 0,
       },
     });
 

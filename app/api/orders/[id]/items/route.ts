@@ -25,7 +25,7 @@ export async function POST(
 
     // Get product to get price
     const product = await prisma.product.findUnique({
-      where: { id: productId },
+      where: { id: parseInt(productId) },
     });
 
     if (!product) {
@@ -35,8 +35,8 @@ export async function POST(
     // Create or get order item
     const existingItem = await prisma.orderItem.findFirst({
       where: {
-        orderId: id,
-        productId,
+        order_id: parseInt(id),
+        product_id: parseInt(productId),
       },
     });
 
@@ -51,8 +51,8 @@ export async function POST(
     } else {
       item = await prisma.orderItem.create({
         data: {
-          orderId: id,
-          productId,
+          order_id: parseInt(id),
+          product_id: parseInt(productId),
           quantity,
           price: product.price,
         },
@@ -61,14 +61,14 @@ export async function POST(
 
     // Update order total
     const orderItems = await prisma.orderItem.findMany({
-      where: { orderId: id },
+      where: { order_id: parseInt(id) },
     });
 
     const total = orderItems.reduce((sum, i) => sum + i.price * i.quantity, 0);
 
     const order = await prisma.order.update({
-      where: { id },
-      data: { total },
+      where: { id: parseInt(id) },
+      data: { total_amount: total },
       include: {
         items: {
           include: {

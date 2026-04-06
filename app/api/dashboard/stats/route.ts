@@ -37,7 +37,6 @@ export async function GET(request: NextRequest) {
     // Get orders from today
     const ordersToday = await prisma.order.findMany({
       where: {
-        locationId: location.id,
         createdAt: {
           gte: today,
           lt: tomorrow,
@@ -48,23 +47,20 @@ export async function GET(request: NextRequest) {
 
     const totalRevenue = ordersToday
       .filter((o) => o.status === "paid" || o.status === "closed")
-      .reduce((sum, order) => sum + order.total, 0);
+      .reduce((sum, order) => sum + order.total_amount, 0);
 
     // Get occupied tables
     const openOrders = await prisma.order.findMany({
       where: {
-        locationId: location.id,
         status: "open",
       },
     });
 
-    const occupiedTableIds = new Set(openOrders.map((o) => o.tableId));
+    const occupiedTableIds = new Set(openOrders.map((o) => o.table_id));
     const tablesOccupied = occupiedTableIds.size;
 
     // Get total tables
-    const totalTables = await prisma.table.count({
-      where: { locationId: location.id },
-    });
+    const totalTables = await prisma.table.count();
 
     return NextResponse.json(
       {

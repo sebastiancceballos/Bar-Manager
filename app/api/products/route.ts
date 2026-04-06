@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
     }
 
     const products = await prisma.product.findMany({
-      where: { locationId: location.id },
+      where: { location_id: location.id },
       orderBy: { category: "asc" },
     });
 
@@ -64,7 +64,7 @@ export async function POST(request: NextRequest) {
 
     const product = await prisma.product.create({
       data: {
-        locationId: location.id,
+        location_id: location.id,
         name,
         category,
         price: parseFloat(price),

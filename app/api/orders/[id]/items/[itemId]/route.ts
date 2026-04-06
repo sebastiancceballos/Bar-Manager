@@ -17,19 +17,19 @@ export async function DELETE(
 
     // Delete item
     await prisma.orderItem.delete({
-      where: { id: itemId },
+      where: { id: parseInt(itemId) },
     });
 
     // Update order total
     const orderItems = await prisma.orderItem.findMany({
-      where: { orderId: id },
+      where: { order_id: parseInt(id) },
     });
 
     const total = orderItems.reduce((sum, i) => sum + i.price * i.quantity, 0);
 
     const order = await prisma.order.update({
-      where: { id },
-      data: { total },
+      where: { id: parseInt(id) },
+      data: { total_amount: total },
       include: {
         items: {
           include: {

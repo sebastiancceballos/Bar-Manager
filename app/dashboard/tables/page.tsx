@@ -6,33 +6,35 @@ import { useEffect, useState } from "react";
 import { OrderModal } from "@/app/components/OrderModal";
 
 interface Table {
-  id: string;
-  number: number;
-  seats: number;
-  x: number;
-  y: number;
+  id: number;
+  table_number: string;
+  capacity: number;
+  x_position: number;
+  y_position: number;
+}
+
+interface OrderItem {
+  id: number;
+  productId: number;
+  quantity: number;
+  product: {
+    name: string;
+    price: number;
+  };
 }
 
 interface Order {
-  id: string;
-  tableId: string;
-  total: number;
-  items: Array<{
-    id: string;
-    productId: string;
-    quantity: number;
-    product: {
-      name: string;
-      price: number;
-    };
-  }>;
+  id: number;
+  table_id: number;
+  total_amount: number;
+  items: OrderItem[];
 }
 
 export default function WaiterTablesPage() {
   const [tables, setTables] = useState<Table[]>([]);
-  const [orders, setOrders] = useState<Record<string, Order>>({});
+  const [orders, setOrders] = useState<Record<number, Order>>({});
   const [loading, setLoading] = useState(true);
-  const [selectedTableId, setSelectedTableId] = useState<string | null>(null);
+  const [selectedTableId, setSelectedTableId] = useState<number | null>(null);
   const [showOrderModal, setShowOrderModal] = useState(false);
 
   const fetchData = async () => {
@@ -50,8 +52,8 @@ export default function WaiterTablesPage() {
       if (ordersRes.ok) {
         const data = await ordersRes.json();
         const ordersMap = data.orders.reduce(
-          (acc: Record<string, Order>, order: Order) => {
-            acc[order.tableId] = order;
+          (acc: Record<number, Order>, order: Order) => {
+            acc[order.table_id] = order;
             return acc;
           },
           {}
@@ -72,7 +74,7 @@ export default function WaiterTablesPage() {
     return () => clearInterval(interval);
   }, []);
 
-  const handleTableClick = (tableId: string) => {
+  const handleTableClick = (tableId: number) => {
     setSelectedTableId(tableId);
     setShowOrderModal(true);
   };
@@ -106,11 +108,11 @@ export default function WaiterTablesPage() {
                         : "border-border bg-card hover:border-primary"
                     }`}
                   >
-                    <div className="text-3xl">{table.number}</div>
+                    <div className="text-3xl">{table.table_number}</div>
                     {isOccupied && (
                       <div className="flex flex-col items-center gap-1">
                         <div className="text-xs text-gray-400">
-                          ${order.total.toFixed(2)}
+                          ${order.total_amount.toFixed(2)}
                         </div>
                         <div className="text-xs bg-secondary/20 px-2 py-1 rounded text-secondary">
                           {order.items.length} items

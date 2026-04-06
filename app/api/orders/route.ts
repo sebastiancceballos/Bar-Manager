@@ -21,12 +21,14 @@ export async function GET(request: NextRequest) {
     }
 
     const where: any = {
-      locationId: location.id,
-      status: "open",
+      NOT: {
+        status: "closed",
+      },
     };
 
+    // Filter by table if provided
     if (tableId) {
-      where.tableId = tableId;
+      where.table_id = parseInt(tableId);
     }
 
     const orders = await prisma.order.findMany({
@@ -81,7 +83,7 @@ export async function POST(request: NextRequest) {
     // Check if table already has open order
     const existingOrder = await prisma.order.findFirst({
       where: {
-        tableId,
+        table_id: parseInt(tableId),
         status: "open",
       },
     });
@@ -90,10 +92,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ order: existingOrder }, { status: 200 });
     }
 
+    // Get current user
+    const userId = user.id;
+
     const order = await prisma.order.create({
       data: {
-        locationId: location.id,
-        tableId,
+        table_id: parseInt(tableId),
+        waiter_id: userId,
         status: "open",
       },
       include: {

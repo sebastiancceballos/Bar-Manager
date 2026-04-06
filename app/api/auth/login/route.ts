@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const isPasswordValid = await bcrypt.compare(password, user.password);
+    const isPasswordValid = await bcrypt.compare(password, user.password_hash);
     if (!isPasswordValid) {
       return NextResponse.json(
         { error: "Invalid credentials" },
@@ -33,15 +33,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!user.active) {
-      return NextResponse.json(
-        { error: "User account is disabled" },
-        { status: 403 }
-      );
-    }
-
     const token = await signToken({
-      userId: user.id,
+      id: user.id,
       email: user.email,
       role: user.role as "admin" | "waiter",
     });

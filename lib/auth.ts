@@ -5,7 +5,7 @@ const JWT_SECRET = process.env.JWT_SECRET || "change-me-in-production";
 const TOKEN_EXPIRY = "7d";
 
 export interface JWTPayload {
-  userId: string;
+  id: number;
   email: string;
   role: "admin" | "waiter";
 }

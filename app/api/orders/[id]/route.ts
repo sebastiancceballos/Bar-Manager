@@ -24,10 +24,10 @@ export async function PUT(
     }
 
     const order = await prisma.order.update({
-      where: { id },
+      where: { id: parseInt(id) },
       data: {
         status,
-        ...(status === "closed" && { closedAt: new Date() }),
+        ...(status === "closed" && { closed_at: new Date() }),
       },
       include: {
         items: {
@@ -63,7 +63,7 @@ export async function GET(
     const { id } = await params;
 
     const order = await prisma.order.findUnique({
-      where: { id },
+      where: { id: parseInt(id) },
       include: {
         items: {
           include: {

@@ -3,9 +3,10 @@
 import { useEffect, useState } from "react";
 
 interface OrderItem {
-  id: string;
-  productId: string;
+  id: number;
+  product_id: number;
   quantity: number;
+  price: number;
   product: {
     name: string;
     price: number;
@@ -13,21 +14,21 @@ interface OrderItem {
 }
 
 interface Order {
-  id: string;
-  tableId: string;
-  total: number;
+  id: number;
+  table_id: number;
+  total_amount: number;
   items: OrderItem[];
 }
 
 interface Product {
-  id: string;
+  id: number;
   name: string;
   category: string;
   price: number;
 }
 
 interface OrderModalProps {
-  tableId: string;
+  tableId: number;
   order: Order | null;
   onClose: () => void;
   onUpdate: () => void;
@@ -74,7 +75,7 @@ export function OrderModal({
     (p) => p.category === selectedCategory
   );
 
-  const handleAddItem = async (productId: string) => {
+  const handleAddItem = async (productId: number) => {
     if (!order) {
       // Create order first
       try {
@@ -82,12 +83,14 @@ export function OrderModal({
         const response = await fetch("/api/orders", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ tableId }),
+          body: JSON.stringify({ tableId: tableId.toString() }),
         });
 
         if (response.ok) {
           const data = await response.json();
-          await handleAddItem(productId);
+          const newOrder = data.order;
+          // Add item to the new order
+          await handleAddItemToOrder(newOrder.id, productId);
         }
       } catch (error) {
         console.error("Failed to create order:", error);
@@ -97,9 +100,13 @@ export function OrderModal({
       return;
     }
 
+    await handleAddItemToOrder(order.id, productId);
+  };
+
+  const handleAddItemToOrder = async (orderId: number, productId: number) => {
     try {
       setUpdating(true);
-      const response = await fetch(`/api/orders/${order.id}/items`, {
+      const response = await fetch(`/api/orders/${orderId}/items`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ productId, quantity: 1 }),
@@ -115,7 +122,7 @@ export function OrderModal({
     }
   };
 
-  const handleRemoveItem = async (itemId: string) => {
+  const handleRemoveItem = async (itemId: number) => {
     if (!order) return;
 
     try {
@@ -188,7 +195,7 @@ export function OrderModal({
                       <div>
                         <p className="font-medium">{item.product.name}</p>
                         <p className="text-sm text-gray-400">
-                          x{item.quantity} - ${(item.product.price * item.quantity).toFixed(2)}
+                          x{item.quantity} - ${(item.price * item.quantity).toFixed(2)}
                         </p>
                       </div>
                       <button
@@ -206,7 +213,7 @@ export function OrderModal({
               <div className="bg-background p-4 rounded mb-4 border border-border">
                 <p className="text-gray-400 mb-2">Total</p>
                 <p className="text-3xl font-bold text-success">
-                  ${order.total.toFixed(2)}
+                  ${order.total_amount.toFixed(2)}
                 </p>
               </div>
 

@@ -11,6 +11,124 @@ datasource db {
 }
 
 model User {
+  id        Int     @id @default(autoincrement())
+  email     String  @unique
+  password_hash String  @map("password_hash")
+  name      String
+  role      String  @default("waiter") // "admin" or "waiter"
+  location_id Int?   @map("location_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  location Location? @relation(fields: [location_id], references: [id], onDelete: SetNull)
+
+  @@map("users")
+}
+
+model Location {
+  id        Int     @id @default(autoincrement())
+  name      String
+  address   String?
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  users    User[]
+  tables   Table[]
+  products Product[]
+  orders   Order[]
+  income   DailyIncome[]
+
+  @@map("locations")
+}
+
+model Table {
+  id         Int     @id @default(autoincrement())
+  location_id Int
+  table_number String  @map("table_number")
+  capacity   Int     @default(4)
+  x_position Float   @default(0) @map("x_position")
+  y_position Float   @default(0) @map("y_position")
+  width      Float   @default(80)
+  height     Float   @default(80)
+  status     String  @default("available")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  location Location @relation(fields: [location_id], references: [id], onDelete: Cascade)
+  orders   Order[]
+
+  @@unique([location_id, table_number])
+  @@map("tables")
+}
+
+model Product {
+  id         Int     @id @default(autoincrement())
+  location_id Int
+  name       String
+  category   String
+  price      Float
+  description String?
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  location  Location      @relation(fields: [location_id], references: [id], onDelete: Cascade)
+  orderItems OrderItem[]
+
+  @@map("products")
+}
+
+model Order {
+  id         Int     @id @default(autoincrement())
+  table_id   Int     @map("table_id")
+  waiter_id  Int     @map("waiter_id")
+  status     String  @default("open") // "open", "closed", "paid"
+  total_amount Float  @default(0) @map("total_amount")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+  closed_at  DateTime? @map("closed_at")
+
+  table     Table       @relation(fields: [table_id], references: [id], onDelete: Cascade)
+  items     OrderItem[]
+
+  @@map("orders")
+}
+
+model OrderItem {
+  id        Int     @id @default(autoincrement())
+  order_id  Int     @map("order_id")
+  product_id Int    @map("product_id")
+  quantity  Int     @default(1)
+  price     Float
+  createdAt DateTime @default(now()) @map("created_at")
+
+  order   Order   @relation(fields: [order_id], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [product_id], references: [id], onDelete: SetNull)
+
+  @@map("order_items")
+}
+
+model DailyIncome {
+  id         Int     @id @default(autoincrement())
+  location_id Int    @map("location_id")
+  date       DateTime
+  total_income Float @default(0) @map("total_income")
+  order_count Int    @default(0) @map("order_count")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  location Location @relation(fields: [location_id], references: [id], onDelete: Cascade)
+
+  @@unique([location_id, date])
+  @@map("daily_income")
+}
+
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
   id        String   @id @default(cuid())
   email     String   @unique
   password  String
