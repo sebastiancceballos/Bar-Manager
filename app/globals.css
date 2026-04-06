@@ -93,5 +93,7 @@ body {
 
 /* Grid utilities */
 .grid-auto-fit {
-  @apply grid gap-4 auto-fit;
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
 }
