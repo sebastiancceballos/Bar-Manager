@@ -15,6 +15,8 @@ export async function POST(request: NextRequest) {
     }
 
     const users = await sql`SELECT * FROM users WHERE email = ${email} LIMIT 1`;
+    console.log("[v0] Query result:", users);
+    console.log("[v0] Email searched:", email);
     const user = users[0];
 
     if (!user) {
