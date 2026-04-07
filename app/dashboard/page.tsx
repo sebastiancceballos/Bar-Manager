@@ -1,8 +1,11 @@
 "use client";
 
-import { ProtectedLayout, AdminOnly } from "@/app/components/ProtectedLayout";
+import { ProtectedLayout } from "@/app/components/ProtectedLayout";
 import { Navigation } from "@/app/components/Navigation";
 import { useEffect, useState } from "react";
+import { useAuth } from "@/app/providers";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 interface DashboardStats {
   totalRevenue: number;
@@ -14,8 +17,19 @@ interface DashboardStats {
 export default function AdminDashboard() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
+  const { user } = useAuth();
+  const router = useRouter();
+
+  // Redirect waiters to tables page
+  useEffect(() => {
+    if (user && user.role === "waiter") {
+      router.push("/dashboard/tables");
+    }
+  }, [user, router]);
 
   useEffect(() => {
+    if (user?.role !== "admin") return;
+    
     const fetchStats = async () => {
       try {
         const response = await fetch("/api/dashboard/stats");
@@ -31,12 +45,20 @@ export default function AdminDashboard() {
     };
 
     fetchStats();
-  }, []);
+  }, [user]);
+
+  // Show nothing while redirecting waiter
+  if (user?.role === "waiter") {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-foreground">Redirigiendo...</div>
+      </div>
+    );
+  }
 
   return (
     <ProtectedLayout>
-      <AdminOnly>
-        <Navigation />
+      <Navigation />
         <div className="min-h-screen bg-background">
           <div className="max-w-7xl mx-auto px-4 py-12">
             <h1 className="text-4xl font-bold text-foreground mb-8">
@@ -95,7 +117,7 @@ export default function AdminDashboard() {
             )}
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-8">
-              <a
+              <Link
                 href="/dashboard/products"
                 className="card hover:border-primary transition-smooth cursor-pointer group"
               >
@@ -105,9 +127,9 @@ export default function AdminDashboard() {
                 <p className="text-gray-400 text-sm">
                   Crea, edita y elimina productos del menú
                 </p>
-              </a>
+              </Link>
 
-              <a
+              <Link
                 href="/dashboard/tables"
                 className="card hover:border-primary transition-smooth cursor-pointer group"
               >
@@ -117,9 +139,9 @@ export default function AdminDashboard() {
                 <p className="text-gray-400 text-sm">
                   Organiza el layout de mesas de tu bar
                 </p>
-              </a>
+              </Link>
 
-              <a
+              <Link
                 href="/dashboard/reports"
                 className="card hover:border-primary transition-smooth cursor-pointer group"
               >
@@ -129,11 +151,10 @@ export default function AdminDashboard() {
                 <p className="text-gray-400 text-sm">
                   Analiza ventas e ingresos por período
                 </p>
-              </a>
+              </Link>
             </div>
           </div>
         </div>
-      </AdminOnly>
     </ProtectedLayout>
   );
 }
