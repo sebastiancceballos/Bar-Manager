@@ -195,7 +195,7 @@ export function OrderModal({
                       <div>
                         <p className="font-medium">{item.product.name}</p>
                         <p className="text-sm text-gray-400">
-                          x{item.quantity} - ${(item.price * item.quantity).toFixed(2)}
+                          x{item.quantity} - ${(Number(item.price) * item.quantity).toFixed(2)}
                         </p>
                       </div>
                       <button
@@ -213,7 +213,7 @@ export function OrderModal({
               <div className="bg-background p-4 rounded mb-4 border border-border">
                 <p className="text-gray-400 mb-2">Total</p>
                 <p className="text-3xl font-bold text-success">
-                  ${order.total_amount.toFixed(2)}
+                  ${Number(order.total_amount).toFixed(2)}
                 </p>
               </div>
 
@@ -261,7 +261,7 @@ export function OrderModal({
                     >
                       <div className="font-medium">{product.name}</div>
                       <div className="text-sm text-success">
-                        ${product.price.toFixed(2)}
+                        ${Number(product.price).toFixed(2)}
                       </div>
                     </button>
                   ))}

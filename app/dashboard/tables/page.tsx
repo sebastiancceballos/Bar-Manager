@@ -112,7 +112,7 @@ export default function WaiterTablesPage() {
                     {isOccupied && (
                       <div className="flex flex-col items-center gap-1">
                         <div className="text-xs text-gray-400">
-                          ${order.total_amount.toFixed(2)}
+                          ${Number(order.total_amount).toFixed(2)}
                         </div>
                         <div className="text-xs bg-secondary/20 px-2 py-1 rounded text-secondary">
                           {order.items.length} items
