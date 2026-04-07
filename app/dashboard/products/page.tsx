@@ -203,7 +203,7 @@ export default function ProductsPage() {
                               {product.name}
                             </h4>
                             <p className="text-2xl font-bold text-success mb-2">
-                              ${product.price.toFixed(2)}
+                              ${Number(product.price).toFixed(2)}
                             </p>
                             {!product.active && (
                               <p className="text-sm text-warning">Inactivo</p>
