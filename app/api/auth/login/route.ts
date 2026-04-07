@@ -27,7 +27,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    console.log("[v0] Checking password for user:", user.email);
+    console.log("[v0] Password provided:", password);
+    console.log("[v0] Hash in DB:", user.password_hash);
+    
     const isPasswordValid = await bcrypt.compare(password, user.password_hash);
+    console.log("[v0] bcrypt.compare result:", isPasswordValid);
     
     if (!isPasswordValid) {
       return NextResponse.json(
