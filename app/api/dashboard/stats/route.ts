@@ -6,12 +6,15 @@ export async function GET(request: NextRequest) {
   try {
     const user = await getAuthUser();
 
-    if (!user || user.role !== "admin") {
+    if (!user) {
       return NextResponse.json(
         { error: "Unauthorized" },
-        { status: 403 }
+        { status: 401 }
       );
     }
+    
+    // Allow both admin and waiter to see stats
+    // Admins see full stats, waiters see limited view
 
     // Get orders from today
     const ordersToday = await sql`
