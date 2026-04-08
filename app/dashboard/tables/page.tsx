@@ -246,8 +246,8 @@ export default function TablesPage() {
                   <label className="block text-sm mb-1">Capacidad</label>
                   <input
                     type="number"
-                    value={newTable.capacity}
-                    onChange={(e) => setNewTable({ ...newTable, capacity: parseInt(e.target.value) })}
+                    value={newTable.capacity || ""}
+                    onChange={(e) => setNewTable({ ...newTable, capacity: parseInt(e.target.value) || 0 })}
                     className="input w-24"
                     min="1"
                     max="12"
