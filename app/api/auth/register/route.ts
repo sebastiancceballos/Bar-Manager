@@ -57,7 +57,7 @@ export async function POST(request: NextRequest) {
 
     // 2. Parse and validate request body
     const body = await request.json();
-    const { name, email, password, role } = body;
+    const { name, email, password, role, location_id } = body;
 
     // Validate required fields
     if (!name || !email || !password || !role) {
@@ -119,9 +119,9 @@ export async function POST(request: NextRequest) {
 
     // 6. Create user in database
     const result = await sql`
-      INSERT INTO users (name, email, password_hash, role)
-      VALUES (${name}, ${email}, ${passwordHash}, ${role})
-      RETURNING id, name, email, role, created_at
+      INSERT INTO users (name, email, password_hash, role, location_id)
+      VALUES (${name}, ${email}, ${passwordHash}, ${role}, ${location_id || null})
+      RETURNING id, name, email, role, location_id, created_at
     `;
 
     const newUser = Array.isArray(result) ? result[0] : result;
@@ -135,6 +135,7 @@ export async function POST(request: NextRequest) {
           name: newUser.name,
           email: newUser.email,
           role: newUser.role,
+          location_id: newUser.location_id,
           created_at: newUser.created_at,
         },
       },

@@ -7,41 +7,53 @@ export async function GET(request: NextRequest) {
     const currentUser = await getAuthUser();
 
     if (!currentUser) {
-      return NextResponse.json(
-        { error: "No autenticado" },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: "No autenticado" }, { status: 401 });
     }
 
-    // Only owner and admin can list users
     if (currentUser.role !== "owner" && currentUser.role !== "admin") {
-      return NextResponse.json(
-        { error: "No tienes permiso para ver usuarios" },
-        { status: 403 }
-      );
+      return NextResponse.json({ error: "Sin permiso" }, { status: 403 });
     }
 
-    // Fetch all users (without password_hash)
-    const result = await sql`
-      SELECT id, name, email, role, location_id, created_at, updated_at
-      FROM users
-      ORDER BY 
-        CASE role 
-          WHEN 'owner' THEN 1 
-          WHEN 'admin' THEN 2 
-          WHEN 'waiter' THEN 3 
-        END,
-        created_at DESC
-    `;
+    let users;
 
-    const users = Array.isArray(result) ? result : [];
+    if (currentUser.role === "owner") {
+      // Owner sees all users grouped with location info
+      const result = await sql`
+        SELECT u.id, u.name, u.email, u.role, u.location_id, u.created_at,
+               l.name AS location_name
+        FROM users u
+        LEFT JOIN locations l ON u.location_id = l.id
+        ORDER BY 
+          CASE u.role WHEN 'owner' THEN 1 WHEN 'admin' THEN 2 WHEN 'waiter' THEN 3 END,
+          l.name ASC,
+          u.created_at DESC
+      `;
+      users = Array.isArray(result) ? result : [];
+    } else {
+      // Admin sees only users from their own location
+      const adminResult = await sql`SELECT location_id FROM users WHERE id = ${currentUser.id} LIMIT 1`;
+      const adminData = Array.isArray(adminResult) ? adminResult[0] : null;
+      const locationId = adminData?.location_id;
+
+      if (!locationId) {
+        // Admin without location sees only themselves
+        users = [];
+      } else {
+        const result = await sql`
+          SELECT u.id, u.name, u.email, u.role, u.location_id, u.created_at,
+                 l.name AS location_name
+          FROM users u
+          LEFT JOIN locations l ON u.location_id = l.id
+          WHERE u.location_id = ${locationId} AND u.role = 'waiter'
+          ORDER BY u.created_at DESC
+        `;
+        users = Array.isArray(result) ? result : [];
+      }
+    }
 
     return NextResponse.json({ users }, { status: 200 });
   } catch (error) {
     console.error("Error fetching users:", error);
-    return NextResponse.json(
-      { error: "Error interno del servidor" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Error interno del servidor" }, { status: 500 });
   }
 }
