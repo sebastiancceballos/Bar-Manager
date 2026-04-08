@@ -27,14 +27,14 @@ export async function PUT(
     if (status === "closed") {
       orders = await sql`
         UPDATE orders 
-        SET status = ${status}, closed_at = NOW(), updated_at = NOW()
+        SET status = ${status}, closed_at = NOW(), updated_at = NOW(), modified_by = ${user.id}
         WHERE id = ${parseInt(id)}
         RETURNING *
       `;
     } else {
       orders = await sql`
         UPDATE orders 
-        SET status = ${status}, updated_at = NOW()
+        SET status = ${status}, updated_at = NOW(), modified_by = ${user.id}
         WHERE id = ${parseInt(id)}
         RETURNING *
       `;

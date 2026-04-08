@@ -62,7 +62,7 @@ export async function POST(
 
     await sql`
       UPDATE orders 
-      SET total_amount = ${total}, updated_at = NOW()
+      SET total_amount = ${total}, updated_at = NOW(), modified_by = ${user.id}
       WHERE id = ${parseInt(id)}
     `;
 
