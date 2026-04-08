@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
     const token = await signToken({
       id: user.id,
       email: user.email,
-      role: user.role as "admin" | "waiter",
+      role: user.role as "owner" | "admin" | "waiter",
     });
 
     await setAuthCookie(token);

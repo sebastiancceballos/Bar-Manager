@@ -4,10 +4,12 @@ import { cookies } from "next/headers";
 const JWT_SECRET = process.env.JWT_SECRET || "change-me-in-production";
 const TOKEN_EXPIRY = "7d";
 
+export type UserRole = "owner" | "admin" | "waiter";
+
 export interface JWTPayload {
   id: number;
   email: string;
-  role: "admin" | "waiter";
+  role: UserRole;
 }
 
 export async function signToken(payload: JWTPayload): Promise<string> {

@@ -106,8 +106,9 @@ export default function LoginPage() {
 
           <div className="bg-card p-4 rounded-lg text-sm text-gray-400">
             <p className="font-semibold mb-2">Credenciales de demo:</p>
-            <p>Admin: admin@barmanager.com / admin123</p>
-            <p>Mesero: waiter@barmanager.com / waiter123</p>
+            <p><span className="text-purple-400">Owner:</span> owner@barmanager.com / owner123</p>
+            <p><span className="text-blue-400">Admin:</span> admin@barmanager.com / admin123</p>
+            <p><span className="text-green-400">Mesero:</span> waiter@barmanager.com / waiter123</p>
           </div>
         </form>
       </div>

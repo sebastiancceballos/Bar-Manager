@@ -26,8 +26,11 @@ export default function DashboardPage() {
     }
   }, [user, router]);
 
+  // Check if user is admin or owner (both can view dashboard)
+  const isAdminOrOwner = user?.role === "admin" || user?.role === "owner";
+
   useEffect(() => {
-    if (!user || user.role !== "admin") return;
+    if (!user || !isAdminOrOwner) return;
 
     const fetchStats = async () => {
       try {
@@ -44,7 +47,7 @@ export default function DashboardPage() {
     };
 
     fetchStats();
-  }, [user]);
+  }, [user, isAdminOrOwner]);
 
   if (user?.role === "waiter") {
     return (
@@ -128,6 +131,18 @@ export default function DashboardPage() {
                   </h3>
                   <p className="text-gray-400 text-sm">
                     Analiza ventas e ingresos por período
+                  </p>
+                </Link>
+
+                <Link
+                  href="/dashboard/users"
+                  className="card hover:border-primary transition-smooth cursor-pointer group"
+                >
+                  <h3 className="text-xl font-semibold text-foreground group-hover:text-primary mb-2">
+                    Gestionar Usuarios
+                  </h3>
+                  <p className="text-gray-400 text-sm">
+                    {user?.role === "owner" ? "Crea administradores" : "Crea meseros"}
                   </p>
                 </Link>
               </div>

@@ -46,10 +46,16 @@ export default function SetupPage() {
 
         {result && (
           <div className="bg-green-500/10 border border-green-500 rounded p-4 mb-4">
-            <p className="text-green-500 font-semibold mb-2">Success!</p>
-            <p className="text-sm text-gray-400 mb-2">Admin hash: {result.adminHash?.substring(0, 30)}...</p>
-            <p className="text-sm text-gray-400 mb-4">Waiter hash: {result.waiterHash?.substring(0, 30)}...</p>
-            <p className="text-sm">Users updated: {result.users?.length || 0}</p>
+            <p className="text-green-500 font-semibold mb-4">Success!</p>
+            
+            <p className="text-sm font-semibold mb-2">Credenciales de demo:</p>
+            <div className="space-y-2 text-sm text-gray-300">
+              <p><span className="text-purple-400">Owner:</span> owner@barmanager.com / owner123</p>
+              <p><span className="text-blue-400">Admin:</span> admin@barmanager.com / admin123</p>
+              <p><span className="text-green-400">Waiter:</span> waiter@barmanager.com / waiter123</p>
+            </div>
+            
+            <p className="text-sm mt-4">Usuarios configurados: {result.users?.length || 0}</p>
           </div>
         )}
 
