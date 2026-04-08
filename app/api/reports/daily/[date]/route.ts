@@ -4,7 +4,7 @@ import { sql } from "@/lib/db";
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { date: string } }
+  { params }: { params: Promise<{ date: string }> }
 ) {
   try {
     const currentUser = await getAuthUser();
@@ -17,14 +17,14 @@ export async function GET(
       return NextResponse.json({ error: "Sin permiso" }, { status: 403 });
     }
 
-    const date = params.date; // YYYY-MM-DD format
+    const { date } = await params; // YYYY-MM-DD format
 
     // Get orders for the day with waiter and modifier info
     const result = await sql`
       SELECT 
         o.id,
         o.table_id,
-        o.user_id,
+        o.waiter_id,
         o.total_amount,
         o.status,
         o.created_at,
@@ -37,7 +37,7 @@ export async function GET(
         t.table_number,
         l.name AS location_name
       FROM orders o
-      LEFT JOIN users u ON o.user_id = u.id
+      LEFT JOIN users u ON o.waiter_id = u.id
       LEFT JOIN users m ON o.modified_by = m.id
       LEFT JOIN tables t ON o.table_id = t.id
       LEFT JOIN locations l ON t.location_id = l.id
