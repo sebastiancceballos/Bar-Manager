@@ -145,6 +145,20 @@ export default function DashboardPage() {
                     {user?.role === "owner" ? "Crea administradores" : "Crea meseros"}
                   </p>
                 </Link>
+
+                {user?.role === "owner" && (
+                  <Link
+                    href="/dashboard/bars"
+                    className="card hover:border-primary transition-smooth cursor-pointer group"
+                  >
+                    <h3 className="text-xl font-semibold text-foreground group-hover:text-primary mb-2">
+                      Gestionar Bares
+                    </h3>
+                    <p className="text-gray-400 text-sm">
+                      Crea y administra los bares de tu plataforma
+                    </p>
+                  </Link>
+                )}
               </div>
             </div>
           )}
