@@ -35,6 +35,9 @@ interface OrderModalProps {
   open: boolean;
 }
 
+const formatCOP = (value: number) =>
+  new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", minimumFractionDigits: 0 }).format(value);
+
 export function OrderModal({
   tableId,
   order,
@@ -195,7 +198,7 @@ export function OrderModal({
                       <div>
                         <p className="font-medium">{item.product.name}</p>
                         <p className="text-sm text-gray-400">
-                          x{item.quantity} - ${(Number(item.price) * item.quantity).toFixed(2)}
+                          x{item.quantity} - {formatCOP(Number(item.price) * item.quantity)}
                         </p>
                       </div>
                       <button
@@ -213,7 +216,7 @@ export function OrderModal({
               <div className="bg-background p-4 rounded mb-4 border border-border">
                 <p className="text-gray-400 mb-2">Total</p>
                 <p className="text-3xl font-bold text-success">
-                  ${Number(order.total_amount).toFixed(2)}
+                  {formatCOP(Number(order.total_amount))}
                 </p>
               </div>
 
@@ -240,11 +243,10 @@ export function OrderModal({
                     <button
                       key={cat}
                       onClick={() => setSelectedCategory(cat)}
-                      className={`btn btn-sm whitespace-nowrap ${
-                        selectedCategory === cat
+                      className={`btn btn-sm whitespace-nowrap ${selectedCategory === cat
                           ? "btn-primary"
                           : "btn-outline"
-                      }`}
+                        }`}
                     >
                       {cat}
                     </button>
@@ -261,7 +263,7 @@ export function OrderModal({
                     >
                       <div className="font-medium">{product.name}</div>
                       <div className="text-sm text-success">
-                        ${Number(product.price).toFixed(2)}
+                        {formatCOP(Number(product.price))}
                       </div>
                     </button>
                   ))}

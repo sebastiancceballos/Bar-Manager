@@ -7,6 +7,10 @@ import { useAuth } from "@/app/providers";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
+const formatCOP = (value: number) =>
+  new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", minimumFractionDigits: 0 }).format(value);
+
+
 interface DashboardStats {
   totalRevenue: number;
   ordersToday: number;
@@ -74,7 +78,7 @@ export default function DashboardPage() {
                 <div className="card">
                   <p className="text-gray-400 text-sm mb-1">Ingresos Hoy</p>
                   <p className="text-3xl font-bold text-success">
-                    ${Number(stats?.totalRevenue || 0).toFixed(2)}
+                    {formatCOP(Number(stats?.totalRevenue || 0))}
                   </p>
                 </div>
                 <div className="card">

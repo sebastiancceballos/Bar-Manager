@@ -3,6 +3,10 @@
 import { useEffect, useState } from "react";
 import { downloadInvoice } from "./InvoicePDF";
 
+const formatCOP = (value: number) =>
+  new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", minimumFractionDigits: 0 }).format(value);
+
+
 interface OrderItem {
   id: number;
   product_name: string;
@@ -102,7 +106,7 @@ export function DailyOrdersModal({ date, isOpen, onClose }: DailyOrdersModalProp
                     </div>
                     <div className="text-right">
                       <p className="text-2xl font-bold text-success">
-                        ${Number(order.total_amount).toFixed(2)}
+                        {formatCOP(Number(order.total_amount))}
                       </p>
                       <p className="text-xs text-gray-400 capitalize">{order.status}</p>
                     </div>
@@ -128,7 +132,7 @@ export function DailyOrdersModal({ date, isOpen, onClose }: DailyOrdersModalProp
                       {order.items.map((item) => (
                         <div key={item.id} className="flex justify-between">
                           <span>{item.product_name} x{item.quantity}</span>
-                          <span>${(Number(item.price) * item.quantity).toFixed(2)}</span>
+                          <span>{formatCOP(Number(item.price) * item.quantity)}</span>
                         </div>
                       ))}
                     </div>
@@ -230,9 +234,9 @@ export function DailyOrdersModal({ date, isOpen, onClose }: DailyOrdersModalProp
                     >
                       <div className="text-foreground">{item.product_name}</div>
                       <div className="text-center text-gray-400">{item.quantity}</div>
-                      <div className="text-right text-gray-400">${Number(item.price).toFixed(2)}</div>
+                      <div className="text-right text-gray-400">{formatCOP(Number(item.price))}</div>
                       <div className="text-right text-foreground font-semibold">
-                        ${(Number(item.price) * item.quantity).toFixed(2)}
+                        {formatCOP(Number(item.price) * item.quantity)}
                       </div>
                     </div>
                   ))}
@@ -244,7 +248,7 @@ export function DailyOrdersModal({ date, isOpen, onClose }: DailyOrdersModalProp
                 <div className="text-right">
                   <p className="text-gray-400 text-sm mb-2">Total</p>
                   <p className="text-3xl font-bold text-success">
-                    ${Number(selectedOrder.total_amount).toFixed(2)}
+                    {formatCOP(Number(selectedOrder.total_amount))}
                   </p>
                 </div>
               </div>

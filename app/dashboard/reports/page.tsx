@@ -7,6 +7,10 @@ import { useEffect, useState } from "react";
 import { useAuth } from "@/app/providers";
 import { useRouter } from "next/navigation";
 
+const formatCOP = (value: number) =>
+  new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", minimumFractionDigits: 0 }).format(value);
+
+
 interface DailyReport {
   date: string;
   total: number;
@@ -80,7 +84,7 @@ export default function ReportsPage() {
                 Ingresos Totales
               </h3>
               <p className="text-3xl font-bold text-success">
-                ${totalRevenue.toFixed(2)}
+                {formatCOP(totalRevenue)}
               </p>
             </div>
 
@@ -98,7 +102,7 @@ export default function ReportsPage() {
                 Promedio por Orden
               </h3>
               <p className="text-3xl font-bold text-secondary">
-                ${averagePerOrder.toFixed(2)}
+                {formatCOP(averagePerOrder)}
               </p>
             </div>
           </div>
@@ -131,7 +135,7 @@ export default function ReportsPage() {
                         </td>
                         <td className="py-3 px-4">{report.orderCount}</td>
                         <td className="py-3 px-4 text-success font-semibold">
-                          ${report.total.toFixed(2)}
+                          {formatCOP(report.total)}
                         </td>
                         <td className="py-3 px-4">
                           <button

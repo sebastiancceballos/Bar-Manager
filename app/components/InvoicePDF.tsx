@@ -90,8 +90,8 @@ export function generateInvoicePDF(order: Order) {
   const tableData = order.items.map((item) => [
     item.product_name,
     item.quantity.toString(),
-    `$${Number(item.price).toFixed(2)}`,
-    `$${(Number(item.price) * item.quantity).toFixed(2)}`,
+    new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", minimumFractionDigits: 0 }).format(Number(item.price)),
+    new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", minimumFractionDigits: 0 }).format(Number(item.price) * item.quantity),
   ]);
 
   doc.autoTable({
@@ -120,7 +120,7 @@ export function generateInvoicePDF(order: Order) {
   doc.setFontSize(14);
   doc.setTextColor(79, 70, 229);
   doc.setFont("helvetica", "bold");
-  doc.text(`TOTAL: $${Number(order.total_amount).toFixed(2)}`, pageWidth - 20, yPosition, {
+  doc.text(`TOTAL: ${new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", minimumFractionDigits: 0 }).format(Number(order.total_amount))}`, pageWidth - 20, yPosition, {
     align: "right",
   });
 

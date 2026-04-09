@@ -6,6 +6,10 @@ import { useEffect, useState, useRef, useCallback } from "react";
 import { useAuth } from "@/app/providers";
 import { OrderModal } from "@/app/components/OrderModal";
 
+const formatCOP = (value: number) =>
+  new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", minimumFractionDigits: 0 }).format(value);
+
+
 interface Table {
   id: number;
   table_number: string;
@@ -303,7 +307,7 @@ export default function TablesPage() {
                     </span>
                     {isOccupied && (
                       <span className="text-xs font-semibold text-secondary mt-1">
-                        ${Number(order.total_amount).toFixed(0)}
+                        {formatCOP(Number(order.total_amount))}
                       </span>
                     )}
                   </div>
@@ -367,7 +371,7 @@ export default function TablesPage() {
                     </span>
                     {isOccupied && (
                       <span className="text-xs font-semibold text-secondary mt-1">
-                        ${Number(order.total_amount).toFixed(0)}
+                        {formatCOP(Number(order.total_amount))}
                       </span>
                     )}
 
