@@ -119,7 +119,7 @@ export function generateInvoicePDF(order: Order) {
   yPosition = doc.lastAutoTable.finalY + 15;
   doc.setFontSize(14);
   doc.setTextColor(79, 70, 229);
-  doc.setFont(undefined, "bold");
+  doc.setFont("helvetica", "bold");
   doc.text(`TOTAL: $${Number(order.total_amount).toFixed(2)}`, pageWidth - 20, yPosition, {
     align: "right",
   });
