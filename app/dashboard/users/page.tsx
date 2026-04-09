@@ -34,26 +34,36 @@ export default function UsersPage() {
   const [showForm, setShowForm] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
+  const isOwner = user?.role === "owner";
+  const isAdmin = user?.role === "admin";
+  const canAccess = isOwner || isAdmin;
+
   const [formData, setFormData] = useState({
     name: "",
     email: "",
     password: "",
-    role: "admin" as NewUserRole,
+    role: "waiter" as NewUserRole,
     location_id: "",
   });
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
-  const isOwner = user?.role === "owner";
-  const isAdmin = user?.role === "admin";
-  const canAccess = isOwner || isAdmin;
-
   useEffect(() => {
     if (user && !canAccess) {
       router.push("/dashboard/tables");
     }
   }, [user, canAccess, router]);
+
+  // Sync form role with actual user role once user loads
+  useEffect(() => {
+    if (user) {
+      setFormData((prev) => ({
+        ...prev,
+        role: user.role === "owner" ? "admin" : "waiter",
+      }));
+    }
+  }, [user]);
 
   const fetchUsers = async () => {
     try {
@@ -144,11 +154,11 @@ export default function UsersPage() {
   // Group users by location for owner view
   const groupedByLocation = isOwner
     ? users.reduce<Record<string, User[]>>((acc, u) => {
-        const key = u.location_name || "Sin bar asignado";
-        if (!acc[key]) acc[key] = [];
-        acc[key].push(u);
-        return acc;
-      }, {})
+      const key = u.location_name || "Sin bar asignado";
+      if (!acc[key]) acc[key] = [];
+      acc[key].push(u);
+      return acc;
+    }, {})
     : null;
 
   if (!canAccess) {
