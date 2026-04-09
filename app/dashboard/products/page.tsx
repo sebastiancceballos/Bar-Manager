@@ -169,9 +169,10 @@ export default function ProductsPage() {
                     <input
                       name="price"
                       type="number"
-                      step="0.01"
+                      step="1"
+                      min="0"
                       className="input"
-                      placeholder="0.00"
+                      placeholder="Ej: 5000"
                       required
                     />
                   </div>
@@ -203,7 +204,7 @@ export default function ProductsPage() {
                               {product.name}
                             </h4>
                             <p className="text-2xl font-bold text-success mb-2">
-                              ${Number(product.price).toFixed(2)}
+                              {new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", minimumFractionDigits: 0 }).format(Number(product.price))}
                             </p>
                             {!product.active && (
                               <p className="text-sm text-warning">Inactivo</p>

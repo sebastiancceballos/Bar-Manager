@@ -45,20 +45,20 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get first location
-    const locations = await sql`SELECT id FROM locations LIMIT 1`;
-    const location = locations[0];
+    // Get the authenticated user's location
+    const userRows = await sql`SELECT location_id FROM users WHERE id = ${user.id} LIMIT 1`;
+    const locationId = userRows[0]?.location_id;
 
-    if (!location) {
+    if (!locationId) {
       return NextResponse.json(
-        { error: "Location not found" },
-        { status: 404 }
+        { error: "Admin does not have a location assigned" },
+        { status: 400 }
       );
     }
 
     const products = await sql`
       INSERT INTO products (location_id, name, category, price)
-      VALUES (${location.id}, ${name}, ${category}, ${parseFloat(price)})
+      VALUES (${locationId}, ${name}, ${category}, ${parseFloat(price)})
       RETURNING *
     `;
 
