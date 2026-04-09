@@ -21,7 +21,7 @@ export async function authMiddleware(request: NextRequest) {
 
   // Store user info in request headers for use in route handlers
   const requestHeaders = new Headers(request.headers);
-  requestHeaders.set("x-user-id", payload.userId);
+  requestHeaders.set("x-user-id", String(payload.id));
   requestHeaders.set("x-user-role", payload.role);
   requestHeaders.set("x-user-email", payload.email);
 

@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Sin permiso" }, { status: 403 });
     }
 
-    let users;
+    let users: Record<string, unknown>[] = [];
 
     if (currentUser.role === "owner") {
       // Owner sees all users grouped with location info
