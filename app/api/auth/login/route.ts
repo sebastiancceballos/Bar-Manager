@@ -17,8 +17,8 @@ export async function POST(request: NextRequest) {
     const result = await sql`SELECT * FROM users WHERE email = ${email} LIMIT 1`;
     
     // Neon returns array directly
-    const users = Array.isArray(result) ? result : (result.rows || result);
-    const user = Array.isArray(users) ? users[0] : users;
+    const users = result as Record<string, unknown>[];
+    const user = users[0];
 
     if (!user) {
       return NextResponse.json(

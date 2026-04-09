@@ -104,12 +104,7 @@ export default function LoginPage() {
             {isLoading ? "Iniciando sesión..." : "Iniciar Sesión"}
           </button>
 
-          <div className="bg-card p-4 rounded-lg text-sm text-gray-400">
-            <p className="font-semibold mb-2">Credenciales de demo:</p>
-            <p><span className="text-purple-400">Owner:</span> owner@barmanager.com / owner123</p>
-            <p><span className="text-blue-400">Admin:</span> admin@barmanager.com / admin123</p>
-            <p><span className="text-green-400">Mesero:</span> waiter@barmanager.com / waiter123</p>
-          </div>
+
         </form>
       </div>
     </div>
