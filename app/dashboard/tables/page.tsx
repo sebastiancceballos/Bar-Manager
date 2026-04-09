@@ -44,10 +44,18 @@ export default function TablesPage() {
   const [showAddForm, setShowAddForm] = useState(false);
   const [newTable, setNewTable] = useState({ table_number: "", capacity: 4 });
   const containerRef = useRef<HTMLDivElement>(null);
+  const [isMobile, setIsMobile] = useState(false);
   const { user } = useAuth();
 
   const isAdmin = user?.role === "admin";
-  const canDrag = isAdmin;
+  const canDrag = isAdmin && !isMobile;
+
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 768);
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
+  }, []);
 
   const fetchData = useCallback(async () => {
     try {
@@ -272,7 +280,43 @@ export default function TablesPage() {
 
           {loading ? (
             <div className="text-gray-400">Cargando mesas...</div>
+          ) : isMobile ? (
+            /* ── MOBILE: grid layout ── */
+            <div className="grid grid-cols-2 gap-4 p-2">
+              {tables.map((table) => {
+                const order = orders[table.id];
+                const isOccupied = !!order;
+                return (
+                  <div
+                    key={table.id}
+                    onClick={() => handleTableClick(table.id)}
+                    className={`flex flex-col items-center justify-center rounded-full border-4 cursor-pointer select-none aspect-square w-full max-w-[140px] mx-auto transition-shadow ${isOccupied
+                        ? "border-secondary bg-secondary/20"
+                        : "border-border bg-card hover:border-primary"
+                      }`}
+                  >
+                    <span className="text-2xl font-bold text-foreground">
+                      {table.table_number}
+                    </span>
+                    <span className="text-xs text-gray-400">
+                      {table.capacity} pers.
+                    </span>
+                    {isOccupied && (
+                      <span className="text-xs font-semibold text-secondary mt-1">
+                        ${Number(order.total_amount).toFixed(0)}
+                      </span>
+                    )}
+                  </div>
+                );
+              })}
+              {tables.length === 0 && (
+                <div className="col-span-2 text-center text-gray-400 py-12">
+                  <p className="mb-4">No hay mesas configuradas</p>
+                </div>
+              )}
+            </div>
           ) : (
+            /* ── DESKTOP: free drag canvas ── */
             <div
               ref={containerRef}
               className="relative bg-card border border-border rounded-xl overflow-hidden"
