@@ -3,6 +3,14 @@ import bcrypt from "bcryptjs";
 import { signToken, setAuthCookie } from "@/lib/auth";
 import { sql } from "@/lib/db";
 
+interface DbUser {
+  id: number;
+  email: string;
+  name: string;
+  password_hash: string;
+  role: "owner" | "admin" | "waiter";
+}
+
 export async function POST(request: NextRequest) {
   try {
     const { email, password } = await request.json();
@@ -17,7 +25,7 @@ export async function POST(request: NextRequest) {
     const result = await sql`SELECT * FROM users WHERE email = ${email} LIMIT 1`;
     
     // Neon returns array directly
-    const users = result as Record<string, unknown>[];
+    const users = result as DbUser[];
     const user = users[0];
 
     if (!user) {
@@ -39,7 +47,7 @@ export async function POST(request: NextRequest) {
     const token = await signToken({
       id: user.id,
       email: user.email,
-      role: user.role as "owner" | "admin" | "waiter",
+      role: user.role,
     });
 
     await setAuthCookie(token);
