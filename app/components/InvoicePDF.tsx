@@ -128,7 +128,7 @@ export function generateInvoicePDF(order: Order) {
   yPosition += 10;
   doc.setFontSize(10);
   doc.setTextColor(0, 0, 0);
-  doc.setFont(undefined, "normal");
+  doc.setFont("helvetica", "normal");
   doc.text(`Estado: ${order.status.toUpperCase()}`, pageWidth - 20, yPosition, {
     align: "right",
   });
