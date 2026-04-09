@@ -16,8 +16,10 @@ interface Table {
 
 interface OrderItem {
   id: number;
+  product_id: number;
   productId: number;
   quantity: number;
+  price: number;
   product: {
     name: string;
     price: number;
@@ -86,7 +88,7 @@ export default function TablesPage() {
   const handleMouseDown = (e: React.MouseEvent, tableId: number) => {
     if (!canDrag) return;
     e.preventDefault();
-    
+
     const table = tables.find(t => t.id === tableId);
     if (!table) return;
 
@@ -163,7 +165,7 @@ export default function TablesPage() {
 
   const handleAddTable = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     try {
       const res = await fetch("/api/tables", {
         method: "POST",
@@ -187,7 +189,7 @@ export default function TablesPage() {
 
   const handleDeleteTable = async (tableId: number) => {
     if (!confirm("Eliminar esta mesa?")) return;
-    
+
     try {
       await fetch(`/api/tables/${tableId}`, { method: "DELETE" });
       fetchData();
@@ -296,13 +298,11 @@ export default function TablesPage() {
                     key={table.id}
                     onMouseDown={(e) => handleMouseDown(e, table.id)}
                     onClick={() => !isDragging && handleTableClick(table.id)}
-                    className={`absolute flex flex-col items-center justify-center rounded-full border-4 transition-shadow select-none ${
-                      isDragging ? "z-50 shadow-2xl scale-105" : "z-10"
-                    } ${
-                      isOccupied
+                    className={`absolute flex flex-col items-center justify-center rounded-full border-4 transition-shadow select-none ${isDragging ? "z-50 shadow-2xl scale-105" : "z-10"
+                      } ${isOccupied
                         ? "border-secondary bg-secondary/20 shadow-secondary/30"
                         : "border-border bg-card hover:border-primary hover:shadow-primary/20"
-                    } ${canDrag ? "cursor-grab active:cursor-grabbing" : "cursor-pointer"}`}
+                      } ${canDrag ? "cursor-grab active:cursor-grabbing" : "cursor-pointer"}`}
                     style={{
                       width: `${size}px`,
                       height: `${size}px`,
@@ -311,8 +311,8 @@ export default function TablesPage() {
                       boxShadow: isOccupied
                         ? "0 0 20px rgba(var(--secondary-rgb), 0.3)"
                         : isDragging
-                        ? "0 10px 40px rgba(0,0,0,0.3)"
-                        : "0 4px 12px rgba(0,0,0,0.15)",
+                          ? "0 10px 40px rgba(0,0,0,0.3)"
+                          : "0 4px 12px rgba(0,0,0,0.15)",
                     }}
                   >
                     <span className="text-xl font-bold text-foreground">
