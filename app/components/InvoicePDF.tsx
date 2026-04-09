@@ -3,6 +3,13 @@
 import jsPDF from "jspdf";
 import "jspdf-autotable";
 
+declare module "jspdf" {
+  interface jsPDF {
+    autoTable: (options: any) => void;
+    lastAutoTable: { finalY: number };
+  }
+}
+
 interface OrderItem {
   id: number;
   product_name: string;
@@ -87,7 +94,7 @@ export function generateInvoicePDF(order: Order) {
     `$${(Number(item.price) * item.quantity).toFixed(2)}`,
   ]);
 
-  (doc as any).autoTable({
+  doc.autoTable({
     head: [["Producto", "Cantidad", "Precio Unit.", "Subtotal"]],
     body: tableData,
     startY: yPosition,
@@ -109,7 +116,7 @@ export function generateInvoicePDF(order: Order) {
   });
 
   // Total
-  yPosition = (doc as any).lastAutoTable.finalY + 15;
+  yPosition = doc.lastAutoTable.finalY + 15;
   doc.setFontSize(14);
   doc.setTextColor(79, 70, 229);
   doc.setFont(undefined, "bold");
