@@ -17,6 +17,7 @@ export default function ProductsPage() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const fetchProducts = async () => {
@@ -54,16 +55,19 @@ export default function ProductsPage() {
         }
       );
 
+      const data = await response.json();
       if (response.ok) {
         await fetchProducts();
         setShowForm(false);
         setEditingId(null);
-        e.currentTarget.reset();
+        setEditingProduct(null);
+        setError(null);
+        (e.target as HTMLFormElement).reset();
       } else {
-        setError("Failed to save product");
+        setError(data.error || "Error al guardar el producto");
       }
     } catch (err) {
-      setError("Error saving product");
+      setError("Error de conexión al guardar el producto");
     }
   };
 
@@ -75,19 +79,23 @@ export default function ProductsPage() {
         method: "DELETE",
       });
 
+      const data = await response.json();
       if (response.ok) {
         await fetchProducts();
+        setError(null);
       } else {
-        setError("Failed to delete product");
+        setError(data.error || "Error al eliminar el producto");
       }
     } catch (err) {
-      setError("Error deleting product");
+      setError("Error de conexión al eliminar el producto");
     }
   };
 
   const handleEdit = (product: Product) => {
     setEditingId(product.id);
+    setEditingProduct(product);
     setShowForm(true);
+    setError(null);
   };
 
   const groupedProducts = products.reduce(
@@ -112,7 +120,9 @@ export default function ProductsPage() {
               <button
                 onClick={() => {
                   setEditingId(null);
+                  setEditingProduct(null);
                   setShowForm(!showForm);
+                  setError(null);
                 }}
                 className="btn btn-primary"
               >
@@ -145,6 +155,8 @@ export default function ProductsPage() {
                       type="text"
                       className="input"
                       placeholder="Ej: Cerveza"
+                      defaultValue={editingProduct?.name || ""}
+                      key={editingProduct?.id + "-name"}
                       required
                     />
                   </div>
@@ -158,6 +170,8 @@ export default function ProductsPage() {
                       type="text"
                       className="input"
                       placeholder="Ej: bebidas"
+                      defaultValue={editingProduct?.category || ""}
+                      key={editingProduct?.id + "-category"}
                       required
                     />
                   </div>
@@ -173,6 +187,8 @@ export default function ProductsPage() {
                       min="0"
                       className="input"
                       placeholder="Ej: 5000"
+                      defaultValue={editingProduct?.price || ""}
+                      key={editingProduct?.id + "-price"}
                       required
                     />
                   </div>
