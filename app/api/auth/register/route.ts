@@ -77,27 +77,30 @@ export async function POST(request: NextRequest) {
 
     // Validate role is valid
     const validRoles: UserRole[] = ["admin", "waiter"];
-    if (!validRoles.includes(role)) {
+    if (!validRoles.includes(role as UserRole)) {
       return NextResponse.json(
         { error: `Rol inválido. Roles permitidos: ${validRoles.join(", ")}` },
         { status: 400 }
       );
     }
 
+    // Cast role to UserRole after validation
+    const typedRole = role as UserRole;
+
     // 3. Check permissions based on role hierarchy
     const creatorRole = currentUser.role as UserRole;
     const allowedRoles = ALLOWED_CREATIONS[creatorRole] || [];
 
-    if (!allowedRoles.includes(role)) {
+    if (!allowedRoles.includes(typedRole)) {
       // Provide specific error message based on the violation
-      if (ROLE_HIERARCHY[role] >= ROLE_HIERARCHY[creatorRole]) {
+      if (ROLE_HIERARCHY[typedRole] >= ROLE_HIERARCHY[creatorRole]) {
         return NextResponse.json(
           { error: "No puedes crear un usuario con un rol igual o superior al tuyo." },
           { status: 403 }
         );
       }
       return NextResponse.json(
-        { error: `Tu rol (${creatorRole}) no tiene permiso para crear usuarios con rol ${role}.` },
+        { error: `Tu rol (${creatorRole}) no tiene permiso para crear usuarios con rol ${typedRole}.` },
         { status: 403 }
       );
     }
