@@ -1,15 +1,5 @@
 "use client";
 
-import jsPDF from "jspdf";
-import "jspdf-autotable";
-
-declare module "jspdf" {
-  interface jsPDF {
-    autoTable: (options: any) => void;
-    lastAutoTable: { finalY: number };
-  }
-}
-
 interface OrderItem {
   id: number;
   product_name: string;
@@ -32,122 +22,124 @@ interface Order {
   items: OrderItem[];
 }
 
-export function generateInvoicePDF(order: Order) {
-  const doc = new jsPDF();
-  const pageWidth = doc.internal.pageSize.getWidth();
-  const pageHeight = doc.internal.pageSize.getHeight();
-  let yPosition = 20;
+const formatCOP = (value: number) =>
+  new Intl.NumberFormat("es-CO", {
+    style: "currency",
+    currency: "COP",
+    minimumFractionDigits: 0,
+  }).format(value);
 
-  // Header
-  doc.setFontSize(20);
-  doc.setTextColor(79, 70, 229); // Indigo color
-  doc.text("FACTURA", pageWidth / 2, yPosition, { align: "center" });
+function buildReceiptHTML(order: Order): string {
+  const date = new Date(order.created_at);
+  const dateStr = date.toLocaleDateString("es-CO");
+  const timeStr = date.toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit" });
+  const divider = "--------------------------------";
 
-  // Info del bar
-  yPosition += 15;
-  doc.setFontSize(10);
-  doc.setTextColor(0, 0, 0);
-  doc.text(`Bar: ${order.location_name}`, 20, yPosition);
-  yPosition += 5;
-  doc.text(`Número de Factura: #${order.id}`, 20, yPosition);
-  yPosition += 5;
-  doc.text(`Mesa: ${order.table_number}`, 20, yPosition);
-  yPosition += 5;
-  doc.text(`Fecha: ${new Date(order.created_at).toLocaleDateString("es-ES")}`, 20, yPosition);
-  yPosition += 5;
-  doc.text(`Hora: ${new Date(order.created_at).toLocaleTimeString("es-ES")}`, 20, yPosition);
+  const itemsRows = order.items
+    .map((item) => {
+      const subtotal = formatCOP(Number(item.price) * item.quantity);
+      const unitPrice = formatCOP(Number(item.price));
+      const name = item.product_name.length > 18
+        ? item.product_name.substring(0, 18)
+        : item.product_name;
+      return `
+        <tr>
+          <td style="text-align:left;padding:1px 0;">${name}</td>
+          <td style="text-align:center;padding:1px 2px;">${item.quantity}</td>
+          <td style="text-align:right;padding:1px 0;">${unitPrice}</td>
+          <td style="text-align:right;padding:1px 0;">${subtotal}</td>
+        </tr>`;
+    })
+    .join("");
 
-  // Mesero info
-  yPosition += 10;
-  doc.setFontSize(11);
-  doc.setTextColor(79, 70, 229);
-  doc.text("MESERO RESPONSABLE", 20, yPosition);
-  yPosition += 5;
-  doc.setFontSize(10);
-  doc.setTextColor(0, 0, 0);
-  doc.text(`Nombre: ${order.waiter_name}`, 20, yPosition);
-  yPosition += 4;
-  doc.text(`Email: ${order.waiter_email}`, 20, yPosition);
-
-  // Modificador info si existe
-  if (order.modifier_name && order.modifier_name !== order.waiter_name) {
-    yPosition += 8;
-    doc.setFontSize(11);
-    doc.setTextColor(79, 70, 229);
-    doc.text("ÚLTIMA MODIFICACIÓN POR", 20, yPosition);
-    yPosition += 5;
-    doc.setFontSize(10);
-    doc.setTextColor(0, 0, 0);
-    doc.text(`Nombre: ${order.modifier_name}`, 20, yPosition);
-    yPosition += 4;
-    doc.text(`Email: ${order.modifier_email}`, 20, yPosition);
-    yPosition += 4;
-    doc.text(`Fecha: ${new Date(order.updated_at).toLocaleDateString("es-ES")} ${new Date(order.updated_at).toLocaleTimeString("es-ES")}`, 20, yPosition);
-  }
-
-  // Items table
-  yPosition += 15;
-  const tableData = order.items.map((item) => [
-    item.product_name,
-    item.quantity.toString(),
-    new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", minimumFractionDigits: 0 }).format(Number(item.price)),
-    new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", minimumFractionDigits: 0 }).format(Number(item.price) * item.quantity),
-  ]);
-
-  doc.autoTable({
-    head: [["Producto", "Cantidad", "Precio Unit.", "Subtotal"]],
-    body: tableData,
-    startY: yPosition,
-    margin: { left: 20, right: 20 },
-    headStyles: {
-      fillColor: [79, 70, 229],
-      textColor: [255, 255, 255],
-      fontStyle: "bold",
-      fontSize: 10,
-    },
-    bodyStyles: {
-      fontSize: 10,
-    },
-    columnStyles: {
-      1: { halign: "center" },
-      2: { halign: "right" },
-      3: { halign: "right" },
-    },
-  });
-
-  // Total
-  yPosition = doc.lastAutoTable.finalY + 15;
-  doc.setFontSize(14);
-  doc.setTextColor(79, 70, 229);
-  doc.setFont("helvetica", "bold");
-  doc.text(`TOTAL: ${new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", minimumFractionDigits: 0 }).format(Number(order.total_amount))}`, pageWidth - 20, yPosition, {
-    align: "right",
-  });
-
-  // Status
-  yPosition += 10;
-  doc.setFontSize(10);
-  doc.setTextColor(0, 0, 0);
-  doc.setFont("helvetica", "normal");
-  doc.text(`Estado: ${order.status.toUpperCase()}`, pageWidth - 20, yPosition, {
-    align: "right",
-  });
-
-  // Footer
-  yPosition = pageHeight - 20;
-  doc.setFontSize(8);
-  doc.setTextColor(150, 150, 150);
-  doc.text(
-    `Generado el ${new Date().toLocaleDateString("es-ES")} a las ${new Date().toLocaleTimeString("es-ES")}`,
-    pageWidth / 2,
-    yPosition,
-    { align: "center" }
-  );
-
-  return doc;
+  return `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>Factura #${order.id}</title>
+  <style>
+    @page {
+      margin: 0;
+      size: 58mm auto;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Courier New', Courier, monospace;
+      font-size: 11px;
+      width: 58mm;
+      padding: 4mm 3mm;
+      color: #000;
+      background: #fff;
+    }
+    .center { text-align: center; }
+    .bold { font-weight: bold; }
+    .divider { border-top: 1px dashed #000; margin: 4px 0; }
+    .title { font-size: 15px; font-weight: bold; text-align: center; margin-bottom: 2px; }
+    .bar-name { font-size: 13px; font-weight: bold; text-align: center; margin-bottom: 4px; }
+    table { width: 100%; border-collapse: collapse; }
+    th { font-size: 10px; text-align: left; padding: 1px 0; border-bottom: 1px solid #000; }
+    th:nth-child(2) { text-align: center; }
+    th:nth-child(3), th:nth-child(4) { text-align: right; }
+    td { font-size: 10px; vertical-align: top; }
+    .total-row { font-size: 13px; font-weight: bold; }
+    .footer { font-size: 9px; text-align: center; margin-top: 6px; }
+    @media print {
+      body { width: 58mm; }
+    }
+  </style>
+</head>
+<body>
+  <div class="bar-name">${order.location_name.toUpperCase()}</div>
+  <div class="title">FACTURA</div>
+  <div class="center">#${order.id}</div>
+  <div class="divider"></div>
+  <div>Mesa: <span class="bold">${order.table_number}</span></div>
+  <div>Fecha: ${dateStr} ${timeStr}</div>
+  <div>Mesero: ${order.waiter_name}</div>
+  <div class="divider"></div>
+  <table>
+    <thead>
+      <tr>
+        <th>Producto</th>
+        <th>Cant</th>
+        <th>P.Unit</th>
+        <th>Total</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${itemsRows}
+    </tbody>
+  </table>
+  <div class="divider"></div>
+  <table>
+    <tr class="total-row">
+      <td colspan="3" style="text-align:right;padding-right:4px;">TOTAL:</td>
+      <td style="text-align:right;">${formatCOP(Number(order.total_amount))}</td>
+    </tr>
+  </table>
+  <div class="divider"></div>
+  <div class="footer">
+    <div>Estado: ${order.status.toUpperCase()}</div>
+    <div>Generado: ${new Date().toLocaleDateString("es-CO")}</div>
+    <div>¡Gracias por su visita!</div>
+  </div>
+  <script>window.onload = () => { window.print(); }</script>
+</body>
+</html>`;
 }
 
-export function downloadInvoice(order: Order) {
-  const doc = generateInvoicePDF(order);
-  doc.save(`factura-${order.id}.pdf`);
+export function downloadInvoice(order: Order): void {
+  const html = buildReceiptHTML(order);
+  const blob = new Blob([html], { type: "text/html;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const win = window.open(url, "_blank", "width=300,height=600");
+  if (win) {
+    win.focus();
+  }
+  setTimeout(() => URL.revokeObjectURL(url), 10000);
+}
+
+// Keep for backward compat if anything imports generateInvoicePDF
+export function generateInvoicePDF(order: Order) {
+  downloadInvoice(order);
 }
