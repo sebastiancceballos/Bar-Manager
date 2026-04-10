@@ -10,8 +10,13 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    const userRow = await sql`SELECT location_id FROM users WHERE id = ${user.id} LIMIT 1`;
+    const locationId = userRow[0]?.location_id;
+    if (!locationId) return NextResponse.json({ error: "Sin bar asignado" }, { status: 400 });
+
     const tables = await sql`
-      SELECT * FROM tables 
+      SELECT * FROM tables
+      WHERE location_id = ${locationId}
       ORDER BY table_number ASC
     `;
 
@@ -45,20 +50,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get first location
-    const locations = await sql`SELECT id FROM locations LIMIT 1`;
-    const location = locations[0];
-
-    if (!location) {
-      return NextResponse.json(
-        { error: "Location not found" },
-        { status: 404 }
-      );
-    }
+    const userRow2 = await sql`SELECT location_id FROM users WHERE id = ${user.id} LIMIT 1`;
+    const locationId2 = userRow2[0]?.location_id;
+    if (!locationId2) return NextResponse.json({ error: "Admin sin bar asignado" }, { status: 400 });
 
     const tables = await sql`
       INSERT INTO tables (location_id, table_number, capacity, x_position, y_position)
-      VALUES (${location.id}, ${table_number.toString()}, ${capacity || 4}, ${x_position || 0}, ${y_position || 0})
+      VALUES (${locationId2}, ${table_number.toString()}, ${capacity || 4}, ${x_position || 0}, ${y_position || 0})
       RETURNING *
     `;
 

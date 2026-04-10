@@ -13,13 +13,19 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const tableId = searchParams.get("tableId");
 
+    const locRow = await sql`SELECT location_id FROM users WHERE id = ${user.id} LIMIT 1`;
+    const locId = locRow[0]?.location_id;
+    if (!locId) return NextResponse.json({ error: "Sin bar asignado" }, { status: 400 });
+
     let orders;
     if (tableId) {
       orders = await sql`
         SELECT o.*, t.table_number
         FROM orders o
         JOIN tables t ON o.table_id = t.id
-        WHERE o.status != 'closed' AND o.table_id = ${parseInt(tableId)}
+        WHERE o.status != 'closed'
+          AND o.table_id = ${parseInt(tableId)}
+          AND t.location_id = ${locId}
         ORDER BY o.created_at DESC
       `;
     } else {
@@ -28,6 +34,7 @@ export async function GET(request: NextRequest) {
         FROM orders o
         JOIN tables t ON o.table_id = t.id
         WHERE o.status != 'closed'
+          AND t.location_id = ${locId}
         ORDER BY o.created_at DESC
       `;
     }

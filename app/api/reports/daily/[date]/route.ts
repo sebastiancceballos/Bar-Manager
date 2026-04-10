@@ -19,31 +19,47 @@ export async function GET(
 
     const { date } = await params; // YYYY-MM-DD format
 
+    // Get user's location (owner sees all, admin sees own location)
+    let locId: number | null = null;
+    if (currentUser.role === "admin") {
+      const locRow = await sql`SELECT location_id FROM users WHERE id = ${currentUser.id} LIMIT 1`;
+      locId = locRow[0]?.location_id ?? null;
+      if (!locId) return NextResponse.json({ error: "Admin sin bar asignado" }, { status: 400 });
+    }
+
     // Get orders for the day with waiter and modifier info
-    const result = await sql`
-      SELECT 
-        o.id,
-        o.table_id,
-        o.waiter_id,
-        o.total_amount,
-        o.status,
-        o.created_at,
-        o.updated_at,
-        o.modified_by,
-        u.name AS waiter_name,
-        u.email AS waiter_email,
-        m.name AS modifier_name,
-        m.email AS modifier_email,
-        t.table_number,
-        l.name AS location_name
-      FROM orders o
-      LEFT JOIN users u ON o.waiter_id = u.id
-      LEFT JOIN users m ON o.modified_by = m.id
-      LEFT JOIN tables t ON o.table_id = t.id
-      LEFT JOIN locations l ON t.location_id = l.id
-      WHERE DATE(o.created_at) = ${date}::date
-      ORDER BY o.created_at DESC
-    `;
+    const result = locId
+      ? await sql`
+          SELECT
+            o.id, o.table_id, o.waiter_id, o.total_amount, o.status,
+            o.created_at, o.updated_at, o.modified_by,
+            u.name AS waiter_name, u.email AS waiter_email,
+            m.name AS modifier_name, m.email AS modifier_email,
+            t.table_number, l.name AS location_name
+          FROM orders o
+          LEFT JOIN users u ON o.waiter_id = u.id
+          LEFT JOIN users m ON o.modified_by = m.id
+          LEFT JOIN tables t ON o.table_id = t.id
+          LEFT JOIN locations l ON t.location_id = l.id
+          WHERE DATE(o.created_at) = ${date}::date
+            AND t.location_id = ${locId}
+          ORDER BY o.created_at DESC
+        `
+      : await sql`
+          SELECT
+            o.id, o.table_id, o.waiter_id, o.total_amount, o.status,
+            o.created_at, o.updated_at, o.modified_by,
+            u.name AS waiter_name, u.email AS waiter_email,
+            m.name AS modifier_name, m.email AS modifier_email,
+            t.table_number, l.name AS location_name
+          FROM orders o
+          LEFT JOIN users u ON o.waiter_id = u.id
+          LEFT JOIN users m ON o.modified_by = m.id
+          LEFT JOIN tables t ON o.table_id = t.id
+          LEFT JOIN locations l ON t.location_id = l.id
+          WHERE DATE(o.created_at) = ${date}::date
+          ORDER BY o.created_at DESC
+        `;
 
     const orders = Array.isArray(result) ? result : [];
 
@@ -61,7 +77,7 @@ export async function GET(
           LEFT JOIN products p ON oi.product_id = p.id
           WHERE oi.order_id = ${order.id}
         `;
-        
+
         return {
           ...order,
           items: Array.isArray(itemsResult) ? itemsResult : []

@@ -10,8 +10,13 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    const locRow = await sql`SELECT location_id FROM users WHERE id = ${user.id} LIMIT 1`;
+    const locId = locRow[0]?.location_id;
+    if (!locId) return NextResponse.json({ error: "Sin bar asignado" }, { status: 400 });
+
     const products = await sql`
-      SELECT * FROM products 
+      SELECT * FROM products
+      WHERE location_id = ${locId}
       ORDER BY category ASC, name ASC
     `;
 

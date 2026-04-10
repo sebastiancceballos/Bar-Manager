@@ -30,20 +30,27 @@ export async function GET(request: NextRequest) {
         interval = "7 days";
     }
 
-    // Get orders grouped by date
+    // Get user's location
+    const locRow = await sql`SELECT location_id FROM users WHERE id = ${user.id} LIMIT 1`;
+    const locId = locRow[0]?.location_id;
+    if (!locId) return NextResponse.json({ error: "Sin bar asignado" }, { status: 400 });
+
+    // Get orders grouped by date for this location
     const reports = await sql`
-      SELECT 
-        DATE(created_at) as date,
-        COALESCE(SUM(total_amount), 0) as total,
+      SELECT
+        DATE(o.created_at) as date,
+        COALESCE(SUM(o.total_amount), 0) as total,
         COUNT(*) as order_count
-      FROM orders
-      WHERE created_at >= CURRENT_DATE - ${interval}::interval
-      AND status IN ('closed', 'paid')
-      GROUP BY DATE(created_at)
+      FROM orders o
+      JOIN tables t ON o.table_id = t.id
+      WHERE o.created_at >= CURRENT_DATE - ${interval}::interval
+        AND o.status IN ('closed', 'paid')
+        AND t.location_id = ${locId}
+      GROUP BY DATE(o.created_at)
       ORDER BY date ASC
     `;
 
-    return NextResponse.json({ 
+    return NextResponse.json({
       reports: reports.map(r => ({
         date: r.date,
         total: parseFloat(r.total),

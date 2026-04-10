@@ -12,37 +12,44 @@ export async function GET(request: NextRequest) {
         { status: 401 }
       );
     }
-    
-    // Allow both admin and waiter to see stats
-    // Admins see full stats, waiters see limited view
 
-    // Get orders from today
+    // Get user's location
+    const locRow = await sql`SELECT location_id FROM users WHERE id = ${user.id} LIMIT 1`;
+    const locId = locRow[0]?.location_id;
+    if (!locId) return NextResponse.json({ error: "Sin bar asignado" }, { status: 400 });
+
+    // Get orders from today for this location
     const ordersToday = await sql`
-      SELECT * FROM orders 
-      WHERE created_at >= CURRENT_DATE 
-      AND created_at < CURRENT_DATE + INTERVAL '1 day'
+      SELECT o.* FROM orders o
+      JOIN tables t ON o.table_id = t.id
+      WHERE o.created_at >= CURRENT_DATE
+        AND o.created_at < CURRENT_DATE + INTERVAL '1 day'
+        AND t.location_id = ${locId}
     `;
 
-    // Calculate total revenue from closed orders
+    // Calculate total revenue from closed orders for this location
     const revenueResult = await sql`
-      SELECT COALESCE(SUM(total_amount), 0) as total 
-      FROM orders 
-      WHERE created_at >= CURRENT_DATE 
-      AND created_at < CURRENT_DATE + INTERVAL '1 day'
-      AND status IN ('closed', 'paid')
+      SELECT COALESCE(SUM(o.total_amount), 0) as total
+      FROM orders o
+      JOIN tables t ON o.table_id = t.id
+      WHERE o.created_at >= CURRENT_DATE
+        AND o.created_at < CURRENT_DATE + INTERVAL '1 day'
+        AND o.status IN ('closed', 'paid')
+        AND t.location_id = ${locId}
     `;
     const totalRevenue = parseFloat(revenueResult[0]?.total || 0);
 
-    // Get occupied tables (tables with open orders)
+    // Get occupied tables for this location
     const occupiedResult = await sql`
-      SELECT COUNT(DISTINCT table_id) as count 
-      FROM orders 
-      WHERE status = 'open'
+      SELECT COUNT(DISTINCT o.table_id) as count
+      FROM orders o
+      JOIN tables t ON o.table_id = t.id
+      WHERE o.status = 'open' AND t.location_id = ${locId}
     `;
     const tablesOccupied = parseInt(occupiedResult[0]?.count || 0);
 
-    // Get total tables
-    const tablesResult = await sql`SELECT COUNT(*) as count FROM tables`;
+    // Get total tables for this location
+    const tablesResult = await sql`SELECT COUNT(*) as count FROM tables WHERE location_id = ${locId}`;
     const totalTables = parseInt(tablesResult[0]?.count || 0);
 
     return NextResponse.json(
