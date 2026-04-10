@@ -29,6 +29,7 @@ interface Product {
 
 interface OrderModalProps {
   tableId: number;
+  tableNumber: string;
   order: Order | null;
   onClose: () => void;
   onUpdate: () => void;
@@ -40,6 +41,7 @@ const formatCOP = (value: number) =>
 
 export function OrderModal({
   tableId,
+  tableNumber,
   order,
   onClose,
   onUpdate,
@@ -172,7 +174,7 @@ export function OrderModal({
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-card border border-border rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
         <div className="sticky top-0 bg-card border-b border-border px-6 py-4 flex items-center justify-between">
-          <h2 className="text-2xl font-bold text-foreground">Mesa {tableId}</h2>
+          <h2 className="text-2xl font-bold text-foreground">Mesa {tableNumber}</h2>
           <button
             onClick={onClose}
             className="text-gray-400 hover:text-foreground transition-smooth"
@@ -244,8 +246,8 @@ export function OrderModal({
                       key={cat}
                       onClick={() => setSelectedCategory(cat)}
                       className={`btn btn-sm whitespace-nowrap ${selectedCategory === cat
-                          ? "btn-primary"
-                          : "btn-outline"
+                        ? "btn-primary"
+                        : "btn-outline"
                         }`}
                     >
                       {cat}

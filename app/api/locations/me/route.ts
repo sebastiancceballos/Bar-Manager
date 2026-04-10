@@ -24,7 +24,10 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Sin bar asignado" }, { status: 404 });
     }
 
-    return NextResponse.json({ id: location.id, name: location.name, address: location.address }, { status: 200 });
+    return NextResponse.json(
+      { id: location.id, name: location.name, address: location.address },
+      { status: 200 }
+    );
   } catch (error) {
     console.error("Error fetching user location:", error);
     return NextResponse.json({ error: "Error interno" }, { status: 500 });

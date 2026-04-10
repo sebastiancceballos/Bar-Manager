@@ -295,8 +295,8 @@ export default function TablesPage() {
                     key={table.id}
                     onClick={() => handleTableClick(table.id)}
                     className={`flex flex-col items-center justify-center rounded-full border-4 cursor-pointer select-none aspect-square w-full max-w-[140px] mx-auto transition-shadow ${isOccupied
-                        ? "border-secondary bg-secondary/20"
-                        : "border-border bg-card hover:border-primary"
+                      ? "border-secondary bg-secondary/20"
+                      : "border-border bg-card hover:border-primary"
                       }`}
                   >
                     <span className="text-2xl font-bold text-foreground">
@@ -424,6 +424,7 @@ export default function TablesPage() {
           {selectedTableId && (
             <OrderModal
               tableId={selectedTableId}
+              tableNumber={tables.find(t => t.id === selectedTableId)?.table_number || String(selectedTableId)}
               order={orders[selectedTableId] || null}
               onClose={() => {
                 setShowOrderModal(false);
