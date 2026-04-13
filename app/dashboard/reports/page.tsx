@@ -101,9 +101,8 @@ export default function ReportsPage() {
       }
 
       // BOM for Excel to read UTF-8 correctly
-      const bom = "﻿";
-      const csvContent = bom + csvRows.join("
-");
+      const bom = "\uFEFF";
+      const csvContent = bom + csvRows.join("\n");
       const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
