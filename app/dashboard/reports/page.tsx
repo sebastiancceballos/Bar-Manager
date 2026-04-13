@@ -6,6 +6,7 @@ import { DailyOrdersModal } from "@/app/components/DailyOrdersModal";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/app/providers";
 import { useRouter } from "next/navigation";
+import * as XLSX from "xlsx";
 
 const formatCOP = (value: number) =>
   new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", minimumFractionDigits: 0 }).format(value);
@@ -25,6 +26,15 @@ export default function ReportsPage() {
   const [showModal, setShowModal] = useState(false);
   const { user } = useAuth();
   const router = useRouter();
+
+  // Excel export state
+  const today = new Date();
+  const firstOfMonth = new Date(today.getFullYear(), today.getMonth(), 1)
+    .toISOString().split("T")[0];
+  const todayStr = today.toISOString().split("T")[0];
+  const [exportFrom, setExportFrom] = useState(firstOfMonth);
+  const [exportTo, setExportTo] = useState(todayStr);
+  const [exporting, setExporting] = useState(false);
 
   // Redirect non-admin users
   useEffect(() => {
@@ -60,6 +70,76 @@ export default function ReportsPage() {
     setShowModal(true);
   };
 
+  const handleExportExcel = async () => {
+    setExporting(true);
+    try {
+      const res = await fetch(`/api/reports/export?from=${exportFrom}&to=${exportTo}`);
+      if (!res.ok) throw new Error("Error al obtener datos");
+      const data = await res.json();
+      const orders = data.orders || [];
+
+      // Build flat rows — one row per order item
+      const rows: Record<string, string | number>[] = [];
+      for (const order of orders) {
+        const date = new Date(order.created_at).toLocaleDateString("es-CO");
+        const time = new Date(order.created_at).toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit" });
+        if (order.items.length === 0) {
+          rows.push({
+            "Fecha": date,
+            "Hora": time,
+            "# Orden": order.id,
+            "Mesa": order.table_number,
+            "Mesero": order.waiter_name || "-",
+            "Producto": "-",
+            "Categoría": "-",
+            "Cantidad": 0,
+            "Precio Unitario": 0,
+            "Subtotal": 0,
+            "Total Orden": Number(order.total_amount),
+            "Estado": order.status,
+          });
+        } else {
+          order.items.forEach((item: { product_name: string; category: string; quantity: number; price: number }, idx: number) => {
+            rows.push({
+              "Fecha": date,
+              "Hora": time,
+              "# Orden": order.id,
+              "Mesa": order.table_number,
+              "Mesero": order.waiter_name || "-",
+              "Producto": item.product_name,
+              "Categoría": item.category,
+              "Cantidad": item.quantity,
+              "Precio Unitario": Number(item.price),
+              "Subtotal": Number(item.price) * item.quantity,
+              "Total Orden": idx === 0 ? Number(order.total_amount) : "",
+              "Estado": idx === 0 ? order.status : "",
+            });
+          });
+        }
+      }
+
+      const ws = XLSX.utils.json_to_sheet(rows);
+
+      // Column widths
+      ws["!cols"] = [
+        { wch: 12 }, { wch: 8 }, { wch: 10 }, { wch: 8 }, { wch: 18 },
+        { wch: 28 }, { wch: 14 }, { wch: 10 }, { wch: 16 }, { wch: 14 },
+        { wch: 14 }, { wch: 10 },
+      ];
+
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Pedidos");
+
+      const fileName = `pedidos_${exportFrom}_${exportTo}.xlsx`;
+      XLSX.writeFile(wb, fileName);
+    } catch (err) {
+      console.error("Export failed:", err);
+      alert("Error al exportar. Intenta de nuevo.");
+    } finally {
+      setExporting(false);
+    }
+  };
+
   return (
     <ProtectedLayout>
       <Navigation />
@@ -76,6 +156,38 @@ export default function ReportsPage() {
               <option value="month">Último Mes</option>
               <option value="year">Último Año</option>
             </select>
+          </div>
+
+          {/* Excel Export Section */}
+          <div className="card mb-8">
+            <h3 className="text-lg font-semibold mb-4">Exportar historial de pedidos</h3>
+            <div className="flex flex-wrap items-end gap-4">
+              <div>
+                <label className="block text-sm text-gray-400 mb-1">Desde</label>
+                <input
+                  type="date"
+                  value={exportFrom}
+                  onChange={(e) => setExportFrom(e.target.value)}
+                  className="input"
+                />
+              </div>
+              <div>
+                <label className="block text-sm text-gray-400 mb-1">Hasta</label>
+                <input
+                  type="date"
+                  value={exportTo}
+                  onChange={(e) => setExportTo(e.target.value)}
+                  className="input"
+                />
+              </div>
+              <button
+                onClick={handleExportExcel}
+                disabled={exporting}
+                className="btn btn-primary flex items-center gap-2 disabled:opacity-50"
+              >
+                {exporting ? "Generando..." : "⬇ Descargar Excel"}
+              </button>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
