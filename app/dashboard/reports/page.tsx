@@ -73,7 +73,10 @@ export default function ReportsPage() {
     setExporting(true);
     try {
       const res = await fetch(`/api/reports/export?from=${exportFrom}&to=${exportTo}`);
-      if (!res.ok) throw new Error("Error al obtener datos");
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(`HTTP ${res.status}: ${errData.error || res.statusText}`);
+      }
       const data = await res.json();
       const orders = data.orders || [];
 
@@ -110,9 +113,10 @@ export default function ReportsPage() {
       a.download = `pedidos_${exportFrom}_${exportTo}.csv`;
       a.click();
       URL.revokeObjectURL(url);
-    } catch (err) {
-      console.error("Export failed:", err);
-      alert("Error al exportar. Intenta de nuevo.");
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error("Export failed:", msg);
+      alert("Error al exportar: " + msg);
     } finally {
       setExporting(false);
     }
