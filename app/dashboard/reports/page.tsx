@@ -6,7 +6,6 @@ import { DailyOrdersModal } from "@/app/components/DailyOrdersModal";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/app/providers";
 import { useRouter } from "next/navigation";
-import * as XLSX from "xlsx";
 
 const formatCOP = (value: number) =>
   new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", minimumFractionDigits: 0 }).format(value);
@@ -78,60 +77,40 @@ export default function ReportsPage() {
       const data = await res.json();
       const orders = data.orders || [];
 
-      // Build flat rows — one row per order item
-      const rows: Record<string, string | number>[] = [];
+      // Build CSV rows
+      const headers = ["Fecha", "Hora", "# Orden", "Mesa", "Mesero", "Producto", "Categoría", "Cantidad", "Precio Unitario", "Subtotal", "Total Orden", "Estado"];
+      const csvRows: string[] = [headers.join(";")];
+
       for (const order of orders) {
         const date = new Date(order.created_at).toLocaleDateString("es-CO");
         const time = new Date(order.created_at).toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit" });
         if (order.items.length === 0) {
-          rows.push({
-            "Fecha": date,
-            "Hora": time,
-            "# Orden": order.id,
-            "Mesa": order.table_number,
-            "Mesero": order.waiter_name || "-",
-            "Producto": "-",
-            "Categoría": "-",
-            "Cantidad": 0,
-            "Precio Unitario": 0,
-            "Subtotal": 0,
-            "Total Orden": Number(order.total_amount),
-            "Estado": order.status,
-          });
+          csvRows.push([date, time, order.id, order.table_number, order.waiter_name || "-", "-", "-", "0", "0", "0", Number(order.total_amount), order.status].join(";"));
         } else {
           order.items.forEach((item: { product_name: string; category: string; quantity: number; price: number }, idx: number) => {
-            rows.push({
-              "Fecha": date,
-              "Hora": time,
-              "# Orden": order.id,
-              "Mesa": order.table_number,
-              "Mesero": order.waiter_name || "-",
-              "Producto": item.product_name,
-              "Categoría": item.category,
-              "Cantidad": item.quantity,
-              "Precio Unitario": Number(item.price),
-              "Subtotal": Number(item.price) * item.quantity,
-              "Total Orden": idx === 0 ? Number(order.total_amount) : "",
-              "Estado": idx === 0 ? order.status : "",
-            });
+            const subtotal = Number(item.price) * item.quantity;
+            csvRows.push([
+              date, time, order.id, order.table_number, order.waiter_name || "-",
+              item.product_name, item.category, item.quantity,
+              Number(item.price), subtotal,
+              idx === 0 ? Number(order.total_amount) : "",
+              idx === 0 ? order.status : "",
+            ].join(";"));
           });
         }
       }
 
-      const ws = XLSX.utils.json_to_sheet(rows);
-
-      // Column widths
-      ws["!cols"] = [
-        { wch: 12 }, { wch: 8 }, { wch: 10 }, { wch: 8 }, { wch: 18 },
-        { wch: 28 }, { wch: 14 }, { wch: 10 }, { wch: 16 }, { wch: 14 },
-        { wch: 14 }, { wch: 10 },
-      ];
-
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, "Pedidos");
-
-      const fileName = `pedidos_${exportFrom}_${exportTo}.xlsx`;
-      XLSX.writeFile(wb, fileName);
+      // BOM for Excel to read UTF-8 correctly
+      const bom = "﻿";
+      const csvContent = bom + csvRows.join("
+");
+      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `pedidos_${exportFrom}_${exportTo}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
     } catch (err) {
       console.error("Export failed:", err);
       alert("Error al exportar. Intenta de nuevo.");
