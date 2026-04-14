@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
     }
 
     const result = await sql`SELECT * FROM users WHERE email = ${email} LIMIT 1`;
-    
+
     // Neon returns array directly
     const users = result as DbUser[];
     const user = users[0];
@@ -36,12 +36,28 @@ export async function POST(request: NextRequest) {
     }
 
     const isPasswordValid = await bcrypt.compare(password, user.password_hash);
-    
+
     if (!isPasswordValid) {
       return NextResponse.json(
         { error: "Invalid credentials" },
         { status: 401 }
       );
+    }
+
+    // Block admin/waiter if their bar is inactive
+    if (user.role === "admin" || user.role === "waiter") {
+      const locResult = await sql`
+        SELECT l.active FROM users u
+        LEFT JOIN locations l ON u.location_id = l.id
+        WHERE u.id = ${user.id} LIMIT 1
+      `;
+      const loc = Array.isArray(locResult) ? locResult[0] : null;
+      if (loc && loc.active === false) {
+        return NextResponse.json(
+          { error: "Tu bar está desactivado. Contacta al administrador." },
+          { status: 403 }
+        );
+      }
     }
 
     const token = await signToken({
