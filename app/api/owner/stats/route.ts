@@ -45,18 +45,14 @@ export async function GET(request: NextRequest) {
       };
     }));
 
-    const bars = barsData;
-
-    const barsData = Array.isArray(bars) ? bars : [];
-
     // Global totals
-    const totalRevenueToday = barsData.reduce((s, b) => s + parseFloat(b.revenue_today || 0), 0);
-    const totalRevenueMonth = barsData.reduce((s, b) => s + parseFloat(b.revenue_month || 0), 0);
-    const totalOrdersToday = barsData.reduce((s, b) => s + parseInt(b.orders_today || 0), 0);
-    const totalActiveBars = barsData.filter(b => b.active !== false).length;
+    const totalRevenueToday = barsData.reduce((s, b) => s + b.revenueToday, 0);
+    const totalRevenueMonth = barsData.reduce((s, b) => s + b.revenueMonth, 0);
+    const totalOrdersToday = barsData.reduce((s, b) => s + b.ordersToday, 0);
+    const totalActiveBars = barsData.filter(b => b.active).length;
 
     return NextResponse.json({
-      bars: bars,
+      bars: barsData,
       totals: {
         totalBars: barsData.length,
         activeBars: totalActiveBars,
