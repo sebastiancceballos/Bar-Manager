@@ -28,6 +28,9 @@ export default function DashboardPage() {
     if (user && user.role === "waiter") {
       router.push("/dashboard/tables");
     }
+    if (user && user.role === "owner") {
+      router.push("/dashboard/owner");
+    }
   }, [user, router]);
 
   // Check if user is admin or owner (both can view dashboard)

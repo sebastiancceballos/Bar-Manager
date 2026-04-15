@@ -10,37 +10,42 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Sin permiso" }, { status: 403 });
     }
 
-    // All bars with their stats
-    const bars = await sql`
-      SELECT
-        l.id,
-        l.name,
-        l.address,
-        COALESCE(l.active, true) as active,
-        COUNT(DISTINCT t.id) as total_tables,
-        COUNT(DISTINCT CASE WHEN o.status = 'open' THEN o.table_id END) as occupied_tables,
-        COUNT(DISTINCT u.id) FILTER (WHERE u.role = 'admin') as admin_count,
-        COUNT(DISTINCT u.id) FILTER (WHERE u.role = 'waiter') as waiter_count,
-        COALESCE(SUM(CASE 
-          WHEN o.status IN ('closed','paid') 
-            AND o.created_at >= CURRENT_DATE 
-            AND o.created_at < CURRENT_DATE + INTERVAL '1 day'
-          THEN o.total_amount ELSE 0 END), 0) as revenue_today,
-        COUNT(CASE 
-          WHEN o.created_at >= CURRENT_DATE 
-            AND o.created_at < CURRENT_DATE + INTERVAL '1 day'
-          THEN 1 END) as orders_today,
-        COALESCE(SUM(CASE 
-          WHEN o.status IN ('closed','paid')
-            AND o.created_at >= DATE_TRUNC('month', CURRENT_DATE)
-          THEN o.total_amount ELSE 0 END), 0) as revenue_month
-      FROM locations l
-      LEFT JOIN tables t ON t.location_id = l.id
-      LEFT JOIN orders o ON o.table_id = t.id
-      LEFT JOIN users u ON u.location_id = l.id
-      GROUP BY l.id, l.name, l.address, l.active
-      ORDER BY l.name ASC
-    `;
+    // Ensure active column exists
+    try {
+      await sql`ALTER TABLE locations ADD COLUMN IF NOT EXISTS active BOOLEAN DEFAULT true`;
+    } catch (_) { }
+
+    // Get all bars
+    const locations = await sql`SELECT id, name, address, COALESCE(active, true) as active FROM locations ORDER BY name ASC`;
+    const locs = Array.isArray(locations) ? locations : [];
+
+    // Get stats per bar
+    const barsData = await Promise.all(locs.map(async (l) => {
+      const [tables, occupied, admins, waiters, revToday, ordToday, revMonth] = await Promise.all([
+        sql`SELECT COUNT(*) as c FROM tables WHERE location_id = ${l.id}`,
+        sql`SELECT COUNT(DISTINCT o.table_id) as c FROM orders o JOIN tables t ON o.table_id = t.id WHERE o.status = 'open' AND t.location_id = ${l.id}`,
+        sql`SELECT COUNT(*) as c FROM users WHERE location_id = ${l.id} AND role = 'admin'`,
+        sql`SELECT COUNT(*) as c FROM users WHERE location_id = ${l.id} AND role = 'waiter'`,
+        sql`SELECT COALESCE(SUM(o.total_amount),0) as s FROM orders o JOIN tables t ON o.table_id = t.id WHERE o.status IN ('closed','paid') AND DATE(o.created_at) = CURRENT_DATE AND t.location_id = ${l.id}`,
+        sql`SELECT COUNT(*) as c FROM orders o JOIN tables t ON o.table_id = t.id WHERE DATE(o.created_at) = CURRENT_DATE AND t.location_id = ${l.id}`,
+        sql`SELECT COALESCE(SUM(o.total_amount),0) as s FROM orders o JOIN tables t ON o.table_id = t.id WHERE o.status IN ('closed','paid') AND o.created_at >= DATE_TRUNC('month', CURRENT_DATE) AND t.location_id = ${l.id}`,
+      ]);
+      return {
+        id: l.id,
+        name: l.name,
+        address: l.address,
+        active: l.active !== false,
+        totalTables: parseInt(tables[0]?.c || 0),
+        occupiedTables: parseInt(occupied[0]?.c || 0),
+        adminCount: parseInt(admins[0]?.c || 0),
+        waiterCount: parseInt(waiters[0]?.c || 0),
+        revenueToday: parseFloat(revToday[0]?.s || 0),
+        ordersToday: parseInt(ordToday[0]?.c || 0),
+        revenueMonth: parseFloat(revMonth[0]?.s || 0),
+      };
+    }));
+
+    const bars = barsData;
 
     const barsData = Array.isArray(bars) ? bars : [];
 
@@ -51,19 +56,7 @@ export async function GET(request: NextRequest) {
     const totalActiveBars = barsData.filter(b => b.active !== false).length;
 
     return NextResponse.json({
-      bars: barsData.map(b => ({
-        id: b.id,
-        name: b.name,
-        address: b.address,
-        active: b.active !== false,
-        totalTables: parseInt(b.total_tables || 0),
-        occupiedTables: parseInt(b.occupied_tables || 0),
-        adminCount: parseInt(b.admin_count || 0),
-        waiterCount: parseInt(b.waiter_count || 0),
-        revenueToday: parseFloat(b.revenue_today || 0),
-        ordersToday: parseInt(b.orders_today || 0),
-        revenueMonth: parseFloat(b.revenue_month || 0),
-      })),
+      bars: bars,
       totals: {
         totalBars: barsData.length,
         activeBars: totalActiveBars,
