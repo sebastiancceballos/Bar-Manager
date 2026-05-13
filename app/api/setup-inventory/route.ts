@@ -5,6 +5,10 @@ import { getAuthUser } from "@/lib/auth";
 export async function GET(request: NextRequest) {
   try {
     const user = await getAuthUser();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const isAdminOrOwner = user.role === "admin" || user.role === "owner";
     if (!isAdminOrOwner) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
