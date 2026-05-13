@@ -48,29 +48,27 @@ export default function DashboardPage() {
   // Check if user is admin or owner (both can view dashboard)
   const isAdminOrOwner = user?.role === "admin" || user?.role === "owner";
 
+  const fetchStats = useCallback(async () => {
+    if (!user || !isAdminOrOwner) return;
+    try {
+      const response = await fetch("/api/dashboard/stats");
+      if (response.ok) {
+        const data = await response.json();
+        setStats(data);
+      }
+    } catch (error) {
+      console.error("Failed to fetch stats:", error);
+    } finally {
+      setLoading(false);
+    }
+  }, [user, isAdminOrOwner]);
+
   useEffect(() => {
     if (!user || !isAdminOrOwner) return;
-
-    const fetchStats = useCallback(async () => {
-      try {
-        const response = await fetch("/api/dashboard/stats");
-        if (response.ok) {
-          const data = await response.json();
-          setStats(data);
-        }
-      } catch (error) {
-        console.error("Failed to fetch stats:", error);
-      } finally {
-        setLoading(false);
-      }
-    }, []);
-
-    useEffect(() => {
-      if (!user || !isAdminOrOwner) return;
-      fetchStats();
-      const interval = setInterval(fetchStats, 10000); // Poll every 10 seconds
-      return () => clearInterval(interval);
-    }, [user, isAdminOrOwner, fetchStats]);
+    fetchStats();
+    const interval = setInterval(fetchStats, 10000); // Poll every 10 seconds
+    return () => clearInterval(interval);
+  }, [user, isAdminOrOwner, fetchStats]);
 
   if (user?.role === "waiter") {
     return (
