@@ -1,7 +1,10 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import Joyride, { Step, CallBackProps, STATUS } from "react-joyride";
+import { Joyride, Step, STATUS } from "react-joyride";
+
+// Force default import if named import fails (common in some Next.js/CJS/ESM mixed environments)
+const ReactJoyride = (Joyride as any) || Joyride;
 
 export const Onboarding: React.FC = () => {
   const [run, setRun] = useState(false);
@@ -33,7 +36,7 @@ export const Onboarding: React.FC = () => {
     },
   ];
 
-  const handleJoyrideCallback = (data: CallBackProps) => {
+  const handleJoyrideCallback = (data: any) => {
     const { status } = data;
     const finishedStatuses: string[] = [STATUS.FINISHED, STATUS.SKIPPED];
 
@@ -44,7 +47,7 @@ export const Onboarding: React.FC = () => {
   };
 
   return (
-    <Joyride
+    <ReactJoyride
       callback={handleJoyrideCallback}
       continuous
       hideCloseButton
