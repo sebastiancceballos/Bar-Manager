@@ -9,12 +9,18 @@ const ReactJoyride = (Joyride as any) || Joyride;
 export const Onboarding: React.FC = () => {
   const [run, setRun] = useState(false);
 
+  const { user } = useAuth();
+
   useEffect(() => {
+    // Only show to admins/owners and only on the main dashboard path
+    const isAdminOrOwner = user?.role === "admin" || user?.role === "owner";
+    const isMainDashboard = window.location.pathname === "/dashboard";
     const hasSeenTour = localStorage.getItem("hasSeenOnboarding");
-    if (!hasSeenTour) {
+    
+    if (isAdminOrOwner && isMainDashboard && !hasSeenTour) {
       setRun(true);
     }
-  }, []);
+  }, [user]);
 
   const steps: Step[] = [
     {
@@ -56,13 +62,34 @@ export const Onboarding: React.FC = () => {
       showProgress
       showSkipButton
       steps={steps}
+      disableScrolling={false}
+      disableScrollParentFix={false}
+      spotlightPadding={10}
       styles={{
         options: {
           primaryColor: "#7C3AED",
           backgroundColor: "#1E293B",
           textColor: "#F1F5F9",
           arrowColor: "#1E293B",
+          zIndex: 1000,
         },
+        tooltipContainer: {
+          textAlign: "left",
+        },
+        buttonNext: {
+          padding: "10px 20px",
+          borderRadius: "8px",
+        },
+        buttonBack: {
+          marginRight: "10px",
+        },
+      }}
+      locale={{
+        back: "Atrás",
+        close: "Cerrar",
+        last: "Finalizar",
+        next: "Siguiente",
+        skip: "Saltar tour",
       }}
     />
   );

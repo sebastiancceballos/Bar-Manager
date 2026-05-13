@@ -1,7 +1,5 @@
 "use client";
 
-import { useRouter, usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
 import { useAuth } from "@/app/providers";
 import { Beer } from "lucide-react";
 
@@ -11,21 +9,8 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const { user, isLoading } = useAuth();
-  const router = useRouter();
-  const pathname = usePathname();
-  const [isReady, setIsReady] = useState(false);
 
-  useEffect(() => {
-    if (!isLoading) {
-      if (!user) {
-        router.push("/");
-      } else {
-        setIsReady(true);
-      }
-    }
-  }, [user, isLoading, router]);
-
-  if (isLoading || !isReady) {
+  if (isLoading) {
     return (
       <div className="min-h-screen bg-background flex flex-col items-center justify-center gap-4">
         <div className="relative">
@@ -37,5 +22,7 @@ export default function DashboardLayout({
     );
   }
 
+  // Si no hay usuario, el ProtectedLayout dentro de las páginas se encargará del redirect.
+  // Aquí solo nos aseguramos de no bloquear el renderizado si ya terminó de cargar.
   return <>{children}</>;
 }
