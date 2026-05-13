@@ -1,0 +1,33 @@
+import { NextRequest, NextResponse } from "next/server";
+import { sql } from "@/lib/db";
+import { getAuthUser } from "@/lib/auth";
+
+export async function GET(request: NextRequest) {
+  try {
+    const user = await getAuthUser();
+    if (!user || user.role !== "admin") {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+    }
+
+    // 1. Add stock column to products
+    await sql`ALTER TABLE products ADD COLUMN IF NOT EXISTS stock INTEGER DEFAULT 0`;
+
+    // 2. Create stock_movements table
+    await sql`
+      CREATE TABLE IF NOT EXISTS stock_movements (
+        id SERIAL PRIMARY KEY,
+        product_id INTEGER REFERENCES products(id) ON DELETE CASCADE,
+        quantity INTEGER NOT NULL,
+        type VARCHAR(20) NOT NULL,
+        reason TEXT,
+        created_by INTEGER REFERENCES users(id),
+        created_at TIMESTAMP DEFAULT NOW()
+      )
+    `;
+
+    return NextResponse.json({ message: "Base de datos actualizada para inventario" });
+  } catch (error) {
+    console.error("Setup inventory error:", error);
+    return NextResponse.json({ error: "Error actualizando base de datos" }, { status: 500 });
+  }
+}

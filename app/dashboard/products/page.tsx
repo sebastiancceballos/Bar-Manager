@@ -9,7 +9,17 @@ interface Product {
   name: string;
   category: string;
   price: number;
+  stock: number;
   active: boolean;
+}
+
+interface StockMovement {
+  id: number;
+  product_id: string;
+  quantity: number;
+  type: 'entry' | 'exit' | 'sale' | 'waste';
+  reason: string;
+  created_at: string;
 }
 
 export default function ProductsPage() {
@@ -18,7 +28,12 @@ export default function ProductsPage() {
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [showStockModal, setShowStockModal] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [movements, setMovements] = useState<StockMovement[]>([]);
+  const [showHistory, setShowHistory] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [adjusting, setAdjusting] = useState(false);
 
   const fetchProducts = async () => {
     try {
@@ -91,11 +106,46 @@ export default function ProductsPage() {
     }
   };
 
-  const handleEdit = (product: Product) => {
-    setEditingId(product.id);
-    setEditingProduct(product);
-    setShowForm(true);
-    setError(null);
+  const handleAdjustStock = async (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!selectedProduct) return;
+    setAdjusting(true);
+
+    const formData = new FormData(e.currentTarget);
+    const quantity = parseInt(formData.get("quantity") as string);
+    const type = formData.get("type") as string;
+    const reason = formData.get("reason") as string;
+
+    try {
+      const response = await fetch(`/api/products/${selectedProduct.id}/stock`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ quantity, type, reason }),
+      });
+
+      if (response.ok) {
+        await fetchProducts();
+        setShowStockModal(false);
+        (e.target as HTMLFormElement).reset();
+      }
+    } catch (err) {
+      setError("Error al ajustar stock");
+    } finally {
+      setAdjusting(false);
+    }
+  };
+
+  const fetchHistory = async (productId: string) => {
+    try {
+      const res = await fetch(`/api/products/${productId}/history`);
+      if (res.ok) {
+        const data = await res.json();
+        setMovements(data.movements);
+        setShowHistory(true);
+      }
+    } catch (err) {
+      setError("Error al cargar historial");
+    }
   };
 
   const groupedProducts = products.reduce(
@@ -213,31 +263,45 @@ export default function ProductsPage() {
                       {items.map((product) => (
                         <div
                           key={product.id}
-                          className="card-sm flex flex-col justify-between"
+                          className="card-sm flex flex-col justify-between group relative overflow-hidden"
                         >
-                          <div>
-                            <h4 className="font-semibold text-foreground mb-2">
-                              {product.name}
-                            </h4>
-                            <p className="text-2xl font-bold text-success mb-2">
-                              {new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", minimumFractionDigits: 0 }).format(Number(product.price))}
-                            </p>
-                            {!product.active && (
-                              <p className="text-sm text-warning">Inactivo</p>
-                            )}
+                          <div className="flex justify-between items-start">
+                            <div className="flex-1">
+                              <h4 className="font-semibold text-foreground mb-1">
+                                {product.name}
+                              </h4>
+                              <p className="text-2xl font-bold text-success mb-2">
+                                {new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", minimumFractionDigits: 0 }).format(Number(product.price))}
+                              </p>
+                            </div>
+                            <div className={`px-2 py-1 rounded text-xs font-bold ${
+                              product.stock <= 5 ? "bg-error/20 text-error" : "bg-primary/20 text-primary"
+                            }`}>
+                              Stock: {product.stock}
+                            </div>
                           </div>
+
                           <div className="flex gap-2 mt-4">
                             <button
-                              onClick={() => handleEdit(product)}
-                              className="btn btn-outline btn-sm flex-1"
+                              onClick={() => {
+                                setSelectedProduct(product);
+                                setShowStockModal(true);
+                              }}
+                              className="btn btn-outline btn-sm flex-1 text-[10px]"
                             >
-                              Editar
+                              Stock
                             </button>
                             <button
-                              onClick={() => handleDelete(product.id)}
-                              className="btn btn-sm px-3 py-2 bg-error/10 text-error hover:bg-error/20 border border-error/30"
+                              onClick={() => fetchHistory(product.id)}
+                              className="btn btn-outline btn-sm flex-1 text-[10px]"
                             >
-                              Eliminar
+                              Reloj
+                            </button>
+                            <button
+                              onClick={() => handleEdit(product)}
+                              className="btn btn-primary btn-sm px-2"
+                            >
+                              ✏️
                             </button>
                           </div>
                         </div>
@@ -255,6 +319,89 @@ export default function ProductsPage() {
             )}
           </div>
         </div>
+
+        {/* Modal de Ajuste de Stock */}
+        {showStockModal && selectedProduct && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+            <div className="bg-card border border-border w-full max-w-md rounded-2xl p-6 shadow-2xl">
+              <h2 className="text-2xl font-bold mb-4">Ajustar Inventario</h2>
+              <p className="text-gray-400 mb-6">Producto: <span className="text-foreground font-semibold">{selectedProduct.name}</span></p>
+              
+              <form onSubmit={handleAdjustStock} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium mb-1">Tipo de Movimiento</label>
+                  <select name="type" className="input w-full" required>
+                    <option value="entry">Entrada (Compra/Reposición)</option>
+                    <option value="exit">Salida (Ajuste manual)</option>
+                    <option value="waste">Merma/Daño</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Cantidad</label>
+                  <input name="quantity" type="number" min="1" className="input w-full" placeholder="10" required />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Motivo (Opcional)</label>
+                  <input name="reason" type="text" className="input w-full" placeholder="Compra de lote semanal" />
+                </div>
+                <div className="flex gap-3 pt-4">
+                  <button type="submit" disabled={adjusting} className="btn btn-primary flex-1">
+                    {adjusting ? "Guardando..." : "Confirmar"}
+                  </button>
+                  <button type="button" onClick={() => setShowStockModal(false)} className="btn btn-secondary flex-1">
+                    Cancelar
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* Modal de Historial (Trazabilidad) */}
+        {showHistory && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+            <div className="bg-card border border-border w-full max-w-2xl rounded-2xl p-6 shadow-2xl max-h-[80vh] flex flex-col">
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-2xl font-bold">Trazabilidad de Stock</h2>
+                <button onClick={() => setShowHistory(false)} className="text-gray-400 hover:text-white text-2xl">&times;</button>
+              </div>
+              
+              <div className="overflow-y-auto flex-1">
+                <table className="w-full text-left">
+                  <thead className="border-b border-border">
+                    <tr className="text-gray-400 text-sm">
+                      <th className="py-2">Fecha</th>
+                      <th className="py-2">Tipo</th>
+                      <th className="py-2">Cant.</th>
+                      <th className="py-2">Motivo</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border/50">
+                    {movements.map((m) => (
+                      <tr key={m.id} className="text-sm">
+                        <td className="py-3">{new Date(m.created_at).toLocaleDateString()} {new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</td>
+                        <td className="py-3">
+                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${
+                            m.type === 'entry' ? 'bg-success/20 text-success' : 
+                            m.type === 'sale' ? 'bg-primary/20 text-primary' :
+                            'bg-error/20 text-error'
+                          }`}>
+                            {m.type === 'entry' ? 'Entrada' : m.type === 'sale' ? 'Venta' : m.type === 'waste' ? 'Merma' : 'Salida'}
+                          </span>
+                        </td>
+                        <td className="py-3 font-semibold">{m.quantity}</td>
+                        <td className="py-3 text-gray-400">{m.reason || '-'}</td>
+                      </tr>
+                    ))}
+                    {movements.length === 0 && (
+                      <tr><td colSpan={4} className="py-8 text-center text-gray-500">Sin movimientos registrados</td></tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
       </AdminOnly>
     </ProtectedLayout>
   );

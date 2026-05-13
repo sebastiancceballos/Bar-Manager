@@ -15,8 +15,27 @@ export async function DELETE(
 
     const { id, itemId } = await params;
 
+    // Obtener detalles antes de borrar para devolver al stock
+    const itemRows = await sql`SELECT product_id, quantity FROM order_items WHERE id = ${parseInt(itemId)}`;
+    const itemToRestore = itemRows[0];
+
     // Delete item
     await sql`DELETE FROM order_items WHERE id = ${parseInt(itemId)}`;
+
+    if (itemToRestore) {
+      // Restaurar stock
+      await sql`
+        UPDATE products 
+        SET stock = COALESCE(stock, 0) + ${itemToRestore.quantity}
+        WHERE id = ${itemToRestore.product_id}
+      `;
+
+      // Registrar ajuste
+      await sql`
+        INSERT INTO stock_movements (product_id, quantity, type, reason, created_by)
+        VALUES (${itemToRestore.product_id}, ${itemToRestore.quantity}, 'entry', 'Cancelación/Eliminación de item en Orden #' + ${id}, ${user.id})
+      `;
+    }
 
     // Update order total
     const totalResult = await sql`

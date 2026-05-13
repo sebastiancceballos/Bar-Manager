@@ -66,6 +66,21 @@ export async function POST(
       WHERE id = ${parseInt(id)}
     `;
 
+    // --- LOGICA DE TRAZABILIDAD ---
+    // Descontar stock automáticamente al agregar al pedido
+    await sql`
+      UPDATE products 
+      SET stock = COALESCE(stock, 0) - ${quantity}
+      WHERE id = ${parseInt(productId)}
+    `;
+
+    // Registrar el movimiento de salida por venta
+    await sql`
+      INSERT INTO stock_movements (product_id, quantity, type, reason, created_by)
+      VALUES (${parseInt(productId)}, ${quantity}, 'sale', 'Venta en mesa (Orden #' + ${id} + ')', ${user.id})
+    `;
+    // ------------------------------
+
     // Get updated order with items
     const orders = await sql`SELECT * FROM orders WHERE id = ${parseInt(id)}`;
     const order = orders[0];
