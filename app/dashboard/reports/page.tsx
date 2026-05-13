@@ -103,9 +103,9 @@ export default function ReportsPage() {
         }
       }
 
-      // BOM for Excel to read UTF-8 correctly
+      // BOM and sep=; for Excel to read UTF-8 and delimiters correctly
       const bom = "\uFEFF";
-      const csvContent = bom + csvRows.join("\n");
+      const csvContent = bom + "sep=;\n" + csvRows.join("\n");
       const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
