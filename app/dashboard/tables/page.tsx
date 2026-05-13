@@ -5,6 +5,7 @@ import { Navigation } from "@/app/components/Navigation";
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useAuth } from "@/app/providers";
 import { OrderModal } from "@/app/components/OrderModal";
+import { Skeleton } from "@/app/components/Skeleton";
 
 const formatCOP = (value: number) =>
   new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", minimumFractionDigits: 0 }).format(value);
@@ -283,7 +284,15 @@ export default function TablesPage() {
           )}
 
           {loading ? (
-            <div className="text-gray-400">Cargando mesas...</div>
+            <div className={isMobile ? "grid grid-cols-2 gap-4 p-2" : "grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8 p-2"}>
+              {[...Array(8)].map((_, i) => (
+                <div key={i} className="flex flex-col items-center gap-4 card-sm !bg-transparent border-dashed">
+                  <Skeleton variant="circle" className="w-24 h-24 md:w-32 md:h-32" />
+                  <Skeleton className="w-20 h-5" />
+                  <Skeleton className="w-16 h-3 opacity-50" />
+                </div>
+              ))}
+            </div>
           ) : isMobile ? (
             /* ── MOBILE: grid layout ── */
             <div className="grid grid-cols-2 gap-4 p-2">

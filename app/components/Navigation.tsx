@@ -4,6 +4,7 @@ import { useAuth } from "@/app/providers";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
+import { Onboarding } from "./Onboarding";
 
 export function Navigation() {
   const { user, logout } = useAuth();
@@ -45,9 +46,9 @@ export function Navigation() {
             {isAdmin && (
               <>
                 <Link href="/dashboard" className={`transition-smooth ${pathname === "/dashboard" ? "text-primary" : "text-gray-400 hover:text-foreground"}`}>Dashboard</Link>
-                <Link href="/dashboard/products" className={`transition-smooth ${pathname === "/dashboard/products" ? "text-primary" : "text-gray-400 hover:text-foreground"}`}>Productos</Link>
-                <Link href="/dashboard/tables" className={`transition-smooth ${pathname === "/dashboard/tables" ? "text-primary" : "text-gray-400 hover:text-foreground"}`}>Mesas</Link>
-                <Link href="/dashboard/reports" className={`transition-smooth ${pathname === "/dashboard/reports" ? "text-primary" : "text-gray-400 hover:text-foreground"}`}>Reportes</Link>
+                <Link href="/dashboard/products" className={`nav-products transition-smooth ${pathname === "/dashboard/products" ? "text-primary" : "text-gray-400 hover:text-foreground"}`}>Productos</Link>
+                <Link href="/dashboard/tables" className={`nav-tables transition-smooth ${pathname === "/dashboard/tables" ? "text-primary" : "text-gray-400 hover:text-foreground"}`}>Mesas</Link>
+                <Link href="/dashboard/reports" className={`nav-reports transition-smooth ${pathname === "/dashboard/reports" ? "text-primary" : "text-gray-400 hover:text-foreground"}`}>Reportes</Link>
               </>
             )}
             {!isAdmin && !isOwner && (
@@ -65,6 +66,7 @@ export function Navigation() {
           </button>
         </div>
       </div>
+      <Onboarding />
     </nav>
   );
 }

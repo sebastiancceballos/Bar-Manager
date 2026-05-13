@@ -6,6 +6,8 @@ import { useEffect, useState } from "react";
 import { useAuth } from "@/app/providers";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { Skeleton } from "@/app/components/Skeleton";
+import { useCallback } from "react";
 
 const formatCOP = (value: number) =>
   new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", minimumFractionDigits: 0 }).format(value);
@@ -39,7 +41,7 @@ export default function DashboardPage() {
   useEffect(() => {
     if (!user || !isAdminOrOwner) return;
 
-    const fetchStats = async () => {
+    const fetchStats = useCallback(async () => {
       try {
         const response = await fetch("/api/dashboard/stats");
         if (response.ok) {
@@ -51,10 +53,14 @@ export default function DashboardPage() {
       } finally {
         setLoading(false);
       }
-    };
+    }, []);
 
-    fetchStats();
-  }, [user, isAdminOrOwner]);
+    useEffect(() => {
+      if (!user || !isAdminOrOwner) return;
+      fetchStats();
+      const interval = setInterval(fetchStats, 10000); // Poll every 10 seconds
+      return () => clearInterval(interval);
+    }, [user, isAdminOrOwner, fetchStats]);
 
   if (user?.role === "waiter") {
     return (
@@ -74,7 +80,24 @@ export default function DashboardPage() {
           </h1>
 
           {loading ? (
-            <div className="text-gray-400">Cargando estadísticas...</div>
+            <div className="space-y-8">
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                {[...Array(4)].map((_, i) => (
+                  <div key={i} className="card flex flex-col gap-2">
+                    <Skeleton className="w-24 h-4 opacity-50" />
+                    <Skeleton className="w-32 h-8" />
+                  </div>
+                ))}
+              </div>
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {[...Array(4)].map((_, i) => (
+                  <div key={i} className="card flex flex-col gap-4">
+                    <Skeleton className="w-48 h-6" />
+                    <Skeleton className="w-full h-12 opacity-30" />
+                  </div>
+                ))}
+              </div>
+            </div>
           ) : (
             <div className="space-y-8">
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">

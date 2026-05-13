@@ -1,6 +1,9 @@
 import type { Metadata, Viewport } from "next";
+import { Inter } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "./providers";
+
+const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: "Bar Manager - Sistema de Gestión",
@@ -20,7 +23,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="es" data-scroll-behavior="smooth">
-      <body>
+      <body className={inter.className}>
         <AuthProvider>{children}</AuthProvider>
       </body>
     </html>

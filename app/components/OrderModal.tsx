@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Skeleton } from "./Skeleton";
 
 interface OrderItem {
   id: number;
@@ -237,7 +238,11 @@ export function OrderModal({
             <h3 className="text-lg font-semibold mb-4">Agregar Items</h3>
 
             {loading ? (
-              <p className="text-gray-400">Cargando productos...</p>
+              <div className="grid grid-cols-2 gap-4">
+                {[...Array(6)].map((_, i) => (
+                  <Skeleton key={i} className="w-full h-20" />
+                ))}
+              </div>
             ) : (
               <>
                 <div className="flex gap-2 mb-4 overflow-x-auto pb-2">
@@ -255,16 +260,16 @@ export function OrderModal({
                   ))}
                 </div>
 
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {filteredProducts.map((product) => (
                     <button
                       key={product.id}
                       onClick={() => handleAddItem(product.id)}
                       disabled={updating}
-                      className="btn btn-outline p-4 text-left disabled:opacity-50 hover:border-primary"
+                      className="btn btn-outline min-h-[80px] p-4 text-left flex flex-col justify-center items-start disabled:opacity-50 hover:border-primary active:scale-95"
                     >
-                      <div className="font-medium">{product.name}</div>
-                      <div className="text-sm text-success">
+                      <div className="font-bold text-lg">{product.name}</div>
+                      <div className="text-sm font-semibold text-primary">
                         {formatCOP(Number(product.price))}
                       </div>
                     </button>
