@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { Joyride, Step, STATUS } from "react-joyride";
+import { useAuth } from "@/app/providers";
 
 // Force default import if named import fails (common in some Next.js/CJS/ESM mixed environments)
 const ReactJoyride = (Joyride as any) || Joyride;
