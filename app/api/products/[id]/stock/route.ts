@@ -13,32 +13,38 @@ export async function POST(
     }
 
     const { id } = await params;
-    const { quantity, type, reason } = await request.json();
+    const body = await request.json();
+    const { quantity, type, reason } = body;
 
     if (!quantity || !type) {
-      return NextResponse.json({ error: "Faltan campos obligatorios" }, { status: 400 });
+      return NextResponse.json({ error: "Cantidad y tipo son obligatorios" }, { status: 400 });
     }
 
-    // Begin transaction (using separate queries for simplicity with neon serverless)
+    const productId = parseInt(id);
+    if (isNaN(productId)) {
+      return NextResponse.json({ error: "ID de producto inválido" }, { status: 400 });
+    }
+
+    const qtyNum = parseInt(quantity);
     const multiplier = (type === 'entry') ? 1 : -1;
-    const change = quantity * multiplier;
+    const change = qtyNum * multiplier;
 
     // 1. Update product stock
     await sql`
       UPDATE products 
       SET stock = COALESCE(stock, 0) + ${change}
-      WHERE id = ${parseInt(id)}
+      WHERE id = ${productId}
     `;
 
     // 2. Record movement
     await sql`
       INSERT INTO stock_movements (product_id, quantity, type, reason, created_by)
-      VALUES (${parseInt(id)}, ${quantity}, ${type}, ${reason}, ${user.id})
+      VALUES (${productId}, ${qtyNum}, ${type}, ${reason || null}, ${user.id})
     `;
 
     return NextResponse.json({ message: "Inventario actualizado correctamente" });
   } catch (error) {
     console.error("Update stock error:", error);
-    return NextResponse.json({ error: "Error al actualizar inventario" }, { status: 500 });
+    return NextResponse.json({ error: "Error al actualizar inventario (posiblemente falta ejecutar /api/setup-inventory)" }, { status: 500 });
   }
 }

@@ -123,13 +123,16 @@ export default function ProductsPage() {
         body: JSON.stringify({ quantity, type, reason }),
       });
 
+      const data = await response.json();
       if (response.ok) {
         await fetchProducts();
         setShowStockModal(false);
         (e.target as HTMLFormElement).reset();
+      } else {
+        setError(data.error || "Error del servidor al ajustar stock");
       }
     } catch (err) {
-      setError("Error al ajustar stock");
+      setError("Error de conexión: No se pudo guardar el ajuste");
     } finally {
       setAdjusting(false);
     }
