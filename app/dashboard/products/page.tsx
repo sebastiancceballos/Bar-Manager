@@ -148,6 +148,13 @@ export default function ProductsPage() {
     }
   };
 
+  const handleEdit = (product: Product) => {
+    setEditingId(product.id);
+    setEditingProduct(product);
+    setShowForm(true);
+    setError(null);
+  };
+
   const groupedProducts = products.reduce(
     (acc, product) => {
       if (!acc[product.category]) {
