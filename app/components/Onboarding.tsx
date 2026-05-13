@@ -13,13 +13,19 @@ export const Onboarding: React.FC = () => {
   const { user } = useAuth();
 
   useEffect(() => {
+    if (!user) return;
+
     // Only show to admins/owners and only on the main dashboard path
-    const isAdminOrOwner = user?.role === "admin" || user?.role === "owner";
+    const isAdminOrOwner = user.role === "admin" || user.role === "owner";
     const isMainDashboard = window.location.pathname === "/dashboard";
-    const hasSeenTour = localStorage.getItem("hasSeenOnboarding");
+    const storageKey = `hasSeenOnboarding_${user.id}`;
+    const hasSeenTour = localStorage.getItem(storageKey);
     
     if (isAdminOrOwner && isMainDashboard && !hasSeenTour) {
       setRun(true);
+      // Mark as seen immediately when it starts so it doesn't loop
+      // if they navigate away and come back
+      localStorage.setItem(storageKey, "true");
     }
   }, [user]);
 
@@ -49,7 +55,6 @@ export const Onboarding: React.FC = () => {
 
     if (finishedStatuses.includes(status)) {
       setRun(false);
-      localStorage.setItem("hasSeenOnboarding", "true");
     }
   };
 
