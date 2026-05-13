@@ -106,6 +106,8 @@ export default function ProductsPage() {
     }
   };
 
+  const categories = Array.from(new Set(products.map((p) => p.category))).sort();
+
   const handleAdjustStock = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!selectedProduct) return;
@@ -228,12 +230,18 @@ export default function ProductsPage() {
                     <input
                       name="category"
                       type="text"
+                      list="category-list"
                       className="input"
                       placeholder="Ej: bebidas"
                       defaultValue={editingProduct?.category || ""}
                       key={editingProduct?.id + "-category"}
                       required
                     />
+                    <datalist id="category-list">
+                      {categories.map((cat) => (
+                        <option key={cat} value={cat} />
+                      ))}
+                    </datalist>
                   </div>
 
                   <div>
