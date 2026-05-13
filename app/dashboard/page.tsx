@@ -8,6 +8,16 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Skeleton } from "@/app/components/Skeleton";
 import { useCallback } from "react";
+import { 
+  Package, 
+  TableProperties, 
+  BarChart3, 
+  Users, 
+  Beer,
+  DollarSign,
+  ClipboardList,
+  Users2
+} from "lucide-react";
 
 const formatCOP = (value: number) =>
   new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", minimumFractionDigits: 0 }).format(value);
@@ -100,93 +110,130 @@ export default function DashboardPage() {
             </div>
           ) : (
             <div className="space-y-8">
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                <div className="card">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="card relative overflow-hidden group">
+                  <div className="absolute -right-2 -top-2 text-success/10 group-hover:text-success/20 transition-smooth">
+                    <DollarSign size={80} />
+                  </div>
                   <p className="text-gray-400 text-sm mb-1">Ingresos Hoy</p>
-                  <p className="text-3xl font-bold text-success">
+                  <p className="text-3xl font-bold text-success relative z-10">
                     {formatCOP(Number(stats?.totalRevenue || 0))}
                   </p>
                 </div>
-                <div className="card">
+                <div className="card relative overflow-hidden group">
+                  <div className="absolute -right-2 -top-2 text-primary/10 group-hover:text-primary/20 transition-smooth">
+                    <ClipboardList size={80} />
+                  </div>
                   <p className="text-gray-400 text-sm mb-1">Órdenes Hoy</p>
-                  <p className="text-3xl font-bold text-foreground">
+                  <p className="text-3xl font-bold text-foreground relative z-10">
                     {stats?.ordersToday || 0}
                   </p>
                 </div>
-                <div className="card">
+                <div className="card relative overflow-hidden group">
+                  <div className="absolute -right-2 -top-2 text-secondary/10 group-hover:text-secondary/20 transition-smooth">
+                    <TableProperties size={80} />
+                  </div>
                   <p className="text-gray-400 text-sm mb-1">Mesas Ocupadas</p>
-                  <p className="text-3xl font-bold text-secondary">
+                  <p className="text-3xl font-bold text-secondary relative z-10">
                     {stats?.tablesOccupied || 0}
                   </p>
                 </div>
-                <div className="card">
+                <div className="card relative overflow-hidden group">
+                  <div className="absolute -right-2 -top-2 text-foreground/5 group-hover:text-foreground/10 transition-smooth">
+                    <Users2 size={80} />
+                  </div>
                   <p className="text-gray-400 text-sm mb-1">Total Mesas</p>
-                  <p className="text-3xl font-bold text-foreground">
+                  <p className="text-3xl font-bold text-foreground relative z-10">
                     {stats?.totalTables || 0}
                   </p>
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-8">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mt-8">
                 <Link
                   href="/dashboard/products"
-                  className="card hover:border-primary transition-smooth cursor-pointer group"
+                  className="card hover:border-primary transition-smooth cursor-pointer group flex flex-col gap-3"
                 >
-                  <h3 className="text-xl font-semibold text-foreground group-hover:text-primary mb-2">
-                    Gestionar Productos
-                  </h3>
-                  <p className="text-gray-400 text-sm">
-                    Crea, edita y elimina productos del menú
-                  </p>
+                  <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center text-primary group-hover:scale-110 transition-smooth">
+                    <Package size={24} />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-semibold text-foreground group-hover:text-primary mb-1">
+                      Gestionar Productos
+                    </h3>
+                    <p className="text-gray-400 text-sm">
+                      Crea, edita y elimina productos del menú
+                    </p>
+                  </div>
                 </Link>
 
                 <Link
                   href="/dashboard/tables"
-                  className="card hover:border-primary transition-smooth cursor-pointer group"
+                  className="card hover:border-primary transition-smooth cursor-pointer group flex flex-col gap-3"
                 >
-                  <h3 className="text-xl font-semibold text-foreground group-hover:text-primary mb-2">
-                    Gestionar Mesas
-                  </h3>
-                  <p className="text-gray-400 text-sm">
-                    Organiza el layout de mesas de tu bar
-                  </p>
+                  <div className="w-12 h-12 rounded-lg bg-secondary/10 flex items-center justify-center text-secondary group-hover:scale-110 transition-smooth">
+                    <TableProperties size={24} />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-semibold text-foreground group-hover:text-primary mb-1">
+                      Gestionar Mesas
+                    </h3>
+                    <p className="text-gray-400 text-sm">
+                      Organiza el layout de mesas de tu bar
+                    </p>
+                  </div>
                 </Link>
 
                 <Link
                   href="/dashboard/reports"
-                  className="card hover:border-primary transition-smooth cursor-pointer group"
+                  className="card hover:border-primary transition-smooth cursor-pointer group flex flex-col gap-3"
                 >
-                  <h3 className="text-xl font-semibold text-foreground group-hover:text-primary mb-2">
-                    Reportes
-                  </h3>
-                  <p className="text-gray-400 text-sm">
-                    Analiza ventas e ingresos por período
-                  </p>
+                  <div className="w-12 h-12 rounded-lg bg-success/10 flex items-center justify-center text-success group-hover:scale-110 transition-smooth">
+                    <BarChart3 size={24} />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-semibold text-foreground group-hover:text-primary mb-1">
+                      Reportes
+                    </h3>
+                    <p className="text-gray-400 text-sm">
+                      Analiza ventas e ingresos por período
+                    </p>
+                  </div>
                 </Link>
 
                 <Link
                   href="/dashboard/users"
-                  className="card hover:border-primary transition-smooth cursor-pointer group"
+                  className="card hover:border-primary transition-smooth cursor-pointer group flex flex-col gap-3"
                 >
-                  <h3 className="text-xl font-semibold text-foreground group-hover:text-primary mb-2">
-                    Gestionar Usuarios
-                  </h3>
-                  <p className="text-gray-400 text-sm">
-                    {user?.role === "owner" ? "Crea administradores" : "Crea meseros"}
-                  </p>
+                  <div className="w-12 h-12 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-500 group-hover:scale-110 transition-smooth">
+                    <Users size={24} />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-semibold text-foreground group-hover:text-primary mb-1">
+                      Gestionar Usuarios
+                    </h3>
+                    <p className="text-gray-400 text-sm">
+                      {user?.role === "owner" ? "Crea administradores" : "Crea meseros"}
+                    </p>
+                  </div>
                 </Link>
 
                 {user?.role === "owner" && (
                   <Link
                     href="/dashboard/bars"
-                    className="card hover:border-primary transition-smooth cursor-pointer group"
+                    className="card hover:border-primary transition-smooth cursor-pointer group flex flex-col gap-3"
                   >
-                    <h3 className="text-xl font-semibold text-foreground group-hover:text-primary mb-2">
-                      Gestionar Bares
-                    </h3>
-                    <p className="text-gray-400 text-sm">
-                      Crea y administra los bares de tu plataforma
-                    </p>
+                    <div className="w-12 h-12 rounded-lg bg-amber-500/10 flex items-center justify-center text-amber-500 group-hover:scale-110 transition-smooth">
+                      <Beer size={24} />
+                    </div>
+                    <div>
+                      <h3 className="text-xl font-semibold text-foreground group-hover:text-primary mb-1">
+                        Gestionar Bares
+                      </h3>
+                      <p className="text-gray-400 text-sm">
+                        Crea y administra los bares de tu plataforma
+                      </p>
+                    </div>
                   </Link>
                 )}
               </div>
