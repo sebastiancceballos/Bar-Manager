@@ -34,7 +34,7 @@ export const Onboarding: React.FC = () => {
     },
     {
       target: ".nav-tables",
-      content: "Aquí puedes gestionar el layout de tus mesas y ver el estado de las órdenes en tiempo real.",
+      content: "Aquí puedes gestionar la posición y el orden de tus mesas,ademas ver el estado de las órdenes en tiempo real.",
     },
     {
       target: ".nav-products",
