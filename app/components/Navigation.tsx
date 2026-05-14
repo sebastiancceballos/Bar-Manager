@@ -14,7 +14,8 @@ import {
   BarChart3, 
   Users, 
   LogOut,
-  Beer
+  Beer,
+  HelpCircle
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -107,6 +108,13 @@ export function Navigation() {
                 <span className="text-[10px] text-gray-500 uppercase tracking-wider">{user?.role}</span>
               </div>
               <button
+                onClick={() => window.dispatchEvent(new CustomEvent("start-tour"))}
+                className="p-2 text-gray-400 hover:text-primary hover:bg-primary/10 rounded-full transition-smooth"
+                title="Ver Guía del Sistema"
+              >
+                <HelpCircle size={20} className="text-primary/60 hover:text-primary" />
+              </button>
+              <button
                 onClick={handleLogout}
                 className="p-2 text-gray-400 hover:text-error hover:bg-error/10 rounded-full transition-smooth"
                 title="Cerrar Sesión"
@@ -175,6 +183,16 @@ export function Navigation() {
                 </div>
               </div>
               <div className="mt-3 px-2">
+                <button
+                  onClick={() => {
+                    window.dispatchEvent(new CustomEvent("start-tour"));
+                    setIsMenuOpen(false);
+                  }}
+                  className="flex w-full items-center gap-3 px-3 py-3 rounded-lg text-base font-medium text-primary hover:bg-primary/10 transition-smooth"
+                >
+                  <HelpCircle className="w-5 h-5" />
+                  Ver Guía
+                </button>
                 <button
                   onClick={handleLogout}
                   className="flex w-full items-center gap-3 px-3 py-3 rounded-lg text-base font-medium text-error hover:bg-error/10 transition-smooth"

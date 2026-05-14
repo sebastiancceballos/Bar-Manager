@@ -23,10 +23,16 @@ export const Onboarding: React.FC = () => {
     
     if (isAdminOrOwner && isMainDashboard && !hasSeenTour) {
       setRun(true);
-      // Mark as seen immediately when it starts so it doesn't loop
-      // if they navigate away and come back
-      localStorage.setItem(storageKey, "true");
     }
+
+    // Escuchar evento para inicio manual
+    const handleManualStart = () => {
+      setRun(false); // Reset
+      setTimeout(() => setRun(true), 100); // Re-run
+    };
+
+    window.addEventListener("start-tour", handleManualStart);
+    return () => window.removeEventListener("start-tour", handleManualStart);
   }, [user]);
 
   const steps: Step[] = [
@@ -50,11 +56,16 @@ export const Onboarding: React.FC = () => {
   ];
 
   const handleJoyrideCallback = (data: any) => {
-    const { status } = data;
+    const { status, type } = data;
     const finishedStatuses: string[] = [STATUS.FINISHED, STATUS.SKIPPED];
 
     if (finishedStatuses.includes(status)) {
       setRun(false);
+      // Solo marcar como visto cuando realmente terminan o saltan el tour
+      if (user) {
+        const storageKey = `hasSeenOnboarding_${user.id}`;
+        localStorage.setItem(storageKey, "true");
+      }
     }
   };
 
