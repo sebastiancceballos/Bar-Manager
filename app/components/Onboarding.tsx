@@ -9,31 +9,22 @@ const ReactJoyride = (Joyride as any) || Joyride;
 
 export const Onboarding: React.FC = () => {
   const [run, setRun] = useState(false);
-
   const { user } = useAuth();
 
   useEffect(() => {
-    if (!user) return;
-
-    // Only show to admins/owners and only on the main dashboard path
-    const isAdminOrOwner = user.role === "admin" || user.role === "owner";
-    const isMainDashboard = window.location.pathname === "/dashboard";
-    const storageKey = `hasSeenOnboarding_${user.id}`;
-    const hasSeenTour = localStorage.getItem(storageKey);
-    
-    if (isAdminOrOwner && isMainDashboard && !hasSeenTour) {
-      setRun(true);
-    }
-
-    // Escuchar evento para inicio manual
+    // Solo escuchar el evento para inicio manual
     const handleManualStart = () => {
-      setRun(false); // Reset
+      setRun(false); // Reset para que pueda volver a empezar si ya estaba activo
       setTimeout(() => setRun(true), 100); // Re-run
     };
 
     window.addEventListener("start-tour", handleManualStart);
-    return () => window.removeEventListener("start-tour", handleManualStart);
-  }, [user]);
+    
+    // Limpieza al desmontar el componente
+    return () => {
+      window.removeEventListener("start-tour", handleManualStart);
+    };
+  }, []);
 
   const steps: Step[] = [
     {
@@ -56,16 +47,11 @@ export const Onboarding: React.FC = () => {
   ];
 
   const handleJoyrideCallback = (data: any) => {
-    const { status, type } = data;
+    const { status } = data;
     const finishedStatuses: string[] = [STATUS.FINISHED, STATUS.SKIPPED];
 
     if (finishedStatuses.includes(status)) {
       setRun(false);
-      // Solo marcar como visto cuando realmente terminan o saltan el tour
-      if (user) {
-        const storageKey = `hasSeenOnboarding_${user.id}`;
-        localStorage.setItem(storageKey, "true");
-      }
     }
   };
 
