@@ -151,7 +151,7 @@ export default function DashboardPage() {
               <div className="lg:col-span-8 space-y-12">
                 
                 {/* Stats Grid */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                   <div className="card relative overflow-hidden group p-6">
                     <div className="absolute -right-2 -top-2 text-success/10 group-hover:text-success/20 transition-smooth">
                       <DollarSign size={80} />
@@ -168,6 +168,24 @@ export default function DashboardPage() {
                     <p className="text-gray-400 text-sm mb-1">Órdenes Hoy</p>
                     <p className="text-3xl font-bold text-foreground relative z-10">
                       {stats?.ordersToday || 0}
+                    </p>
+                  </div>
+                  <div className="card relative overflow-hidden group p-6">
+                    <div className="absolute -right-2 -top-2 text-secondary/10 group-hover:text-secondary/20 transition-smooth">
+                      <TableProperties size={80} />
+                    </div>
+                    <p className="text-gray-400 text-sm mb-1">Mesas Ocupadas</p>
+                    <p className="text-3xl font-bold text-secondary relative z-10">
+                      {stats?.tablesOccupied || 0}
+                    </p>
+                  </div>
+                  <div className="card relative overflow-hidden group p-6">
+                    <div className="absolute -right-2 -top-2 text-foreground/5 group-hover:text-foreground/10 transition-smooth">
+                      <Users2 size={80} />
+                    </div>
+                    <p className="text-gray-400 text-sm mb-1">Total Mesas</p>
+                    <p className="text-3xl font-bold text-foreground relative z-10">
+                      {stats?.totalTables || 0}
                     </p>
                   </div>
                 </div>
