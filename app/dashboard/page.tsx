@@ -2,12 +2,11 @@
 
 import { ProtectedLayout } from "@/app/components/ProtectedLayout";
 import { Navigation } from "@/app/components/Navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useAuth } from "@/app/providers";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Skeleton } from "@/app/components/Skeleton";
-import { useCallback } from "react";
 import { 
   Package, 
   TableProperties, 
@@ -16,7 +15,8 @@ import {
   Beer,
   DollarSign,
   ClipboardList,
-  Users2
+  Users2,
+  AlertTriangle
 } from "lucide-react";
 
 interface Product {
@@ -26,16 +26,15 @@ interface Product {
   category: string;
 }
 
-const formatCOP = (value: number) =>
-  new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", minimumFractionDigits: 0 }).format(value);
-
-
 interface DashboardStats {
   totalRevenue: number;
   ordersToday: number;
   tablesOccupied: number;
   totalTables: number;
 }
+
+const formatCOP = (value: number) =>
+  new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", minimumFractionDigits: 0 }).format(value);
 
 export default function DashboardPage() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
@@ -53,20 +52,17 @@ export default function DashboardPage() {
     }
   }, [user, router]);
 
-  // Check if user is admin or owner (both can view dashboard)
   const isAdminOrOwner = user?.role === "admin" || user?.role === "owner";
 
   const fetchStats = useCallback(async () => {
     if (!user || !isAdminOrOwner) return;
     try {
-      // Fetch general stats
       const statsRes = await fetch("/api/dashboard/stats");
       if (statsRes.ok) {
         const data = await statsRes.json();
         setStats(data);
       }
 
-      // Fetch low stock products
       const productsRes = await fetch("/api/products");
       if (productsRes.ok) {
         const data = await productsRes.json();
@@ -83,7 +79,7 @@ export default function DashboardPage() {
   useEffect(() => {
     if (!user || !isAdminOrOwner) return;
     fetchStats();
-    const interval = setInterval(fetchStats, 10000); // Poll every 10 seconds
+    const interval = setInterval(fetchStats, 10000);
     return () => clearInterval(interval);
   }, [user, isAdminOrOwner, fetchStats]);
 
@@ -100,163 +96,195 @@ export default function DashboardPage() {
       <Navigation />
       <div className="min-h-screen bg-background">
         <div className="max-w-7xl mx-auto px-4 py-12">
-          <h1 className="text-4xl font-bold text-foreground mb-8">
-            Panel de Administración
-          </h1>
+          
+          <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
+            <h1 className="text-4xl font-bold text-foreground">
+              Panel de Administración
+            </h1>
+            {lowStockProducts.length > 0 && (
+              <div className="flex items-center gap-2 px-4 py-2 bg-amber-500/10 border border-amber-500/30 rounded-full animate-pulse">
+                <AlertTriangle size={18} className="text-amber-500" />
+                <span className="text-sm font-medium text-amber-500">
+                  {lowStockProducts.length} productos por agotarse
+                </span>
+              </div>
+            )}
+          </div>
 
           {loading ? (
             <div className="space-y-8">
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                 {[...Array(4)].map((_, i) => (
-                  <div key={i} className="card flex flex-col gap-2">
-                    <Skeleton className="w-24 h-4 opacity-50" />
-                    <Skeleton className="w-32 h-8" />
-                  </div>
+                  <Skeleton key={i} className="h-24" />
                 ))}
               </div>
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {[...Array(4)].map((_, i) => (
-                  <div key={i} className="card flex flex-col gap-4">
-                    <Skeleton className="w-48 h-6" />
-                    <Skeleton className="w-full h-12 opacity-30" />
-                  </div>
+                {[...Array(6)].map((_, i) => (
+                  <Skeleton key={i} className="h-32" />
                 ))}
               </div>
             </div>
           ) : (
-            <div className="space-y-8">
-              <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-                {/* Lado Izquierdo: Novedades / Alertas */}
-                <div className="lg:col-span-4 space-y-6">
-                  <div className="card border-primary/30 bg-primary/5">
-                    <div className="flex items-center gap-2 mb-4 text-primary">
-                      <Package size={20} />
-                      <h2 className="text-sm font-bold uppercase tracking-wider">
-                        PROXIMOS PRODUCTOS A ESTAR AGOTADOS:
-                      </h2>
-                    </div>
-                    
-                    <div className="space-y-3">
-                      {lowStockProducts.length === 0 ? (
-                        <p className="text-gray-400 text-sm italic">
-                          Todo al día. No hay productos por agotarse.
-                        </p>
-                      ) : (
-                        lowStockProducts.map(p => (
-                          <div key={p.id} className="flex items-center justify-between p-3 rounded-lg bg-background border border-border/50 group hover:border-primary/50 transition-colors">
-                            <div>
-                              <p className="font-semibold text-sm">{p.name}</p>
-                              <p className="text-[10px] text-gray-500 uppercase">{p.category}</p>
-                            </div>
-                            <div className={`px-2 py-1 rounded text-xs font-bold ${
-                              p.stock <= 0 ? "bg-red-500/20 text-red-400" : "bg-amber-500/20 text-amber-400"
-                            }`}>
-                              {p.stock <= 0 ? "AGOTADO" : `${p.stock} unid.`}
-                            </div>
+            <div className="space-y-12">
+              
+              {/* ALERTS SECTION (NOVEDADES) */}
+              {lowStockProducts.length > 0 && (
+                <div className="card border-primary/20 bg-primary/5 p-0 overflow-hidden">
+                  <div className="bg-primary/10 px-6 py-3 border-b border-primary/20 flex items-center gap-2">
+                    <Package size={18} className="text-primary" />
+                    <h2 className="text-sm font-bold uppercase tracking-widest text-primary">
+                      PROXIMOS PRODUCTOS A ESTAR AGOTADOS:
+                    </h2>
+                  </div>
+                  <div className="p-6">
+                    <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide">
+                      {lowStockProducts.map(p => (
+                        <div key={p.id} className="min-w-[200px] bg-background border border-border p-4 rounded-xl flex flex-col justify-between">
+                          <div>
+                            <p className="font-bold text-foreground leading-tight">{p.name}</p>
+                            <p className="text-[10px] text-gray-500 uppercase mt-1">{p.category}</p>
                           </div>
-                        ))
-                      )}
-                    </div>
-
-                    <Link 
-                      href="/dashboard/products" 
-                      className="mt-6 block text-center text-xs text-primary hover:underline font-medium"
-                    >
-                      Ver todo el inventario →
-                    </Link>
-                  </div>
-
-                  {/* Acceso Rápido a Usuarios (Pequeño) */}
-                  <div className="card bg-card/50">
-                    <h3 className="text-xs font-bold text-gray-500 uppercase mb-4 tracking-widest">Atajos de Equipo</h3>
-                    <div className="grid grid-cols-2 gap-2">
-                      <Link href="/dashboard/users" className="p-2 rounded bg-background border border-border hover:border-primary text-center text-xs transition-colors">
-                        Meseros
-                      </Link>
-                      <Link href="/dashboard/reports" className="p-2 rounded bg-background border border-border hover:border-primary text-center text-xs transition-colors">
-                        Ventas
-                      </Link>
+                          <div className={`mt-4 inline-flex items-center gap-1.5 px-2 py-1 rounded text-xs font-bold w-fit ${
+                            p.stock <= 0 ? "bg-red-500/20 text-red-400" : "bg-amber-500/20 text-amber-400"
+                          }`}>
+                            <div className={`w-1.5 h-1.5 rounded-full ${p.stock <= 0 ? "bg-red-500" : "bg-amber-500"}`} />
+                            {p.stock <= 0 ? "AGOTADO" : `${p.stock} UNIDADES`}
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   </div>
                 </div>
+              )}
 
-                {/* Lado Derecho: Estadísticas Principales */}
-                <div className="lg:col-span-8 space-y-8">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="card relative overflow-hidden group">
-                      <div className="absolute -right-2 -top-2 text-success/10 group-hover:text-success/20 transition-smooth">
-                        <DollarSign size={80} />
-                      </div>
-                      <p className="text-gray-400 text-sm mb-1">Ingresos Hoy</p>
-                      <p className="text-3xl font-bold text-success relative z-10">
-                        {formatCOP(Number(stats?.totalRevenue || 0))}
-                      </p>
-                    </div>
-                    <div className="card relative overflow-hidden group">
-                      <div className="absolute -right-2 -top-2 text-primary/10 group-hover:text-primary/20 transition-smooth">
-                        <ClipboardList size={80} />
-                      </div>
-                      <p className="text-gray-400 text-sm mb-1">Órdenes Hoy</p>
-                      <p className="text-3xl font-bold text-foreground relative z-10">
-                        {stats?.ordersToday || 0}
-                      </p>
-                    </div>
-                    <div className="card relative overflow-hidden group">
-                      <div className="absolute -right-2 -top-2 text-secondary/10 group-hover:text-secondary/20 transition-smooth">
-                        <TableProperties size={80} />
-                      </div>
-                      <p className="text-gray-400 text-sm mb-1">Mesas Ocupadas</p>
-                      <p className="text-3xl font-bold text-secondary relative z-10">
-                        {stats?.tablesOccupied || 0}
-                      </p>
-                    </div>
-                    <div className="card relative overflow-hidden group">
-                      <div className="absolute -right-2 -top-2 text-foreground/5 group-hover:text-foreground/10 transition-smooth">
-                        <Users2 size={80} />
-                      </div>
-                      <p className="text-gray-400 text-sm mb-1">Total Mesas</p>
-                      <p className="text-3xl font-bold text-foreground relative z-10">
-                        {stats?.totalTables || 0}
-                      </p>
-                    </div>
+              {/* MAIN STATS */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="card relative overflow-hidden group">
+                  <div className="absolute -right-2 -top-2 text-success/10 group-hover:text-success/20 transition-smooth">
+                    <DollarSign size={80} />
                   </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <Link
-                      href="/dashboard/products"
-                      className="card hover:border-primary transition-smooth cursor-pointer group flex flex-col gap-3"
-                    >
-                      <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary group-hover:scale-110 transition-smooth">
-                        <Package size={20} />
-                      </div>
-                      <div>
-                        <h3 className="text-lg font-semibold text-foreground group-hover:text-primary">
-                          Gestionar Productos
-                        </h3>
-                        <p className="text-gray-400 text-xs">
-                          Crea, edita y elimina productos del menú
-                        </p>
-                      </div>
-                    </Link>
-
-                    <Link
-                      href="/dashboard/tables"
-                      className="card hover:border-primary transition-smooth cursor-pointer group flex flex-col gap-3"
-                    >
-                      <div className="w-10 h-10 rounded-lg bg-secondary/10 flex items-center justify-center text-secondary group-hover:scale-110 transition-smooth">
-                        <TableProperties size={20} />
-                      </div>
-                      <div>
-                        <h3 className="text-lg font-semibold text-foreground group-hover:text-primary">
-                          Gestionar Mesas
-                        </h3>
-                        <p className="text-gray-400 text-xs">
-                          Organiza el layout de mesas de tu bar
-                        </p>
-                      </div>
-                    </Link>
-                  </div>
+                  <p className="text-gray-400 text-sm mb-1">Ingresos Hoy</p>
+                  <p className="text-3xl font-bold text-success relative z-10">
+                    {formatCOP(Number(stats?.totalRevenue || 0))}
+                  </p>
                 </div>
+                <div className="card relative overflow-hidden group">
+                  <div className="absolute -right-2 -top-2 text-primary/10 group-hover:text-primary/20 transition-smooth">
+                    <ClipboardList size={80} />
+                  </div>
+                  <p className="text-gray-400 text-sm mb-1">Órdenes Hoy</p>
+                  <p className="text-3xl font-bold text-foreground relative z-10">
+                    {stats?.ordersToday || 0}
+                  </p>
+                </div>
+                <div className="card relative overflow-hidden group">
+                  <div className="absolute -right-2 -top-2 text-secondary/10 group-hover:text-secondary/20 transition-smooth">
+                    <TableProperties size={80} />
+                  </div>
+                  <p className="text-gray-400 text-sm mb-1">Mesas Ocupadas</p>
+                  <p className="text-3xl font-bold text-secondary relative z-10">
+                    {stats?.tablesOccupied || 0}
+                  </p>
+                </div>
+                <div className="card relative overflow-hidden group">
+                  <div className="absolute -right-2 -top-2 text-foreground/5 group-hover:text-foreground/10 transition-smooth">
+                    <Users2 size={80} />
+                  </div>
+                  <p className="text-gray-400 text-sm mb-1">Total Mesas</p>
+                  <p className="text-3xl font-bold text-foreground relative z-10">
+                    {stats?.totalTables || 0}
+                  </p>
+                </div>
+              </div>
+
+              {/* NAVIGATION GRID (BIG BUTTONS RESTORED) */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                <Link
+                  href="/dashboard/products"
+                  className="card hover:border-primary transition-all hover:-translate-y-1 cursor-pointer group flex flex-col gap-6 p-8"
+                >
+                  <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-all shadow-lg shadow-primary/5">
+                    <Package size={32} />
+                  </div>
+                  <div>
+                    <h3 className="text-2xl font-bold text-foreground mb-2">
+                      Productos
+                    </h3>
+                    <p className="text-gray-400">
+                      Gestiona tu inventario, precios y categorías del menú
+                    </p>
+                  </div>
+                </Link>
+
+                <Link
+                  href="/dashboard/tables"
+                  className="card hover:border-secondary transition-all hover:-translate-y-1 cursor-pointer group flex flex-col gap-6 p-8"
+                >
+                  <div className="w-14 h-14 rounded-2xl bg-secondary/10 flex items-center justify-center text-secondary group-hover:bg-secondary group-hover:text-white transition-all shadow-lg shadow-secondary/5">
+                    <TableProperties size={32} />
+                  </div>
+                  <div>
+                    <h3 className="text-2xl font-bold text-foreground mb-2">
+                      Mesas
+                    </h3>
+                    <p className="text-gray-400">
+                      Administra la distribución de mesas y ocupación
+                    </p>
+                  </div>
+                </Link>
+
+                <Link
+                  href="/dashboard/reports"
+                  className="card hover:border-success transition-all hover:-translate-y-1 cursor-pointer group flex flex-col gap-6 p-8"
+                >
+                  <div className="w-14 h-14 rounded-2xl bg-success/10 flex items-center justify-center text-success group-hover:bg-success group-hover:text-white transition-all shadow-lg shadow-success/5">
+                    <BarChart3 size={32} />
+                  </div>
+                  <div>
+                    <h3 className="text-2xl font-bold text-foreground mb-2">
+                      Reportes
+                    </h3>
+                    <p className="text-gray-400">
+                      Ventas detalladas, movimientos de stock y cierres
+                    </p>
+                  </div>
+                </Link>
+
+                <Link
+                  href="/dashboard/users"
+                  className="card hover:border-blue-500 transition-all hover:-translate-y-1 cursor-pointer group flex flex-col gap-6 p-8"
+                >
+                  <div className="w-14 h-14 rounded-2xl bg-blue-500/10 flex items-center justify-center text-blue-500 group-hover:bg-blue-500 group-hover:text-white transition-all shadow-lg shadow-blue-500/5">
+                    <Users size={32} />
+                  </div>
+                  <div>
+                    <h3 className="text-2xl font-bold text-foreground mb-2">
+                      Usuarios
+                    </h3>
+                    <p className="text-gray-400">
+                      {user?.role === "owner" ? "Crea administradores" : "Crea y gestiona tus meseros"}
+                    </p>
+                  </div>
+                </Link>
+
+                {user?.role === "owner" && (
+                  <Link
+                    href="/dashboard/bars"
+                    className="card hover:border-amber-500 transition-all hover:-translate-y-1 cursor-pointer group flex flex-col gap-6 p-8"
+                  >
+                    <div className="w-14 h-14 rounded-2xl bg-amber-500/10 flex items-center justify-center text-amber-500 group-hover:bg-amber-500 group-hover:text-white transition-all shadow-lg shadow-amber-500/5">
+                      <Beer size={32} />
+                    </div>
+                    <div>
+                      <h3 className="text-2xl font-bold text-foreground mb-2">
+                        Bares
+                      </h3>
+                      <p className="text-gray-400">
+                        Administración global de locales del proyecto
+                      </p>
+                    </div>
+                  </Link>
+                )}
               </div>
             </div>
           )}

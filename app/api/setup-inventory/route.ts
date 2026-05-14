@@ -16,6 +16,9 @@ export async function GET(request: NextRequest) {
 
     // 1. Add stock column to products
     await sql`ALTER TABLE products ADD COLUMN IF NOT EXISTS stock INTEGER DEFAULT 0`;
+    
+    // 1.1 Add owner_id to locations
+    await sql`ALTER TABLE locations ADD COLUMN IF NOT EXISTS owner_id INTEGER REFERENCES users(id)`;
 
     // 2. Create stock_movements table
     await sql`
@@ -30,7 +33,10 @@ export async function GET(request: NextRequest) {
       )
     `;
 
-    return NextResponse.json({ message: "Base de datos actualizada para inventario" });
+    // 3. Reset negative stock to 0 (Data cleanup)
+    await sql`UPDATE products SET stock = 0 WHERE stock < 0`;
+
+    return NextResponse.json({ message: "Base de datos actualizada para inventario y stock corregido" });
   } catch (error) {
     console.error("Setup inventory error:", error);
     return NextResponse.json({ error: "Error actualizando base de datos" }, { status: 500 });
