@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "No autenticado" }, { status: 401 });
     }
 
-    let locations = [];
+    let locations: any[] = [];
 
     if (currentUser.role === "owner") {
       // Superadmin (Project Owner) sees ALL bars
