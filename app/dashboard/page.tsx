@@ -16,7 +16,8 @@ import {
   DollarSign,
   ClipboardList,
   Users2,
-  AlertTriangle
+  AlertTriangle,
+  ChevronRight
 } from "lucide-react";
 
 interface Product {
@@ -97,195 +98,180 @@ export default function DashboardPage() {
       <div className="min-h-screen bg-background">
         <div className="max-w-7xl mx-auto px-4 py-12">
           
-          <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
-            <h1 className="text-4xl font-bold text-foreground">
-              Panel de Administración
-            </h1>
-            {lowStockProducts.length > 0 && (
-              <div className="flex items-center gap-2 px-4 py-2 bg-amber-500/10 border border-amber-500/30 rounded-full animate-pulse">
-                <AlertTriangle size={18} className="text-amber-500" />
-                <span className="text-sm font-medium text-amber-500">
-                  {lowStockProducts.length} productos por agotarse
-                </span>
-              </div>
-            )}
-          </div>
+          <h1 className="text-4xl font-bold text-foreground mb-10">
+            Panel de Administración
+          </h1>
 
           {loading ? (
-            <div className="space-y-8">
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                {[...Array(4)].map((_, i) => (
-                  <Skeleton key={i} className="h-24" />
-                ))}
-              </div>
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {[...Array(6)].map((_, i) => (
-                  <Skeleton key={i} className="h-32" />
-                ))}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+              <div className="lg:col-span-4"><Skeleton className="h-[400px]" /></div>
+              <div className="lg:col-span-8 space-y-8">
+                <div className="grid grid-cols-2 gap-4"><Skeleton className="h-24" /><Skeleton className="h-24" /></div>
+                <div className="grid grid-cols-2 gap-6"><Skeleton className="h-40" /><Skeleton className="h-40" /></div>
               </div>
             </div>
           ) : (
-            <div className="space-y-12">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-start">
               
-              {/* ALERTS SECTION (NOVEDADES) */}
-              {lowStockProducts.length > 0 && (
-                <div className="card border-primary/20 bg-primary/5 p-0 overflow-hidden">
-                  <div className="bg-primary/10 px-6 py-3 border-b border-primary/20 flex items-center gap-2">
-                    <Package size={18} className="text-primary" />
-                    <h2 className="text-sm font-bold uppercase tracking-widest text-primary">
+              {/* SIDEBAR IZQUIERDO: NOVEDADES */}
+              <div className="lg:col-span-4 space-y-6 lg:sticky lg:top-24">
+                <div className="card border-primary/20 bg-primary/5 p-6">
+                  <div className="flex items-center gap-2 mb-6 text-primary">
+                    <Package size={20} />
+                    <h2 className="text-xs font-bold uppercase tracking-widest leading-tight">
                       PROXIMOS PRODUCTOS A ESTAR AGOTADOS:
                     </h2>
                   </div>
-                  <div className="p-6">
-                    <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide">
-                      {lowStockProducts.map(p => (
-                        <div key={p.id} className="min-w-[200px] bg-background border border-border p-4 rounded-xl flex flex-col justify-between">
-                          <div>
-                            <p className="font-bold text-foreground leading-tight">{p.name}</p>
-                            <p className="text-[10px] text-gray-500 uppercase mt-1">{p.category}</p>
+                  
+                  <div className="space-y-3">
+                    {lowStockProducts.length === 0 ? (
+                      <div className="py-8 text-center border border-dashed border-border rounded-xl">
+                        <p className="text-gray-500 text-sm italic">Inventario al día ✨</p>
+                      </div>
+                    ) : (
+                      lowStockProducts.map(p => (
+                        <div key={p.id} className="flex items-center justify-between p-3 rounded-xl bg-background border border-border/50 group hover:border-primary/50 transition-all">
+                          <div className="min-w-0 flex-1 pr-2">
+                            <p className="font-bold text-sm truncate">{p.name}</p>
+                            <p className="text-[10px] text-gray-500 uppercase truncate">{p.category}</p>
                           </div>
-                          <div className={`mt-4 inline-flex items-center gap-1.5 px-2 py-1 rounded text-xs font-bold w-fit ${
+                          <div className={`shrink-0 px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-tighter ${
                             p.stock <= 0 ? "bg-red-500/20 text-red-400" : "bg-amber-500/20 text-amber-400"
                           }`}>
-                            <div className={`w-1.5 h-1.5 rounded-full ${p.stock <= 0 ? "bg-red-500" : "bg-amber-500"}`} />
-                            {p.stock <= 0 ? "AGOTADO" : `${p.stock} UNIDADES`}
+                            {p.stock <= 0 ? "Agotado" : `${p.stock} Unid.`}
                           </div>
                         </div>
-                      ))}
-                    </div>
+                      ))
+                    )}
                   </div>
-                </div>
-              )}
 
-              {/* MAIN STATS */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div className="card relative overflow-hidden group">
-                  <div className="absolute -right-2 -top-2 text-success/10 group-hover:text-success/20 transition-smooth">
-                    <DollarSign size={80} />
-                  </div>
-                  <p className="text-gray-400 text-sm mb-1">Ingresos Hoy</p>
-                  <p className="text-3xl font-bold text-success relative z-10">
-                    {formatCOP(Number(stats?.totalRevenue || 0))}
-                  </p>
+                  <Link 
+                    href="/dashboard/products" 
+                    className="mt-8 flex items-center justify-center gap-2 w-full py-3 rounded-xl bg-primary/10 text-primary text-xs font-bold hover:bg-primary hover:text-white transition-all group"
+                  >
+                    Gestionar Inventario
+                    <ChevronRight size={14} className="group-hover:translate-x-1 transition-transform" />
+                  </Link>
                 </div>
-                <div className="card relative overflow-hidden group">
-                  <div className="absolute -right-2 -top-2 text-primary/10 group-hover:text-primary/20 transition-smooth">
-                    <ClipboardList size={80} />
+
+                {/* Resumen rápido de equipo */}
+                <div className="card bg-card/30 p-6 hidden lg:block">
+                  <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-4">Acceso rápido</p>
+                  <div className="space-y-2">
+                    <Link href="/dashboard/users" className="flex items-center justify-between p-2 text-xs text-gray-400 hover:text-primary transition-colors">
+                      Gestionar Meseros <ChevronRight size={12} />
+                    </Link>
+                    <Link href="/dashboard/reports" className="flex items-center justify-between p-2 text-xs text-gray-400 hover:text-primary transition-colors">
+                      Ver Reportes <ChevronRight size={12} />
+                    </Link>
                   </div>
-                  <p className="text-gray-400 text-sm mb-1">Órdenes Hoy</p>
-                  <p className="text-3xl font-bold text-foreground relative z-10">
-                    {stats?.ordersToday || 0}
-                  </p>
-                </div>
-                <div className="card relative overflow-hidden group">
-                  <div className="absolute -right-2 -top-2 text-secondary/10 group-hover:text-secondary/20 transition-smooth">
-                    <TableProperties size={80} />
-                  </div>
-                  <p className="text-gray-400 text-sm mb-1">Mesas Ocupadas</p>
-                  <p className="text-3xl font-bold text-secondary relative z-10">
-                    {stats?.tablesOccupied || 0}
-                  </p>
-                </div>
-                <div className="card relative overflow-hidden group">
-                  <div className="absolute -right-2 -top-2 text-foreground/5 group-hover:text-foreground/10 transition-smooth">
-                    <Users2 size={80} />
-                  </div>
-                  <p className="text-gray-400 text-sm mb-1">Total Mesas</p>
-                  <p className="text-3xl font-bold text-foreground relative z-10">
-                    {stats?.totalTables || 0}
-                  </p>
                 </div>
               </div>
 
-              {/* NAVIGATION GRID (BIG BUTTONS RESTORED) */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                <Link
-                  href="/dashboard/products"
-                  className="card hover:border-primary transition-all hover:-translate-y-1 cursor-pointer group flex flex-col gap-6 p-8"
-                >
-                  <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-all shadow-lg shadow-primary/5">
-                    <Package size={32} />
-                  </div>
-                  <div>
-                    <h3 className="text-2xl font-bold text-foreground mb-2">
-                      Productos
-                    </h3>
-                    <p className="text-gray-400">
-                      Gestiona tu inventario, precios y categorías del menú
+              {/* PANEL DERECHO: ESTADISTICAS Y BOTONES GRANDES */}
+              <div className="lg:col-span-8 space-y-12">
+                
+                {/* Stats Grid */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="card relative overflow-hidden group p-6">
+                    <div className="absolute -right-2 -top-2 text-success/10 group-hover:text-success/20 transition-smooth">
+                      <DollarSign size={80} />
+                    </div>
+                    <p className="text-gray-400 text-sm mb-1">Ingresos Hoy</p>
+                    <p className="text-3xl font-bold text-success relative z-10">
+                      {formatCOP(Number(stats?.totalRevenue || 0))}
                     </p>
                   </div>
-                </Link>
+                  <div className="card relative overflow-hidden group p-6">
+                    <div className="absolute -right-2 -top-2 text-primary/10 group-hover:text-primary/20 transition-smooth">
+                      <ClipboardList size={80} />
+                    </div>
+                    <p className="text-gray-400 text-sm mb-1">Órdenes Hoy</p>
+                    <p className="text-3xl font-bold text-foreground relative z-10">
+                      {stats?.ordersToday || 0}
+                    </p>
+                  </div>
+                </div>
 
-                <Link
-                  href="/dashboard/tables"
-                  className="card hover:border-secondary transition-all hover:-translate-y-1 cursor-pointer group flex flex-col gap-6 p-8"
-                >
-                  <div className="w-14 h-14 rounded-2xl bg-secondary/10 flex items-center justify-center text-secondary group-hover:bg-secondary group-hover:text-white transition-all shadow-lg shadow-secondary/5">
-                    <TableProperties size={32} />
-                  </div>
-                  <div>
-                    <h3 className="text-2xl font-bold text-foreground mb-2">
-                      Mesas
-                    </h3>
-                    <p className="text-gray-400">
-                      Administra la distribución de mesas y ocupación
-                    </p>
-                  </div>
-                </Link>
+                {/* Big Action Buttons */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                  <Link
+                    href="/dashboard/products"
+                    className="card hover:border-primary transition-all hover:-translate-y-1 cursor-pointer group flex flex-col gap-6 p-8 min-h-[220px] justify-between shadow-xl shadow-black/20"
+                  >
+                    <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-all shadow-lg shadow-primary/5">
+                      <Package size={36} />
+                    </div>
+                    <div>
+                      <h3 className="text-2xl font-bold text-foreground mb-2">Productos</h3>
+                      <p className="text-gray-400 text-sm leading-relaxed">
+                        Inventario, precios y categorías del menú
+                      </p>
+                    </div>
+                  </Link>
 
-                <Link
-                  href="/dashboard/reports"
-                  className="card hover:border-success transition-all hover:-translate-y-1 cursor-pointer group flex flex-col gap-6 p-8"
-                >
-                  <div className="w-14 h-14 rounded-2xl bg-success/10 flex items-center justify-center text-success group-hover:bg-success group-hover:text-white transition-all shadow-lg shadow-success/5">
-                    <BarChart3 size={32} />
-                  </div>
-                  <div>
-                    <h3 className="text-2xl font-bold text-foreground mb-2">
-                      Reportes
-                    </h3>
-                    <p className="text-gray-400">
-                      Ventas detalladas, movimientos de stock y cierres
-                    </p>
-                  </div>
-                </Link>
+                  <Link
+                    href="/dashboard/tables"
+                    className="card hover:border-secondary transition-all hover:-translate-y-1 cursor-pointer group flex flex-col gap-6 p-8 min-h-[220px] justify-between shadow-xl shadow-black/20"
+                  >
+                    <div className="w-16 h-16 rounded-2xl bg-secondary/10 flex items-center justify-center text-secondary group-hover:bg-secondary group-hover:text-white transition-all shadow-lg shadow-secondary/5">
+                      <TableProperties size={36} />
+                    </div>
+                    <div>
+                      <h3 className="text-2xl font-bold text-foreground mb-2">Mesas</h3>
+                      <p className="text-gray-400 text-sm leading-relaxed">
+                        Layout de mesas y ocupación en vivo
+                      </p>
+                    </div>
+                  </Link>
 
-                <Link
-                  href="/dashboard/users"
-                  className="card hover:border-blue-500 transition-all hover:-translate-y-1 cursor-pointer group flex flex-col gap-6 p-8"
-                >
-                  <div className="w-14 h-14 rounded-2xl bg-blue-500/10 flex items-center justify-center text-blue-500 group-hover:bg-blue-500 group-hover:text-white transition-all shadow-lg shadow-blue-500/5">
-                    <Users size={32} />
-                  </div>
-                  <div>
-                    <h3 className="text-2xl font-bold text-foreground mb-2">
-                      Usuarios
-                    </h3>
-                    <p className="text-gray-400">
-                      {user?.role === "owner" ? "Crea administradores" : "Crea y gestiona tus meseros"}
-                    </p>
-                  </div>
-                </Link>
+                  <Link
+                    href="/dashboard/reports"
+                    className="card hover:border-success transition-all hover:-translate-y-1 cursor-pointer group flex flex-col gap-6 p-8 min-h-[220px] justify-between shadow-xl shadow-black/20"
+                  >
+                    <div className="w-16 h-16 rounded-2xl bg-success/10 flex items-center justify-center text-success group-hover:bg-success group-hover:text-white transition-all shadow-lg shadow-success/5">
+                      <BarChart3 size={36} />
+                    </div>
+                    <div>
+                      <h3 className="text-2xl font-bold text-foreground mb-2">Reportes</h3>
+                      <p className="text-gray-400 text-sm leading-relaxed">
+                        Ventas detalladas y cierres de caja
+                      </p>
+                    </div>
+                  </Link>
+
+                  <Link
+                    href="/dashboard/users"
+                    className="card hover:border-blue-500 transition-all hover:-translate-y-1 cursor-pointer group flex flex-col gap-6 p-8 min-h-[220px] justify-between shadow-xl shadow-black/20"
+                  >
+                    <div className="w-16 h-16 rounded-2xl bg-blue-500/10 flex items-center justify-center text-blue-500 group-hover:bg-blue-500 group-hover:text-white transition-all shadow-lg shadow-blue-500/5">
+                      <Users size={36} />
+                    </div>
+                    <div>
+                      <h3 className="text-2xl font-bold text-foreground mb-2">Usuarios</h3>
+                      <p className="text-gray-400 text-sm leading-relaxed">
+                        Gestión de administradores y meseros
+                      </p>
+                    </div>
+                  </Link>
+                </div>
 
                 {user?.role === "owner" && (
                   <Link
                     href="/dashboard/bars"
-                    className="card hover:border-amber-500 transition-all hover:-translate-y-1 cursor-pointer group flex flex-col gap-6 p-8"
+                    className="card hover:border-amber-500 transition-all hover:-translate-y-1 cursor-pointer group flex items-center gap-6 p-6 shadow-xl shadow-black/20"
                   >
-                    <div className="w-14 h-14 rounded-2xl bg-amber-500/10 flex items-center justify-center text-amber-500 group-hover:bg-amber-500 group-hover:text-white transition-all shadow-lg shadow-amber-500/5">
-                      <Beer size={32} />
+                    <div className="w-12 h-12 rounded-xl bg-amber-500/10 flex items-center justify-center text-amber-500 group-hover:bg-amber-500 group-hover:text-white transition-all">
+                      <Beer size={24} />
                     </div>
                     <div>
-                      <h3 className="text-2xl font-bold text-foreground mb-2">
-                        Bares
-                      </h3>
-                      <p className="text-gray-400">
-                        Administración global de locales del proyecto
-                      </p>
+                      <h3 className="text-lg font-bold text-foreground">Gestionar Bares</h3>
+                      <p className="text-gray-400 text-xs">Administración global del proyecto</p>
                     </div>
                   </Link>
                 )}
               </div>
+
             </div>
           )}
         </div>
