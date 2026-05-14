@@ -1,153 +1,267 @@
 "use client";
 
+import { ProtectedLayout } from "@/app/components/ProtectedLayout";
+import { Navigation } from "@/app/components/Navigation";
+import { useEffect, useState } from "react";
 import { useAuth } from "@/app/providers";
 import { useRouter } from "next/navigation";
-import { FormEvent, useState } from "react";
+import Link from "next/link";
+import { Skeleton } from "@/app/components/Skeleton";
+import { useCallback } from "react";
+import { 
+  Package, 
+  TableProperties, 
+  BarChart3, 
+  Users, 
+  Beer,
+  DollarSign,
+  ClipboardList,
+  Users2
+} from "lucide-react";
 
-export default function LoginPage() {
+interface Product {
+  id: number;
+  name: string;
+  stock: number;
+  category: string;
+}
+
+const formatCOP = (value: number) =>
+  new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", minimumFractionDigits: 0 }).format(value);
+
+
+interface DashboardStats {
+  totalRevenue: number;
+  ordersToday: number;
+  tablesOccupied: number;
+  totalTables: number;
+}
+
+export default function DashboardPage() {
+  const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [lowStockProducts, setLowStockProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
+  const { user } = useAuth();
   const router = useRouter();
-  const { login, isLoading, error } = useAuth();
-  const [formError, setFormError] = useState<string | null>(null);
-  const [showPassword, setShowPassword] = useState(false);
 
-  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    setFormError(null);
-
-    const formData = new FormData(e.currentTarget);
-    const email = formData.get("email") as string;
-    const password = formData.get("password") as string;
-
-    if (!email || !password) {
-      setFormError("Email and password are required");
-      return;
+  useEffect(() => {
+    if (user && user.role === "waiter") {
+      router.push("/dashboard/tables");
     }
+    if (user && user.role === "owner") {
+      router.push("/dashboard/owner");
+    }
+  }, [user, router]);
 
+  // Check if user is admin or owner (both can view dashboard)
+  const isAdminOrOwner = user?.role === "admin" || user?.role === "owner";
+
+  const fetchStats = useCallback(async () => {
+    if (!user || !isAdminOrOwner) return;
     try {
-      await login(email, password);
-      router.push("/dashboard");
-    } catch (err) {
-      setFormError(error || "Login failed");
+      // Fetch general stats
+      const statsRes = await fetch("/api/dashboard/stats");
+      if (statsRes.ok) {
+        const data = await statsRes.json();
+        setStats(data);
+      }
+
+      // Fetch low stock products
+      const productsRes = await fetch("/api/products");
+      if (productsRes.ok) {
+        const data = await productsRes.json();
+        const lowStock = (data.products as Product[]).filter(p => (p.stock || 0) <= 3);
+        setLowStockProducts(lowStock);
+      }
+    } catch (error) {
+      console.error("Failed to fetch dashboard data:", error);
+    } finally {
+      setLoading(false);
     }
-  };
+  }, [user, isAdminOrOwner]);
+
+  useEffect(() => {
+    if (!user || !isAdminOrOwner) return;
+    fetchStats();
+    const interval = setInterval(fetchStats, 10000); // Poll every 10 seconds
+    return () => clearInterval(interval);
+  }, [user, isAdminOrOwner, fetchStats]);
+
+  if (user?.role === "waiter") {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-foreground">Redirigiendo...</div>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center px-4">
-      <div className="card w-full max-w-md">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-foreground mb-2">
-            Bar Manager
+    <ProtectedLayout>
+      <Navigation />
+      <div className="min-h-screen bg-background">
+        <div className="max-w-7xl mx-auto px-4 py-12">
+          <h1 className="text-4xl font-bold text-foreground mb-8">
+            Panel de Administración
           </h1>
-          <p className="text-gray-400">Sistema de gestión para bares</p>
-        </div>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div>
-            <label htmlFor="email" className="block text-sm font-medium mb-2">
-              Correo Electrónico
-            </label>
-            <input
-              id="email"
-              name="email"
-              type="email"
-              className="input"
-              placeholder="admin@barmanager.com"
-              required
-            />
-          </div>
-
-          <div>
-            <label htmlFor="password" className="block text-sm font-medium mb-2">
-              Contraseña
-            </label>
-            <div className="relative">
-              <input
-                id="password"
-                name="password"
-                type={showPassword ? "text" : "password"}
-                className="input pr-12"
-                placeholder="••••••••"
-                required
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-foreground transition-colors"
-                aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
-              >
-                {showPassword ? (
-                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
-                    <line x1="1" y1="1" x2="23" y2="23" />
-                  </svg>
-                ) : (
-                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-                    <circle cx="12" cy="12" r="3" />
-                  </svg>
-                )}
-              </button>
+          {loading ? (
+            <div className="space-y-8">
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                {[...Array(4)].map((_, i) => (
+                  <div key={i} className="card flex flex-col gap-2">
+                    <Skeleton className="w-24 h-4 opacity-50" />
+                    <Skeleton className="w-32 h-8" />
+                  </div>
+                ))}
+              </div>
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {[...Array(4)].map((_, i) => (
+                  <div key={i} className="card flex flex-col gap-4">
+                    <Skeleton className="w-48 h-6" />
+                    <Skeleton className="w-full h-12 opacity-30" />
+                  </div>
+                ))}
+              </div>
             </div>
-          </div>
+          ) : (
+            <div className="space-y-8">
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                {/* Lado Izquierdo: Novedades / Alertas */}
+                <div className="lg:col-span-4 space-y-6">
+                  <div className="card border-primary/30 bg-primary/5">
+                    <div className="flex items-center gap-2 mb-4 text-primary">
+                      <Package size={20} />
+                      <h2 className="text-sm font-bold uppercase tracking-wider">
+                        PROXIMOS PRODUCTOS A ESTAR AGOTADOS:
+                      </h2>
+                    </div>
+                    
+                    <div className="space-y-3">
+                      {lowStockProducts.length === 0 ? (
+                        <p className="text-gray-400 text-sm italic">
+                          Todo al día. No hay productos por agotarse.
+                        </p>
+                      ) : (
+                        lowStockProducts.map(p => (
+                          <div key={p.id} className="flex items-center justify-between p-3 rounded-lg bg-background border border-border/50 group hover:border-primary/50 transition-colors">
+                            <div>
+                              <p className="font-semibold text-sm">{p.name}</p>
+                              <p className="text-[10px] text-gray-500 uppercase">{p.category}</p>
+                            </div>
+                            <div className={`px-2 py-1 rounded text-xs font-bold ${
+                              p.stock <= 0 ? "bg-red-500/20 text-red-400" : "bg-amber-500/20 text-amber-400"
+                            }`}>
+                              {p.stock <= 0 ? "AGOTADO" : `${p.stock} unid.`}
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
 
-          {(formError || error) && (
-            <div className="bg-error/10 border border-error text-error px-4 py-3 rounded-lg text-sm">
-              {formError || error}
+                    <Link 
+                      href="/dashboard/products" 
+                      className="mt-6 block text-center text-xs text-primary hover:underline font-medium"
+                    >
+                      Ver todo el inventario →
+                    </Link>
+                  </div>
+
+                  {/* Acceso Rápido a Usuarios (Pequeño) */}
+                  <div className="card bg-card/50">
+                    <h3 className="text-xs font-bold text-gray-500 uppercase mb-4 tracking-widest">Atajos de Equipo</h3>
+                    <div className="grid grid-cols-2 gap-2">
+                      <Link href="/dashboard/users" className="p-2 rounded bg-background border border-border hover:border-primary text-center text-xs transition-colors">
+                        Meseros
+                      </Link>
+                      <Link href="/dashboard/reports" className="p-2 rounded bg-background border border-border hover:border-primary text-center text-xs transition-colors">
+                        Ventas
+                      </Link>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Lado Derecho: Estadísticas Principales */}
+                <div className="lg:col-span-8 space-y-8">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="card relative overflow-hidden group">
+                      <div className="absolute -right-2 -top-2 text-success/10 group-hover:text-success/20 transition-smooth">
+                        <DollarSign size={80} />
+                      </div>
+                      <p className="text-gray-400 text-sm mb-1">Ingresos Hoy</p>
+                      <p className="text-3xl font-bold text-success relative z-10">
+                        {formatCOP(Number(stats?.totalRevenue || 0))}
+                      </p>
+                    </div>
+                    <div className="card relative overflow-hidden group">
+                      <div className="absolute -right-2 -top-2 text-primary/10 group-hover:text-primary/20 transition-smooth">
+                        <ClipboardList size={80} />
+                      </div>
+                      <p className="text-gray-400 text-sm mb-1">Órdenes Hoy</p>
+                      <p className="text-3xl font-bold text-foreground relative z-10">
+                        {stats?.ordersToday || 0}
+                      </p>
+                    </div>
+                    <div className="card relative overflow-hidden group">
+                      <div className="absolute -right-2 -top-2 text-secondary/10 group-hover:text-secondary/20 transition-smooth">
+                        <TableProperties size={80} />
+                      </div>
+                      <p className="text-gray-400 text-sm mb-1">Mesas Ocupadas</p>
+                      <p className="text-3xl font-bold text-secondary relative z-10">
+                        {stats?.tablesOccupied || 0}
+                      </p>
+                    </div>
+                    <div className="card relative overflow-hidden group">
+                      <div className="absolute -right-2 -top-2 text-foreground/5 group-hover:text-foreground/10 transition-smooth">
+                        <Users2 size={80} />
+                      </div>
+                      <p className="text-gray-400 text-sm mb-1">Total Mesas</p>
+                      <p className="text-3xl font-bold text-foreground relative z-10">
+                        {stats?.totalTables || 0}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <Link
+                      href="/dashboard/products"
+                      className="card hover:border-primary transition-smooth cursor-pointer group flex flex-col gap-3"
+                    >
+                      <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary group-hover:scale-110 transition-smooth">
+                        <Package size={20} />
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-semibold text-foreground group-hover:text-primary">
+                          Gestionar Productos
+                        </h3>
+                        <p className="text-gray-400 text-xs">
+                          Crea, edita y elimina productos del menú
+                        </p>
+                      </div>
+                    </Link>
+
+                    <Link
+                      href="/dashboard/tables"
+                      className="card hover:border-primary transition-smooth cursor-pointer group flex flex-col gap-3"
+                    >
+                      <div className="w-10 h-10 rounded-lg bg-secondary/10 flex items-center justify-center text-secondary group-hover:scale-110 transition-smooth">
+                        <TableProperties size={20} />
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-semibold text-foreground group-hover:text-primary">
+                          Gestionar Mesas
+                        </h3>
+                        <p className="text-gray-400 text-xs">
+                          Organiza el layout de mesas de tu bar
+                        </p>
+                      </div>
+                    </Link>
+                  </div>
+                </div>
+              </div>
             </div>
           )}
-
-          <button
-            type="submit"
-            disabled={isLoading}
-            className="btn-primary w-full disabled:opacity-50"
-          >
-            {isLoading ? "Iniciando sesión..." : "Iniciar Sesión"}
-          </button>
-
-          <div className="pt-8 border-t border-border/50">
-            <p className="text-sm font-medium text-gray-400 mb-4 text-center">Credenciales Demo</p>
-            <div className="grid grid-cols-1 gap-3">
-              <button
-                type="button"
-                onClick={() => {
-                  const emailInput = document.getElementById('email') as HTMLInputElement;
-                  const passwordInput = document.getElementById('password') as HTMLInputElement;
-                  if (emailInput && passwordInput) {
-                    emailInput.value = 'demo@barmanager.com';
-                    passwordInput.value = 'demo**';
-                  }
-                }}
-                className="flex items-center justify-between p-3 rounded-xl bg-primary/5 border border-primary/10 hover:bg-primary/10 transition-colors text-left group"
-              >
-                <div>
-                  <p className="text-xs font-bold text-primary uppercase tracking-wider mb-1">Administrador</p>
-                  <p className="text-sm text-foreground">demo@barmanager.com</p>
-                </div>
-                <span className="text-xs text-primary/40 group-hover:text-primary transition-colors italic">Auto-completar</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  const emailInput = document.getElementById('email') as HTMLInputElement;
-                  const passwordInput = document.getElementById('password') as HTMLInputElement;
-                  if (emailInput && passwordInput) {
-                    emailInput.value = 'MeseroDemo@barmanager.com';
-                    passwordInput.value = 'DEMO--';
-                  }
-                }}
-                className="flex items-center justify-between p-3 rounded-xl bg-secondary/5 border border-secondary/10 hover:bg-secondary/10 transition-colors text-left group"
-              >
-                <div>
-                  <p className="text-xs font-bold text-secondary uppercase tracking-wider mb-1">Mesero</p>
-                  <p className="text-sm text-foreground">MeseroDemo@barmanager.com</p>
-                </div>
-                <span className="text-xs text-secondary/40 group-hover:text-secondary transition-colors italic">Auto-completar</span>
-              </button>
-            </div>
-          </div>
-        </form>
+        </div>
       </div>
-    </div>
+    </ProtectedLayout>
   );
 }

@@ -31,6 +31,16 @@ export async function POST(
       return NextResponse.json({ error: "Product not found" }, { status: 404 });
     }
 
+    // --- BLOQUEO DE VENTA SIN STOCK ---
+    const currentStock = product.stock || 0;
+    if (currentStock < quantity) {
+      return NextResponse.json(
+        { error: `¡Sin Stock! Solo quedan ${currentStock} unidades de ${product.name}. Por favor reponer.` },
+        { status: 400 }
+      );
+    }
+    // ----------------------------------
+
     // Check if item already exists
     const existingItems = await sql`
       SELECT * FROM order_items 
