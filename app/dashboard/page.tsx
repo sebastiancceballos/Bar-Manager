@@ -144,27 +144,6 @@ export default function DashboardPage() {
                       ))
                     )}
                   </div>
-
-                  <Link 
-                    href="/dashboard/products" 
-                    className="mt-8 flex items-center justify-center gap-2 w-full py-3 rounded-xl bg-primary/10 text-primary text-xs font-bold hover:bg-primary hover:text-white transition-all group"
-                  >
-                    Gestionar Inventario
-                    <ChevronRight size={14} className="group-hover:translate-x-1 transition-transform" />
-                  </Link>
-                </div>
-
-                {/* Resumen rápido de equipo */}
-                <div className="card bg-card/30 p-6 hidden lg:block">
-                  <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-4">Acceso rápido</p>
-                  <div className="space-y-2">
-                    <Link href="/dashboard/users" className="flex items-center justify-between p-2 text-xs text-gray-400 hover:text-primary transition-colors">
-                      Gestionar Meseros <ChevronRight size={12} />
-                    </Link>
-                    <Link href="/dashboard/reports" className="flex items-center justify-between p-2 text-xs text-gray-400 hover:text-primary transition-colors">
-                      Ver Reportes <ChevronRight size={12} />
-                    </Link>
-                  </div>
                 </div>
               </div>
 
