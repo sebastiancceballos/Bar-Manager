@@ -92,17 +92,22 @@ export async function POST(request: NextRequest) {
     const allowedRoles = ALLOWED_CREATIONS[creatorRole] || [];
 
     if (!allowedRoles.includes(typedRole)) {
-      // Provide specific error message based on the violation
       if (ROLE_HIERARCHY[typedRole] >= ROLE_HIERARCHY[creatorRole]) {
-        return NextResponse.json(
-          { error: "No puedes crear un usuario con un rol igual o superior al tuyo." },
-          { status: 403 }
-        );
+        return NextResponse.json({ error: "No puedes crear un usuario con un rol igual o superior al tuyo." }, { status: 403 });
       }
-      return NextResponse.json(
-        { error: `Tu rol (${creatorRole}) no tiene permiso para crear usuarios con rol ${typedRole}.` },
-        { status: 403 }
-      );
+      return NextResponse.json({ error: `Tu rol (${creatorRole}) no tiene permiso para crear usuarios con rol ${typedRole}.` }, { status: 403 });
+    }
+
+    // 3.1 Validate location_id scope
+    if (location_id) {
+      if (creatorRole === "admin") {
+        const creatorLocRow = await sql`SELECT location_id FROM users WHERE id = ${currentUser.id} LIMIT 1`;
+        const creatorLocId = creatorLocRow[0]?.location_id;
+        if (parseInt(location_id) !== creatorLocId) {
+          return NextResponse.json({ error: "No tienes permiso para asignar usuarios a este bar." }, { status: 403 });
+        }
+      }
+      // Note: Owner can assign to any location, so no check needed for owner role.
     }
 
     // 4. Check if email already exists

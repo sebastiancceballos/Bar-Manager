@@ -10,8 +10,20 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "No autenticado" }, { status: 401 });
     }
 
-    const result = await sql`SELECT id, name, address FROM locations ORDER BY name ASC`;
-    const locations = Array.isArray(result) ? result : [];
+    let locations = [];
+
+    if (currentUser.role === "owner") {
+      // Superadmin (Project Owner) sees ALL bars
+      locations = await sql`SELECT id, name, address FROM locations ORDER BY name ASC`;
+    } else if (currentUser.role === "admin") {
+      // Bar Owner (Admin) sees only their assigned bar
+      const userLocRow = await sql`SELECT location_id FROM users WHERE id = ${currentUser.id} LIMIT 1`;
+      const locId = userLocRow[0]?.location_id;
+      
+      if (locId) {
+        locations = await sql`SELECT id, name, address FROM locations WHERE id = ${locId}`;
+      }
+    }
 
     return NextResponse.json({ locations }, { status: 200 });
   } catch (error) {
@@ -41,8 +53,8 @@ export async function POST(request: NextRequest) {
     }
 
     const result = await sql`
-      INSERT INTO locations (name, address)
-      VALUES (${name}, ${address})
+      INSERT INTO locations (name, address, owner_id)
+      VALUES (${name}, ${address}, ${currentUser.id})
       RETURNING id, name, address, created_at
     `;
 
