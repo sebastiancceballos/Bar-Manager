@@ -77,6 +77,22 @@ export async function POST(
     `;
 
     // --- LOGICA DE TRAZABILIDAD ---
+    // Ensure stock columns/tables exist before using them
+    try {
+      await sql`ALTER TABLE products ADD COLUMN IF NOT EXISTS stock INTEGER DEFAULT 0`;
+      await sql`
+        CREATE TABLE IF NOT EXISTS stock_movements (
+          id SERIAL PRIMARY KEY,
+          product_id INTEGER REFERENCES products(id) ON DELETE CASCADE,
+          quantity INTEGER NOT NULL,
+          type VARCHAR(20) NOT NULL,
+          reason TEXT,
+          created_by INTEGER REFERENCES users(id),
+          created_at TIMESTAMP DEFAULT NOW()
+        )
+      `;
+    } catch (_) {}
+
     // Descontar stock automáticamente al agregar al pedido
     await sql`
       UPDATE products 
@@ -85,9 +101,10 @@ export async function POST(
     `;
 
     // Registrar el movimiento de salida por venta
+    const reason = `Venta en mesa (Orden #${id})`;
     await sql`
       INSERT INTO stock_movements (product_id, quantity, type, reason, created_by)
-      VALUES (${parseInt(productId)}, ${quantity}, 'sale', 'Venta en mesa (Orden #' + ${id} + ')', ${user.id})
+      VALUES (${parseInt(productId)}, ${quantity}, 'sale', ${reason}, ${user.id})
     `;
     // ------------------------------
 
