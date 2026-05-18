@@ -38,7 +38,7 @@ export default function LoginPage() {
           <h1 className="text-3xl font-bold text-foreground mb-2">
             Bar Manager
           </h1>
-          <p className="text-gray-400">Sistema de gestión para bares</p>
+          <p className="text-gray-400">Sistema de gestión </p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
