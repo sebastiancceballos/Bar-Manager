@@ -31,9 +31,10 @@ export async function DELETE(
       `;
 
       // Registrar ajuste
+      const reason = `Cancelación/Eliminación de item en Orden #${id}`;
       await sql`
         INSERT INTO stock_movements (product_id, quantity, type, reason, created_by)
-        VALUES (${itemToRestore.product_id}, ${itemToRestore.quantity}, 'entry', 'Cancelación/Eliminación de item en Orden #' + ${id}, ${user.id})
+        VALUES (${itemToRestore.product_id}, ${itemToRestore.quantity}, 'entry', ${reason}, ${user.id})
       `;
     }
 
@@ -69,6 +70,93 @@ export async function DELETE(
     return NextResponse.json({ order }, { status: 200 });
   } catch (error) {
     console.error("Delete item error:", error);
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 }
+    );
+  }
+}
+
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string; itemId: string }> }
+) {
+  try {
+    const user = await getAuthUser();
+
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const { id, itemId } = await params;
+    const { action } = await request.json();
+
+    if (action !== "decrement") {
+      return NextResponse.json({ error: "Invalid action" }, { status: 400 });
+    }
+
+    // Obtener item actual
+    const itemRows = await sql`SELECT product_id, quantity, price FROM order_items WHERE id = ${parseInt(itemId)}`;
+    const item = itemRows[0];
+
+    if (!item) {
+      return NextResponse.json({ error: "Item not found" }, { status: 404 });
+    }
+
+    if (item.quantity > 1) {
+      // Disminuir cantidad
+      await sql`UPDATE order_items SET quantity = quantity - 1 WHERE id = ${parseInt(itemId)}`;
+    } else {
+      // Eliminar item si llega a 0
+      await sql`DELETE FROM order_items WHERE id = ${parseInt(itemId)}`;
+    }
+
+    // Restaurar 1 unidad de stock
+    await sql`
+      UPDATE products 
+      SET stock = COALESCE(stock, 0) + 1
+      WHERE id = ${item.product_id}
+    `;
+
+    // Registrar ajuste
+    const reason = `Reducción de cantidad en Orden #${id}`;
+    await sql`
+      INSERT INTO stock_movements (product_id, quantity, type, reason, created_by)
+      VALUES (${item.product_id}, 1, 'entry', ${reason}, ${user.id})
+    `;
+
+    // Actualizar total de la orden
+    const totalResult = await sql`
+      SELECT COALESCE(SUM(price * quantity), 0) as total 
+      FROM order_items 
+      WHERE order_id = ${parseInt(id)}
+    `;
+    const total = parseFloat(totalResult[0]?.total || 0);
+
+    await sql`
+      UPDATE orders 
+      SET total_amount = ${total}, updated_at = NOW()
+      WHERE id = ${parseInt(id)}
+    `;
+
+    // Obtener orden actualizada
+    const orders = await sql`SELECT * FROM orders WHERE id = ${parseInt(id)}`;
+    const order = orders[0];
+
+    const items = await sql`
+      SELECT oi.*, p.name as product_name, p.category
+      FROM order_items oi
+      JOIN products p ON oi.product_id = p.id
+      WHERE oi.order_id = ${parseInt(id)}
+    `;
+    order.items = items.map(i => ({
+      ...i,
+      product: { name: i.product_name, price: i.price, category: i.category }
+    }));
+
+    return NextResponse.json({ order }, { status: 200 });
+  } catch (error) {
+    console.error("Patch item error:", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }
