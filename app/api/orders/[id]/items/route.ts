@@ -77,22 +77,6 @@ export async function POST(
     `;
 
     // --- LOGICA DE TRAZABILIDAD ---
-    // Ensure stock columns/tables exist before using them
-    try {
-      await sql`ALTER TABLE products ADD COLUMN IF NOT EXISTS stock INTEGER DEFAULT 0`;
-      await sql`
-        CREATE TABLE IF NOT EXISTS stock_movements (
-          id SERIAL PRIMARY KEY,
-          product_id INTEGER REFERENCES products(id) ON DELETE CASCADE,
-          quantity INTEGER NOT NULL,
-          type VARCHAR(20) NOT NULL,
-          reason TEXT,
-          created_by INTEGER REFERENCES users(id),
-          created_at TIMESTAMP DEFAULT NOW()
-        )
-      `;
-    } catch (_) {}
-
     // Descontar stock automáticamente al agregar al pedido
     await sql`
       UPDATE products 
