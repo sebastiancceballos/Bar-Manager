@@ -1,7 +1,13 @@
 import jwt from "jsonwebtoken";
 import { cookies } from "next/headers";
 
-const JWT_SECRET = process.env.JWT_SECRET || "change-me-in-production";
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) {
+  throw new Error(
+    "FATAL: La variable de entorno JWT_SECRET no está configurada. " +
+    "Añádela en Vercel → Settings → Environment Variables antes de desplegar."
+  );
+}
 const TOKEN_EXPIRY = "7d";
 
 export type UserRole = "owner" | "admin" | "waiter";
