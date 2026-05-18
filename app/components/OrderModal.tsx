@@ -154,6 +154,31 @@ export function OrderModal({
     }
   };
 
+  const handleDecrementItem = async (itemId: number) => {
+    if (!order) return;
+
+    try {
+      setUpdating(true);
+      const response = await fetch(`/api/orders/${order.id}/items/${itemId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "decrement" }),
+      });
+
+      if (response.ok) {
+        onUpdate();
+      } else {
+        const data = await response.json();
+        setError(data.error || "Error al reducir item");
+      }
+    } catch (error) {
+      console.error("Failed to decrement item:", error);
+      setError("Error de conexión");
+    } finally {
+      setUpdating(false);
+    }
+  };
+
   const handleCloseOrder = async () => {
     if (!order) return;
 
@@ -217,13 +242,24 @@ export function OrderModal({
                           x{item.quantity} - {formatCOP(Number(item.price) * item.quantity)}
                         </p>
                       </div>
-                      <button
-                        onClick={() => handleRemoveItem(item.id)}
-                        disabled={updating}
-                        className="btn btn-sm px-3 py-1 bg-error/10 text-error hover:bg-error/20 disabled:opacity-50"
-                      >
-                        ✕
-                      </button>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => handleDecrementItem(item.id)}
+                          disabled={updating}
+                          title="Restar 1 unidad"
+                          className="btn btn-sm px-3 py-1 bg-warning/10 text-warning hover:bg-warning/20 disabled:opacity-50"
+                        >
+                          −
+                        </button>
+                        <button
+                          onClick={() => handleRemoveItem(item.id)}
+                          disabled={updating}
+                          title="Eliminar todo"
+                          className="btn btn-sm px-3 py-1 bg-error/10 text-error hover:bg-error/20 disabled:opacity-50"
+                        >
+                          ✕
+                        </button>
+                      </div>
                     </div>
                   ))
                 )}
