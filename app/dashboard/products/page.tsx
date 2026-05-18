@@ -33,6 +33,7 @@ export default function ProductsPage() {
   const [movements, setMovements] = useState<StockMovement[]>([]);
   const [showHistory, setShowHistory] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [modalError, setModalError] = useState<string | null>(null);
   const [adjusting, setAdjusting] = useState(false);
 
   const fetchProducts = async () => {
@@ -131,10 +132,10 @@ export default function ProductsPage() {
         setShowStockModal(false);
         (e.target as HTMLFormElement).reset();
       } else {
-        setError(data.error || "Error del servidor al ajustar stock");
+        setModalError(data.error || "Error del servidor al ajustar stock");
       }
     } catch (err) {
-      setError("Error de conexión: No se pudo guardar el ajuste");
+      setModalError("Error de conexión: No se pudo guardar el ajuste");
     } finally {
       setAdjusting(false);
     }
@@ -303,6 +304,7 @@ export default function ProductsPage() {
                             <button
                               onClick={() => {
                                 setSelectedProduct(product);
+                                setModalError(null);
                                 setShowStockModal(true);
                               }}
                               className="btn btn-outline btn-sm flex-1 text-[10px]"
@@ -345,6 +347,12 @@ export default function ProductsPage() {
               <h2 className="text-2xl font-bold mb-4">Ajustar Inventario</h2>
               <p className="text-gray-400 mb-6">Producto: <span className="text-foreground font-semibold">{selectedProduct.name}</span></p>
               
+              {modalError && (
+                <div className="bg-error/10 border border-error text-error px-4 py-3 rounded-lg mb-6 text-sm animate-shake">
+                  ⚠️ {modalError}
+                </div>
+              )}
+
               <form onSubmit={handleAdjustStock} className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium mb-1">Tipo de Movimiento</label>
