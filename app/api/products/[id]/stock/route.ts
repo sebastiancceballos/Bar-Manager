@@ -29,6 +29,24 @@ export async function POST(
     const multiplier = (type === 'entry') ? 1 : -1;
     const change = qtyNum * multiplier;
 
+    if (multiplier === -1) {
+      // Verificar stock actual antes de restar
+      const productRows = await sql`SELECT stock, name FROM products WHERE id = ${productId}`;
+      const product = productRows[0];
+      
+      if (!product) {
+        return NextResponse.json({ error: "Producto no encontrado" }, { status: 404 });
+      }
+
+      const currentStock = product.stock || 0;
+      if (currentStock < qtyNum) {
+        return NextResponse.json(
+          { error: `Stock insuficiente. Solo tienes ${currentStock} unidades de ${product.name}.` },
+          { status: 400 }
+        );
+      }
+    }
+
     // 1. Update product stock
     await sql`
       UPDATE products 
