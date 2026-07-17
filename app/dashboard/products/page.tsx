@@ -199,76 +199,6 @@ export default function ProductsPage() {
               </div>
             )}
 
-            {showForm && (
-              <form
-                onSubmit={handleSubmit}
-                className="card mb-8 space-y-4"
-              >
-                <h3 className="text-xl font-semibold">
-                  {editingId ? "Editar Producto" : "Nuevo Producto"}
-                </h3>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium mb-2">
-                      Nombre
-                    </label>
-                    <input
-                      name="name"
-                      type="text"
-                      className="input"
-                      placeholder="Ej: Cerveza"
-                      defaultValue={editingProduct?.name || ""}
-                      key={editingProduct?.id + "-name"}
-                      required
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium mb-2">
-                      Categoría
-                    </label>
-                    <input
-                      name="category"
-                      type="text"
-                      list="category-list"
-                      className="input"
-                      placeholder="Ej: bebidas"
-                      defaultValue={editingProduct?.category || ""}
-                      key={editingProduct?.id + "-category"}
-                      required
-                    />
-                    <datalist id="category-list">
-                      {categories.map((cat) => (
-                        <option key={cat} value={cat} />
-                      ))}
-                    </datalist>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium mb-2">
-                      Precio
-                    </label>
-                    <input
-                      name="price"
-                      type="number"
-                      step="1"
-                      min="0"
-                      className="input"
-                      placeholder="Ej: 5000"
-                      defaultValue={editingProduct?.price || ""}
-                      key={editingProduct?.id + "-price"}
-                      required
-                    />
-                  </div>
-                </div>
-
-                <button type="submit" className="btn btn-primary">
-                  {editingId ? "Actualizar" : "Crear"} Producto
-                </button>
-              </form>
-            )}
-
             {loading ? (
               <div className="text-gray-400">Cargando productos...</div>
             ) : (
@@ -319,9 +249,17 @@ export default function ProductsPage() {
                             </button>
                             <button
                               onClick={() => handleEdit(product)}
+                              title="Editar producto"
                               className="btn btn-primary btn-sm px-2"
                             >
                               ✏️
+                            </button>
+                            <button
+                              onClick={() => handleDelete(product.id)}
+                              title="Eliminar producto"
+                              className="btn btn-sm px-2 bg-error/10 text-error hover:bg-error/20"
+                            >
+                              🗑️
                             </button>
                           </div>
                         </div>
@@ -339,6 +277,101 @@ export default function ProductsPage() {
             )}
           </div>
         </div>
+
+        {/* Modal de Nuevo/Editar Producto */}
+        {showForm && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+            <div className="bg-card border border-border w-full max-w-lg rounded-2xl p-6 shadow-2xl">
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-2xl font-bold">
+                  {editingId ? "Editar Producto" : "Nuevo Producto"}
+                </h2>
+                <button
+                  onClick={() => {
+                    setShowForm(false);
+                    setEditingId(null);
+                    setEditingProduct(null);
+                  }}
+                  className="text-gray-400 hover:text-white text-2xl"
+                >
+                  &times;
+                </button>
+              </div>
+
+              {error && (
+                <div className="bg-error/10 border border-error text-error px-4 py-3 rounded-lg mb-6 text-sm animate-shake">
+                  ⚠️ {error}
+                </div>
+              )}
+
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium mb-2">Nombre</label>
+                  <input
+                    name="name"
+                    type="text"
+                    className="input w-full"
+                    placeholder="Ej: Cerveza"
+                    defaultValue={editingProduct?.name || ""}
+                    key={editingProduct?.id + "-name"}
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-2">Categoría</label>
+                  <input
+                    name="category"
+                    type="text"
+                    list="category-list"
+                    className="input w-full"
+                    placeholder="Ej: bebidas"
+                    defaultValue={editingProduct?.category || ""}
+                    key={editingProduct?.id + "-category"}
+                    required
+                  />
+                  <datalist id="category-list">
+                    {categories.map((cat) => (
+                      <option key={cat} value={cat} />
+                    ))}
+                  </datalist>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-2">Precio</label>
+                  <input
+                    name="price"
+                    type="number"
+                    step="1"
+                    min="0"
+                    className="input w-full"
+                    placeholder="Ej: 5000"
+                    defaultValue={editingProduct?.price || ""}
+                    key={editingProduct?.id + "-price"}
+                    required
+                  />
+                </div>
+
+                <div className="flex gap-3 pt-2">
+                  <button type="submit" className="btn btn-primary flex-1">
+                    {editingId ? "Actualizar" : "Crear"} Producto
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowForm(false);
+                      setEditingId(null);
+                      setEditingProduct(null);
+                    }}
+                    className="btn btn-secondary flex-1"
+                  >
+                    Cancelar
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
 
         {/* Modal de Ajuste de Stock */}
         {showStockModal && selectedProduct && (

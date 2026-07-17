@@ -15,7 +15,12 @@ import {
   Users, 
   LogOut,
   Beer,
-  HelpCircle
+  HelpCircle,
+  ClipboardList,
+  Wallet,
+  CalendarClock,
+  ShieldCheck,
+  Clock
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -57,10 +62,18 @@ export function Navigation() {
       { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
       { href: "/dashboard/products", label: "Productos", icon: Package, className: "nav-products" },
       { href: "/dashboard/tables", label: "Mesas", icon: TableProperties, className: "nav-tables" },
+      { href: "/dashboard/comandas", label: "Comandas", icon: ClipboardList, className: "nav-comandas" },
+      { href: "/dashboard/caja", label: "Caja", icon: Wallet },
+      { href: "/dashboard/reservas", label: "Reservas", icon: CalendarClock },
       { href: "/dashboard/reports", label: "Reportes", icon: BarChart3, className: "nav-reports" },
+      { href: "/dashboard/auditoria", label: "Auditoría", icon: ShieldCheck },
+      { href: "/dashboard/turno", label: "Mi Turno", icon: Clock },
     ] : []),
     ...(!isAdmin && !isOwner ? [
       { href: "/dashboard/tables", label: "Mesas", icon: TableProperties },
+      { href: "/dashboard/comandas", label: "Comandas", icon: ClipboardList },
+      { href: "/dashboard/reservas", label: "Reservas", icon: CalendarClock },
+      { href: "/dashboard/turno", label: "Mi Turno", icon: Clock },
     ] : []),
   ];
 

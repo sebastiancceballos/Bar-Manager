@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Skeleton } from "./Skeleton";
+import { useAuth } from "@/app/providers";
 
 interface OrderItem {
   id: number;
@@ -29,6 +30,11 @@ interface Product {
   stock: number;
 }
 
+interface AvailableTable {
+  id: number;
+  table_number: string;
+}
+
 interface OrderModalProps {
   tableId: number;
   tableNumber: string;
@@ -36,10 +42,18 @@ interface OrderModalProps {
   onClose: () => void;
   onUpdate: () => void;
   open: boolean;
+  availableTables?: AvailableTable[];
 }
 
 const formatCOP = (value: number) =>
   new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", minimumFractionDigits: 0 }).format(value);
+
+const PAYMENT_METHODS = [
+  { value: "efectivo", label: "Efectivo" },
+  { value: "tarjeta", label: "Tarjeta" },
+  { value: "transferencia", label: "Transferencia" },
+  { value: "otro", label: "Otro" },
+];
 
 export function OrderModal({
   tableId,
@@ -48,12 +62,29 @@ export function OrderModal({
   onClose,
   onUpdate,
   open,
+  availableTables = [],
 }: OrderModalProps) {
+  const { user } = useAuth();
   const [products, setProducts] = useState<Product[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>("");
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const [showPayment, setShowPayment] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState("efectivo");
+  const [tipAmount, setTipAmount] = useState("0");
+  const [discountAmount, setDiscountAmount] = useState("0");
+  const [discountReason, setDiscountReason] = useState("");
+  const [authorizerEmail, setAuthorizerEmail] = useState("");
+  const [authorizerPassword, setAuthorizerPassword] = useState("");
+  const [paymentError, setPaymentError] = useState<string | null>(null);
+
+  const [showTransfer, setShowTransfer] = useState(false);
+  const [transferTargetId, setTransferTargetId] = useState<string>("");
+  const [transferError, setTransferError] = useState<string | null>(null);
+
+  const isAdmin = user?.role === "admin" || user?.role === "owner";
 
   useEffect(() => {
     if (!open) return;
@@ -179,23 +210,73 @@ export function OrderModal({
     }
   };
 
-  const handleCloseOrder = async () => {
-    if (!order) return;
+  const handleOpenPayment = () => {
+    setPaymentError(null);
+    setPaymentMethod("efectivo");
+    setTipAmount("0");
+    setDiscountAmount("0");
+    setDiscountReason("");
+    setAuthorizerEmail("");
+    setAuthorizerPassword("");
+    setShowPayment(true);
+  };
 
+  const handleConfirmPayment = async () => {
+    if (!order) return;
+    setPaymentError(null);
+    setUpdating(true);
     try {
-      setUpdating(true);
       const response = await fetch(`/api/orders/${order.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: "closed" }),
+        body: JSON.stringify({
+          status: "paid",
+          paymentMethod,
+          tipAmount: parseFloat(tipAmount) || 0,
+          discountAmount: parseFloat(discountAmount) || 0,
+          discountReason,
+          authorizerEmail: isAdmin ? undefined : authorizerEmail,
+          authorizerPassword: isAdmin ? undefined : authorizerPassword,
+        }),
       });
 
+      const data = await response.json();
       if (response.ok) {
+        setShowPayment(false);
         onUpdate();
         onClose();
+      } else {
+        setPaymentError(data.error || "Error al cobrar la orden");
       }
     } catch (error) {
       console.error("Failed to close order:", error);
+      setPaymentError("Error de conexión al cobrar");
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  const handleTransfer = async () => {
+    if (!order || !transferTargetId) return;
+    setTransferError(null);
+    setUpdating(true);
+    try {
+      const response = await fetch(`/api/orders/${order.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ newTableId: transferTargetId }),
+      });
+      const data = await response.json();
+      if (response.ok) {
+        setShowTransfer(false);
+        onUpdate();
+        onClose();
+      } else {
+        setTransferError(data.error || "Error al transferir la mesa");
+      }
+    } catch (error) {
+      console.error("Failed to transfer order:", error);
+      setTransferError("Error de conexión al transferir");
     } finally {
       setUpdating(false);
     }
@@ -272,13 +353,29 @@ export function OrderModal({
                 </p>
               </div>
 
-              <button
-                onClick={handleCloseOrder}
-                disabled={updating || order.items.length === 0}
-                className="btn btn-primary w-full disabled:opacity-50"
-              >
-                {updating ? "Procesando..." : "Cerrar Orden"}
-              </button>
+              <div className="flex gap-2">
+                <button
+                  onClick={handleOpenPayment}
+                  disabled={updating || order.items.length === 0}
+                  className="btn btn-primary flex-1 disabled:opacity-50"
+                >
+                  {updating ? "Procesando..." : "Cobrar y Cerrar"}
+                </button>
+                {availableTables.length > 0 && (
+                  <button
+                    onClick={() => {
+                      setTransferError(null);
+                      setTransferTargetId("");
+                      setShowTransfer(true);
+                    }}
+                    disabled={updating}
+                    className="btn btn-outline disabled:opacity-50"
+                    title="Transferir a otra mesa"
+                  >
+                    🔀 Transferir
+                  </button>
+                )}
+              </div>
             </div>
           )}
 
@@ -344,6 +441,153 @@ export function OrderModal({
           </div>
         </div>
       </div>
+
+      {/* Modal de Cobro */}
+      {showPayment && order && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[110] p-4">
+          <div className="bg-card border border-border rounded-lg max-w-md w-full p-6 space-y-4">
+            <div className="flex justify-between items-center">
+              <h3 className="text-xl font-bold">Cobrar Mesa {tableNumber}</h3>
+              <button onClick={() => setShowPayment(false)} className="text-gray-400 hover:text-foreground text-2xl">&times;</button>
+            </div>
+
+            {paymentError && (
+              <div className="bg-error/10 border border-error text-error px-4 py-3 rounded-lg text-sm">
+                ⚠️ {paymentError}
+              </div>
+            )}
+
+            <div>
+              <label className="block text-sm font-medium mb-2">Método de pago</label>
+              <div className="grid grid-cols-2 gap-2">
+                {PAYMENT_METHODS.map((m) => (
+                  <button
+                    key={m.value}
+                    onClick={() => setPaymentMethod(m.value)}
+                    className={`btn btn-sm ${paymentMethod === m.value ? "btn-primary" : "btn-outline"}`}
+                  >
+                    {m.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-2">Propina</label>
+              <input
+                type="number"
+                min="0"
+                step="1"
+                className="input w-full"
+                value={tipAmount}
+                onChange={(e) => setTipAmount(e.target.value)}
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-2">Descuento (COP)</label>
+              <input
+                type="number"
+                min="0"
+                step="1"
+                className="input w-full"
+                value={discountAmount}
+                onChange={(e) => setDiscountAmount(e.target.value)}
+              />
+            </div>
+
+            {parseFloat(discountAmount) > 0 && (
+              <div className="space-y-3 bg-background p-3 rounded-lg border border-border">
+                <div>
+                  <label className="block text-sm font-medium mb-2">Motivo del descuento</label>
+                  <input
+                    type="text"
+                    className="input w-full"
+                    placeholder="Ej: cliente frecuente, error del mesero..."
+                    value={discountReason}
+                    onChange={(e) => setDiscountReason(e.target.value)}
+                  />
+                </div>
+                {!isAdmin && (
+                  <>
+                    <p className="text-xs text-gray-400">
+                      Los descuentos necesitan autorización de un admin. Pídele que ingrese sus credenciales:
+                    </p>
+                    <input
+                      type="email"
+                      className="input w-full"
+                      placeholder="Email del admin"
+                      value={authorizerEmail}
+                      onChange={(e) => setAuthorizerEmail(e.target.value)}
+                    />
+                    <input
+                      type="password"
+                      className="input w-full"
+                      placeholder="Contraseña del admin"
+                      value={authorizerPassword}
+                      onChange={(e) => setAuthorizerPassword(e.target.value)}
+                    />
+                  </>
+                )}
+              </div>
+            )}
+
+            <div className="bg-background p-4 rounded border border-border text-sm space-y-1">
+              <div className="flex justify-between text-gray-400">
+                <span>Subtotal</span>
+                <span>{formatCOP(Number(order.total_amount))}</span>
+              </div>
+              <p className="text-xs text-gray-500">El total final (con IVA aplicable) se calcula al confirmar.</p>
+            </div>
+
+            <button
+              onClick={handleConfirmPayment}
+              disabled={updating}
+              className="btn btn-primary w-full disabled:opacity-50"
+            >
+              {updating ? "Procesando..." : "Confirmar cobro"}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Transferencia de Mesa */}
+      {showTransfer && order && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[110] p-4">
+          <div className="bg-card border border-border rounded-lg max-w-sm w-full p-6 space-y-4">
+            <div className="flex justify-between items-center">
+              <h3 className="text-xl font-bold">Transferir Mesa {tableNumber}</h3>
+              <button onClick={() => setShowTransfer(false)} className="text-gray-400 hover:text-foreground text-2xl">&times;</button>
+            </div>
+
+            {transferError && (
+              <div className="bg-error/10 border border-error text-error px-4 py-3 rounded-lg text-sm">
+                ⚠️ {transferError}
+              </div>
+            )}
+
+            <label className="block text-sm font-medium mb-2">Mover la orden a:</label>
+            <select
+              className="input w-full"
+              value={transferTargetId}
+              onChange={(e) => setTransferTargetId(e.target.value)}
+            >
+              <option value="">Selecciona una mesa</option>
+              {availableTables.map((t) => (
+                <option key={t.id} value={t.id}>Mesa {t.table_number}</option>
+              ))}
+            </select>
+
+            <button
+              onClick={handleTransfer}
+              disabled={updating || !transferTargetId}
+              className="btn btn-primary w-full disabled:opacity-50"
+            >
+              {updating ? "Transfiriendo..." : "Confirmar transferencia"}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

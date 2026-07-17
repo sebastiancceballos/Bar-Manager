@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthUser } from "@/lib/auth";
 import { sql } from "@/lib/db";
+import { getLocationTimezone } from "@/lib/location";
 
 export async function GET(
   request: NextRequest,
@@ -27,11 +28,14 @@ export async function GET(
       if (!locId) return NextResponse.json({ error: "Admin sin bar asignado" }, { status: 400 });
     }
 
+    const tz = locId ? await getLocationTimezone(locId) : "America/Bogota";
+
     // Get orders for the day with waiter and modifier info
     const result = locId
       ? await sql`
           SELECT
             o.id, o.table_id, o.waiter_id, o.total_amount, o.status,
+            o.payment_method, o.tip_amount, o.discount_amount, o.subtotal_amount, o.tax_amount,
             o.created_at, o.updated_at, o.modified_by,
             u.name AS waiter_name, u.email AS waiter_email,
             m.name AS modifier_name, m.email AS modifier_email,
@@ -41,13 +45,14 @@ export async function GET(
           LEFT JOIN users m ON o.modified_by = m.id
           LEFT JOIN tables t ON o.table_id = t.id
           LEFT JOIN locations l ON t.location_id = l.id
-          WHERE DATE(o.created_at) = ${date}::date
+          WHERE DATE(o.created_at AT TIME ZONE 'UTC' AT TIME ZONE ${tz}) = ${date}::date
             AND t.location_id = ${locId}
           ORDER BY o.created_at DESC
         `
       : await sql`
           SELECT
             o.id, o.table_id, o.waiter_id, o.total_amount, o.status,
+            o.payment_method, o.tip_amount, o.discount_amount, o.subtotal_amount, o.tax_amount,
             o.created_at, o.updated_at, o.modified_by,
             u.name AS waiter_name, u.email AS waiter_email,
             m.name AS modifier_name, m.email AS modifier_email,
@@ -57,7 +62,7 @@ export async function GET(
           LEFT JOIN users m ON o.modified_by = m.id
           LEFT JOIN tables t ON o.table_id = t.id
           LEFT JOIN locations l ON t.location_id = l.id
-          WHERE DATE(o.created_at) = ${date}::date
+          WHERE DATE(o.created_at AT TIME ZONE 'UTC' AT TIME ZONE ${tz}) = ${date}::date
           ORDER BY o.created_at DESC
         `;
 

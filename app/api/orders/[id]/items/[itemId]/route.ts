@@ -89,10 +89,40 @@ export async function PATCH(
     }
 
     const { id, itemId } = await params;
-    const { action } = await request.json();
+    const { action, status } = await request.json();
 
-    if (action !== "decrement") {
+    if (action !== "decrement" && action !== "set_status") {
       return NextResponse.json({ error: "Invalid action" }, { status: 400 });
+    }
+
+    if (action === "set_status") {
+      const allowedStatuses = ["pendiente", "preparando", "listo", "entregado"];
+      if (!status || !allowedStatuses.includes(status)) {
+        return NextResponse.json({ error: "Estado inválido" }, { status: 400 });
+      }
+
+      const itemRows = await sql`SELECT id FROM order_items WHERE id = ${parseInt(itemId)}`;
+      if (itemRows.length === 0) {
+        return NextResponse.json({ error: "Item not found" }, { status: 404 });
+      }
+
+      await sql`UPDATE order_items SET status = ${status} WHERE id = ${parseInt(itemId)}`;
+
+      const orders = await sql`SELECT * FROM orders WHERE id = ${parseInt(id)}`;
+      const order = orders[0];
+
+      const items = await sql`
+        SELECT oi.*, p.name as product_name, p.category
+        FROM order_items oi
+        JOIN products p ON oi.product_id = p.id
+        WHERE oi.order_id = ${parseInt(id)}
+      `;
+      order.items = items.map(i => ({
+        ...i,
+        product: { name: i.product_name, price: i.price, category: i.category }
+      }));
+
+      return NextResponse.json({ order }, { status: 200 });
     }
 
     // Obtener item actual

@@ -20,9 +20,10 @@ export async function GET(request: NextRequest) {
     let orders;
     if (tableId) {
       orders = await sql`
-        SELECT o.*, t.table_number
+        SELECT o.*, t.table_number, u.name as waiter_name
         FROM orders o
         JOIN tables t ON o.table_id = t.id
+        LEFT JOIN users u ON o.waiter_id = u.id
         WHERE o.status != 'closed'
           AND o.table_id = ${parseInt(tableId)}
           AND t.location_id = ${locId}
@@ -30,9 +31,10 @@ export async function GET(request: NextRequest) {
       `;
     } else {
       orders = await sql`
-        SELECT o.*, t.table_number
+        SELECT o.*, t.table_number, u.name as waiter_name
         FROM orders o
         JOIN tables t ON o.table_id = t.id
+        LEFT JOIN users u ON o.waiter_id = u.id
         WHERE o.status != 'closed'
           AND t.location_id = ${locId}
         ORDER BY o.created_at DESC

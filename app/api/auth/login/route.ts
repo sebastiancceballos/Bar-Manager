@@ -9,7 +9,12 @@ interface DbUser {
   name: string;
   password_hash: string;
   role: "owner" | "admin" | "waiter";
+  failed_attempts: number;
+  locked_until: string | null;
 }
+
+const MAX_ATTEMPTS = 5;
+const LOCK_MINUTES = 15;
 
 export async function POST(request: NextRequest) {
   try {
@@ -35,13 +40,40 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Bloqueo temporal por intentos fallidos repetidos
+    if (user.locked_until && new Date(user.locked_until).getTime() > Date.now()) {
+      const minutesLeft = Math.ceil((new Date(user.locked_until).getTime() - Date.now()) / 60000);
+      return NextResponse.json(
+        { error: `Cuenta bloqueada temporalmente por intentos fallidos. Intenta de nuevo en ${minutesLeft} min.` },
+        { status: 429 }
+      );
+    }
+
     const isPasswordValid = await bcrypt.compare(password, user.password_hash);
 
     if (!isPasswordValid) {
+      const attempts = (user.failed_attempts || 0) + 1;
+      if (attempts >= MAX_ATTEMPTS) {
+        await sql`
+          UPDATE users
+          SET failed_attempts = 0, locked_until = NOW() + (${LOCK_MINUTES} || ' minutes')::interval
+          WHERE id = ${user.id}
+        `;
+        return NextResponse.json(
+          { error: `Demasiados intentos fallidos. Cuenta bloqueada por ${LOCK_MINUTES} minutos.` },
+          { status: 429 }
+        );
+      }
+      await sql`UPDATE users SET failed_attempts = ${attempts} WHERE id = ${user.id}`;
       return NextResponse.json(
         { error: "Invalid credentials" },
         { status: 401 }
       );
+    }
+
+    // Login correcto: limpiar contador de intentos
+    if (user.failed_attempts > 0 || user.locked_until) {
+      await sql`UPDATE users SET failed_attempts = 0, locked_until = NULL WHERE id = ${user.id}`;
     }
 
     // Block admin/waiter if their bar is inactive

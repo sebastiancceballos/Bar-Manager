@@ -22,6 +22,11 @@ interface Order {
   modifier_name?: string;
   modifier_email?: string;
   total_amount: number;
+  subtotal_amount?: number | null;
+  tax_amount?: number;
+  tip_amount?: number;
+  discount_amount?: number;
+  payment_method?: string | null;
   status: string;
   created_at: string;
   updated_at: string;

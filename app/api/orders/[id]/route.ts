@@ -1,6 +1,24 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthUser } from "@/lib/auth";
 import { sql } from "@/lib/db";
+import { logAudit } from "@/lib/audit";
+import bcrypt from "bcryptjs";
+
+const VALID_PAYMENT_METHODS = ["efectivo", "tarjeta", "transferencia", "otro"];
+
+async function attachItems(order: any) {
+  const items = await sql`
+    SELECT oi.*, p.name as product_name, p.category
+    FROM order_items oi
+    JOIN products p ON oi.product_id = p.id
+    WHERE oi.order_id = ${order.id}
+  `;
+  order.items = items.map((item: any) => ({
+    ...item,
+    product: { name: item.product_name, price: item.price, category: item.category }
+  }));
+  return order;
+}
 
 export async function PUT(
   request: NextRequest,
@@ -14,7 +32,64 @@ export async function PUT(
     }
 
     const { id } = await params;
-    const { status } = await request.json();
+    const orderId = parseInt(id);
+    const body = await request.json();
+    const {
+      status,
+      newTableId,
+      paymentMethod,
+      tipAmount,
+      discountAmount,
+      discountReason,
+      authorizerEmail,
+      authorizerPassword,
+    } = body;
+
+    // --- Transferir orden a otra mesa ---
+    if (newTableId !== undefined) {
+      const existing = await sql`SELECT * FROM orders WHERE id = ${orderId}`;
+      const current = existing[0];
+      if (!current) return NextResponse.json({ error: "Order not found" }, { status: 404 });
+      if (current.status !== "open") {
+        return NextResponse.json({ error: "Solo se pueden transferir órdenes abiertas" }, { status: 400 });
+      }
+
+      const targetTable = await sql`SELECT * FROM tables WHERE id = ${parseInt(newTableId)}`;
+      if (targetTable.length === 0) {
+        return NextResponse.json({ error: "Mesa destino no encontrada" }, { status: 404 });
+      }
+      const openOrderOnTarget = await sql`
+        SELECT id FROM orders WHERE table_id = ${parseInt(newTableId)} AND status = 'open'
+      `;
+      if (openOrderOnTarget.length > 0) {
+        return NextResponse.json({ error: "La mesa destino ya tiene una orden abierta" }, { status: 409 });
+      }
+
+      let updated;
+      try {
+        updated = await sql`
+          UPDATE orders
+          SET table_id = ${parseInt(newTableId)}, updated_at = NOW(), modified_by = ${user.id}
+          WHERE id = ${orderId}
+          RETURNING *
+        `;
+      } catch {
+        return NextResponse.json({ error: "No se pudo transferir (la mesa destino ya tiene una orden abierta)" }, { status: 409 });
+      }
+
+      const loc = await sql`SELECT location_id FROM tables WHERE id = ${current.table_id}`;
+      await logAudit({
+        locationId: loc[0]?.location_id ?? null,
+        userId: user.id,
+        action: "transfer_order",
+        entityType: "order",
+        entityId: orderId,
+        details: `Mesa ${current.table_id} -> ${newTableId}`,
+      });
+
+      const order = await attachItems(updated[0]);
+      return NextResponse.json({ order }, { status: 200 });
+    }
 
     if (!status) {
       return NextResponse.json(
@@ -23,37 +98,110 @@ export async function PUT(
       );
     }
 
-    let orders;
-    if (status === "closed") {
-      orders = await sql`
-        UPDATE orders 
-        SET status = ${status}, closed_at = NOW(), updated_at = NOW(), modified_by = ${user.id}
-        WHERE id = ${parseInt(id)}
+    // --- Cerrar/cobrar orden (status: closed | paid) ---
+    if (status === "closed" || status === "paid") {
+      const existing = await sql`SELECT * FROM orders WHERE id = ${orderId}`;
+      const current = existing[0];
+      if (!current) return NextResponse.json({ error: "Order not found" }, { status: 404 });
+
+      if (!paymentMethod || !VALID_PAYMENT_METHODS.includes(paymentMethod)) {
+        return NextResponse.json(
+          { error: "Método de pago inválido. Usa: " + VALID_PAYMENT_METHODS.join(", ") },
+          { status: 400 }
+        );
+      }
+
+      const tip = Number(tipAmount) || 0;
+      let discount = Number(discountAmount) || 0;
+      if (tip < 0 || discount < 0) {
+        return NextResponse.json({ error: "Propina y descuento no pueden ser negativos" }, { status: 400 });
+      }
+
+      let discountAuthorizedBy: number | null = null;
+
+      if (discount > 0) {
+        if (user.role === "admin" || user.role === "owner") {
+          discountAuthorizedBy = user.id;
+        } else {
+          // Un mesero necesita autorización de un admin/owner de ese mismo bar
+          if (!authorizerEmail || !authorizerPassword) {
+            return NextResponse.json(
+              { error: "Para aplicar un descuento, un admin debe autorizar con su email y contraseña" },
+              { status: 403 }
+            );
+          }
+          const authRows = await sql`SELECT * FROM users WHERE email = ${authorizerEmail} LIMIT 1`;
+          const authorizer = authRows[0];
+          if (!authorizer || (authorizer.role !== "admin" && authorizer.role !== "owner")) {
+            return NextResponse.json({ error: "Autorizador inválido" }, { status: 403 });
+          }
+          const validPw = await bcrypt.compare(authorizerPassword, authorizer.password_hash);
+          if (!validPw) {
+            return NextResponse.json({ error: "Contraseña de autorización incorrecta" }, { status: 403 });
+          }
+          discountAuthorizedBy = authorizer.id;
+        }
+        if (!discountReason || !discountReason.trim()) {
+          return NextResponse.json({ error: "Debes indicar el motivo del descuento" }, { status: 400 });
+        }
+      }
+
+      // Recalcular total: subtotal de items + IVA del bar - descuento + propina
+      const subtotalRows = await sql`
+        SELECT COALESCE(SUM(price * quantity), 0) as subtotal
+        FROM order_items WHERE order_id = ${orderId}
+      `;
+      const subtotal = parseFloat(subtotalRows[0]?.subtotal || 0);
+      if (discount > subtotal) discount = subtotal;
+
+      const locRow = await sql`SELECT location_id FROM tables WHERE id = ${current.table_id}`;
+      const locationId = locRow[0]?.location_id;
+      const taxRow = await sql`SELECT tax_rate FROM locations WHERE id = ${locationId}`;
+      const taxRate = parseFloat(taxRow[0]?.tax_rate || 0);
+      const taxableAmount = subtotal - discount;
+      const tax = Math.max(0, taxableAmount) * taxRate;
+      const finalTotal = Math.max(0, taxableAmount) + tax + tip;
+
+      const updated = await sql`
+        UPDATE orders
+        SET status = ${status},
+            closed_at = NOW(),
+            updated_at = NOW(),
+            modified_by = ${user.id},
+            payment_method = ${paymentMethod},
+            tip_amount = ${tip},
+            discount_amount = ${discount},
+            discount_reason = ${discount > 0 ? discountReason : null},
+            discount_authorized_by = ${discountAuthorizedBy},
+            subtotal_amount = ${subtotal},
+            tax_amount = ${tax},
+            total_amount = ${finalTotal}
+        WHERE id = ${orderId}
         RETURNING *
       `;
-    } else {
-      orders = await sql`
-        UPDATE orders 
-        SET status = ${status}, updated_at = NOW(), modified_by = ${user.id}
-        WHERE id = ${parseInt(id)}
-        RETURNING *
-      `;
+
+      await logAudit({
+        locationId,
+        userId: user.id,
+        action: "close_order",
+        entityType: "order",
+        entityId: orderId,
+        details: `pago=${paymentMethod} propina=${tip} descuento=${discount}${discount > 0 ? ` (${discountReason}, autorizado por #${discountAuthorizedBy})` : ""} total=${finalTotal}`,
+      });
+
+      const order = await attachItems(updated[0]);
+      return NextResponse.json({ order, breakdown: { subtotal, discount, tax, taxRate, tip, total: finalTotal } }, { status: 200 });
     }
 
-    const order = orders[0];
-
-    // Get items
-    const items = await sql`
-      SELECT oi.*, p.name as product_name, p.category
-      FROM order_items oi
-      JOIN products p ON oi.product_id = p.id
-      WHERE oi.order_id = ${parseInt(id)}
+    // --- Cualquier otro cambio de status (ej. reabrir) ---
+    const orders = await sql`
+      UPDATE orders 
+      SET status = ${status}, updated_at = NOW(), modified_by = ${user.id}
+      WHERE id = ${orderId}
+      RETURNING *
     `;
-    order.items = items.map(item => ({
-      ...item,
-      product: { name: item.product_name, price: item.price, category: item.category }
-    }));
 
+    const order = await attachItems(orders[0]);
     return NextResponse.json({ order }, { status: 200 });
   } catch (error) {
     console.error("Update order error:", error);
@@ -78,24 +226,13 @@ export async function GET(
     const { id } = await params;
 
     const orders = await sql`SELECT * FROM orders WHERE id = ${parseInt(id)}`;
-    const order = orders[0];
+    let order = orders[0];
 
     if (!order) {
       return NextResponse.json({ error: "Order not found" }, { status: 404 });
     }
 
-    // Get items
-    const items = await sql`
-      SELECT oi.*, p.name as product_name, p.category
-      FROM order_items oi
-      JOIN products p ON oi.product_id = p.id
-      WHERE oi.order_id = ${parseInt(id)}
-    `;
-    order.items = items.map(item => ({
-      ...item,
-      product: { name: item.product_name, price: item.price, category: item.category }
-    }));
-
+    order = await attachItems(order);
     return NextResponse.json({ order }, { status: 200 });
   } catch (error) {
     console.error("Get order error:", error);

@@ -15,12 +15,25 @@ interface Order {
   modifier_name?: string;
   modifier_email?: string;
   total_amount: number;
+  subtotal_amount?: number | null;
+  tax_amount?: number;
+  tip_amount?: number;
+  discount_amount?: number;
+  discount_reason?: string | null;
+  payment_method?: string | null;
   status: string;
   created_at: string;
   updated_at: string;
   location_name: string;
   items: OrderItem[];
 }
+
+const PAYMENT_LABELS: Record<string, string> = {
+  efectivo: "Efectivo",
+  tarjeta: "Tarjeta",
+  transferencia: "Transferencia",
+  otro: "Otro",
+};
 
 const formatCOP = (value: number) =>
   new Intl.NumberFormat("es-CO", {
@@ -51,6 +64,20 @@ function buildReceiptHTML(order: Order): string {
         </tr>`;
     })
     .join("");
+
+  const subtotal = order.subtotal_amount != null
+    ? Number(order.subtotal_amount)
+    : order.items.reduce((sum, i) => sum + Number(i.price) * i.quantity, 0);
+  const discount = Number(order.discount_amount || 0);
+  const tax = Number(order.tax_amount || 0);
+  const tip = Number(order.tip_amount || 0);
+
+  const breakdownRows = `
+    <tr><td colspan="3" style="text-align:right;padding-right:4px;">Subtotal:</td><td style="text-align:right;">${formatCOP(subtotal)}</td></tr>
+    ${discount > 0 ? `<tr><td colspan="3" style="text-align:right;padding-right:4px;">Descuento:</td><td style="text-align:right;">-${formatCOP(discount)}</td></tr>` : ""}
+    ${tax > 0 ? `<tr><td colspan="3" style="text-align:right;padding-right:4px;">IVA:</td><td style="text-align:right;">${formatCOP(tax)}</td></tr>` : ""}
+    ${tip > 0 ? `<tr><td colspan="3" style="text-align:right;padding-right:4px;">Propina:</td><td style="text-align:right;">${formatCOP(tip)}</td></tr>` : ""}
+  `;
 
   return `<!DOCTYPE html>
 <html>
@@ -112,6 +139,7 @@ function buildReceiptHTML(order: Order): string {
   </table>
   <div class="divider"></div>
   <table>
+    ${breakdownRows}
     <tr class="total-row">
       <td colspan="3" style="text-align:right;padding-right:4px;">TOTAL:</td>
       <td style="text-align:right;">${formatCOP(Number(order.total_amount))}</td>
@@ -119,6 +147,8 @@ function buildReceiptHTML(order: Order): string {
   </table>
   <div class="divider"></div>
   <div class="footer">
+    ${order.payment_method ? `<div>Pago: ${PAYMENT_LABELS[order.payment_method] || order.payment_method}</div>` : ""}
+    ${order.discount_reason ? `<div>Motivo desc.: ${order.discount_reason}</div>` : ""}
     <div>Estado: ${order.status.toUpperCase()}</div>
     <div>Generado: ${new Date().toLocaleDateString("es-CO")}</div>
     <div>¡Gracias por su visita!</div>

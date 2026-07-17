@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthUser } from "@/lib/auth";
 import { sql } from "@/lib/db";
+import { getLocationTimezone } from "@/lib/location";
 
 export async function GET(request: NextRequest) {
   try {
@@ -23,11 +24,17 @@ export async function GET(request: NextRequest) {
     const locId = locRow[0]?.location_id;
     if (!locId) return NextResponse.json({ error: "Sin bar asignado" }, { status: 400 });
 
+    const tz = await getLocationTimezone(locId);
+
     // Get all closed/paid orders in the date range for this location
+    // (comparado en la hora local del bar, no UTC)
     const orders = await sql`
       SELECT
         o.id,
         o.total_amount,
+        o.tip_amount,
+        o.discount_amount,
+        o.payment_method,
         o.status,
         o.created_at,
         o.closed_at,
@@ -38,8 +45,8 @@ export async function GET(request: NextRequest) {
       JOIN tables t ON o.table_id = t.id
       JOIN locations l ON t.location_id = l.id
       LEFT JOIN users u ON o.waiter_id = u.id
-      WHERE DATE(o.created_at) >= ${from}::date
-        AND DATE(o.created_at) <= ${to}::date
+      WHERE DATE(o.created_at AT TIME ZONE 'UTC' AT TIME ZONE ${tz}) >= ${from}::date
+        AND DATE(o.created_at AT TIME ZONE 'UTC' AT TIME ZONE ${tz}) <= ${to}::date
         AND o.status IN ('closed', 'paid')
         AND t.location_id = ${locId}
       ORDER BY o.created_at ASC

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthUser } from "@/lib/auth";
 import { sql } from "@/lib/db";
+import { getLocationTimezone } from "@/lib/location";
 
 export async function GET(request: NextRequest) {
   try {
@@ -18,12 +19,14 @@ export async function GET(request: NextRequest) {
     const locId = locRow[0]?.location_id;
     if (!locId) return NextResponse.json({ error: "Sin bar asignado" }, { status: 400 });
 
-    // Get orders from today for this location
+    const tz = await getLocationTimezone(locId);
+
+    // Get orders from today (en la hora local del bar, no UTC) for this location
     const ordersToday = await sql`
       SELECT o.* FROM orders o
       JOIN tables t ON o.table_id = t.id
-      WHERE o.created_at >= CURRENT_DATE
-        AND o.created_at < CURRENT_DATE + INTERVAL '1 day'
+      WHERE (o.created_at AT TIME ZONE 'UTC' AT TIME ZONE ${tz}) >= date_trunc('day', NOW() AT TIME ZONE ${tz})
+        AND (o.created_at AT TIME ZONE 'UTC' AT TIME ZONE ${tz}) < date_trunc('day', NOW() AT TIME ZONE ${tz}) + INTERVAL '1 day'
         AND t.location_id = ${locId}
     `;
 
@@ -32,8 +35,8 @@ export async function GET(request: NextRequest) {
       SELECT COALESCE(SUM(o.total_amount), 0) as total
       FROM orders o
       JOIN tables t ON o.table_id = t.id
-      WHERE o.created_at >= CURRENT_DATE
-        AND o.created_at < CURRENT_DATE + INTERVAL '1 day'
+      WHERE (o.created_at AT TIME ZONE 'UTC' AT TIME ZONE ${tz}) >= date_trunc('day', NOW() AT TIME ZONE ${tz})
+        AND (o.created_at AT TIME ZONE 'UTC' AT TIME ZONE ${tz}) < date_trunc('day', NOW() AT TIME ZONE ${tz}) + INTERVAL '1 day'
         AND o.status IN ('closed', 'paid')
         AND t.location_id = ${locId}
     `;

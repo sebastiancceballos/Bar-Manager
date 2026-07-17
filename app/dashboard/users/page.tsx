@@ -34,6 +34,7 @@ export default function UsersPage() {
   const [showForm, setShowForm] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
+  const [resettingId, setResettingId] = useState<number | null>(null);
   const isOwner = user?.role === "owner";
   const isAdmin = user?.role === "admin";
   const canAccess = isOwner || isAdmin;
@@ -144,6 +145,31 @@ export default function UsersPage() {
     }
   };
 
+  const handleResetPassword = async (targetId: number) => {
+    const newPassword = window.prompt("Nueva contraseña (mínimo 6 caracteres):");
+    if (!newPassword) return;
+    if (newPassword.length < 6) {
+      setError("La contraseña debe tener al menos 6 caracteres");
+      return;
+    }
+    setResettingId(targetId);
+    setError(null);
+    try {
+      const response = await fetch(`/api/users/${targetId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ newPassword }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Error al restablecer contraseña");
+      setSuccess(data.message);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Error desconocido");
+    } finally {
+      setResettingId(null);
+    }
+  };
+
   const canDeleteUser = (target: User) => {
     if (target.id === user?.id) return false;
     if (isOwner && (target.role === "admin" || target.role === "waiter")) return true;
@@ -192,35 +218,46 @@ export default function UsersPage() {
         {new Date(u.created_at).toLocaleDateString("es-ES")}
       </td>
       <td className="py-3 px-4">
-        {canDeleteUser(u) && (
-          <>
-            {confirmDeleteId === u.id ? (
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-gray-400">Confirmar?</span>
+        <div className="flex items-center gap-2">
+          {(u.id === user?.id || canDeleteUser(u)) && (
+            <button
+              onClick={() => handleResetPassword(u.id)}
+              disabled={resettingId === u.id}
+              className="px-3 py-1 rounded text-xs bg-primary/10 text-primary border border-primary/20 hover:bg-primary/30 transition-colors"
+            >
+              {resettingId === u.id ? "..." : "Restablecer clave"}
+            </button>
+          )}
+          {canDeleteUser(u) && (
+            <>
+              {confirmDeleteId === u.id ? (
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-gray-400">Confirmar?</span>
+                  <button
+                    onClick={() => handleDelete(u.id)}
+                    disabled={deletingId === u.id}
+                    className="px-2 py-1 rounded text-xs bg-red-500/20 text-red-400 border border-red-500/30 hover:bg-red-500/40 transition-colors"
+                  >
+                    {deletingId === u.id ? "Eliminando..." : "Si, eliminar"}
+                  </button>
+                  <button
+                    onClick={() => setConfirmDeleteId(null)}
+                    className="px-2 py-1 rounded text-xs bg-card text-gray-400 border border-border hover:bg-border transition-colors"
+                  >
+                    Cancelar
+                  </button>
+                </div>
+              ) : (
                 <button
-                  onClick={() => handleDelete(u.id)}
-                  disabled={deletingId === u.id}
-                  className="px-2 py-1 rounded text-xs bg-red-500/20 text-red-400 border border-red-500/30 hover:bg-red-500/40 transition-colors"
+                  onClick={() => setConfirmDeleteId(u.id)}
+                  className="px-3 py-1 rounded text-xs bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/30 transition-colors"
                 >
-                  {deletingId === u.id ? "Eliminando..." : "Si, eliminar"}
+                  Eliminar
                 </button>
-                <button
-                  onClick={() => setConfirmDeleteId(null)}
-                  className="px-2 py-1 rounded text-xs bg-card text-gray-400 border border-border hover:bg-border transition-colors"
-                >
-                  Cancelar
-                </button>
-              </div>
-            ) : (
-              <button
-                onClick={() => setConfirmDeleteId(u.id)}
-                className="px-3 py-1 rounded text-xs bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/30 transition-colors"
-              >
-                Eliminar
-              </button>
-            )}
-          </>
-        )}
+              )}
+            </>
+          )}
+        </div>
       </td>
     </tr>
   );

@@ -2,7 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { sql } from "@/lib/db";
 import { getAuthUser } from "@/lib/auth";
 
-export async function GET(request: NextRequest) {
+// NOTA: esto ya está cubierto por scripts/06_consolidate_hidden_migrations.sql.
+// Se deja como POST (nunca GET, porque esto muta la base de datos y un GET
+// puede dispararse por accidente vía prefetch del navegador o un crawler)
+// como botón de "reparar" manual por si una base de datos vieja no corrió
+// esa migración.
+export async function POST(request: NextRequest) {
   try {
     const user = await getAuthUser();
     if (!user) {

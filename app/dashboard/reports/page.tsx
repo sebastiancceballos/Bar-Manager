@@ -17,8 +17,40 @@ interface DailyReport {
   orderCount: number;
 }
 
+interface WaiterReport {
+  waiterId: number | null;
+  waiterName: string;
+  orderCount: number;
+  total: number;
+  totalTips: number;
+}
+
+interface ProductReport {
+  productName: string;
+  category: string;
+  unitsSold: number;
+  total: number;
+}
+
+interface PaymentMethodReport {
+  paymentMethod: string;
+  orderCount: number;
+  total: number;
+}
+
+const PAYMENT_LABELS: Record<string, string> = {
+  efectivo: "Efectivo",
+  tarjeta: "Tarjeta",
+  transferencia: "Transferencia",
+  otro: "Otro",
+  sin_registrar: "Sin registrar",
+};
+
 export default function ReportsPage() {
   const [reports, setReports] = useState<DailyReport[]>([]);
+  const [byWaiter, setByWaiter] = useState<WaiterReport[]>([]);
+  const [topProducts, setTopProducts] = useState<ProductReport[]>([]);
+  const [byPaymentMethod, setByPaymentMethod] = useState<PaymentMethodReport[]>([]);
   const [loading, setLoading] = useState(true);
   const [dateRange, setDateRange] = useState("week");
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
@@ -57,7 +89,23 @@ export default function ReportsPage() {
       }
     };
 
+    const fetchBreakdowns = async () => {
+      try {
+        const [waiterRes, productRes, paymentRes] = await Promise.all([
+          fetch(`/api/reports?range=${dateRange}&type=by-waiter`),
+          fetch(`/api/reports?range=${dateRange}&type=top-products`),
+          fetch(`/api/reports?range=${dateRange}&type=by-payment-method`),
+        ]);
+        if (waiterRes.ok) setByWaiter((await waiterRes.json()).byWaiter || []);
+        if (productRes.ok) setTopProducts((await productRes.json()).topProducts || []);
+        if (paymentRes.ok) setByPaymentMethod((await paymentRes.json()).byPaymentMethod || []);
+      } catch (error) {
+        console.error("Failed to fetch report breakdowns:", error);
+      }
+    };
+
     fetchReports();
+    fetchBreakdowns();
   }, [dateRange]);
 
   const totalRevenue = reports.reduce((sum, r) => sum + r.total, 0);
@@ -252,6 +300,65 @@ export default function ReportsPage() {
               </div>
             </div>
           )}
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-8">
+            <div className="card">
+              <h3 className="text-lg font-semibold mb-4">Ventas por Mesero</h3>
+              {byWaiter.length === 0 ? (
+                <p className="text-gray-400 text-sm">Sin datos</p>
+              ) : (
+                <div className="space-y-3">
+                  {byWaiter.map((w) => (
+                    <div key={w.waiterId ?? w.waiterName} className="flex justify-between items-center text-sm">
+                      <div>
+                        <p className="font-medium">{w.waiterName}</p>
+                        <p className="text-xs text-gray-500">{w.orderCount} órdenes · propinas {formatCOP(w.totalTips)}</p>
+                      </div>
+                      <span className="font-semibold text-success">{formatCOP(w.total)}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="card">
+              <h3 className="text-lg font-semibold mb-4">Productos Más Vendidos</h3>
+              {topProducts.length === 0 ? (
+                <p className="text-gray-400 text-sm">Sin datos</p>
+              ) : (
+                <div className="space-y-3">
+                  {topProducts.slice(0, 8).map((p) => (
+                    <div key={p.productName} className="flex justify-between items-center text-sm">
+                      <div>
+                        <p className="font-medium">{p.productName}</p>
+                        <p className="text-xs text-gray-500">{p.unitsSold} unidades · {p.category}</p>
+                      </div>
+                      <span className="font-semibold text-primary">{formatCOP(p.total)}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="card">
+              <h3 className="text-lg font-semibold mb-4">Por Método de Pago</h3>
+              {byPaymentMethod.length === 0 ? (
+                <p className="text-gray-400 text-sm">Sin datos</p>
+              ) : (
+                <div className="space-y-3">
+                  {byPaymentMethod.map((p) => (
+                    <div key={p.paymentMethod} className="flex justify-between items-center text-sm">
+                      <div>
+                        <p className="font-medium">{PAYMENT_LABELS[p.paymentMethod] || p.paymentMethod}</p>
+                        <p className="text-xs text-gray-500">{p.orderCount} órdenes</p>
+                      </div>
+                      <span className="font-semibold text-secondary">{formatCOP(p.total)}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       </div>
 

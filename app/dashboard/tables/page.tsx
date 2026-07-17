@@ -441,6 +441,9 @@ export default function TablesPage() {
               }}
               onUpdate={handleOrderUpdate}
               open={showOrderModal}
+              availableTables={tables
+                .filter((t) => t.id !== selectedTableId && !orders[t.id])
+                .map((t) => ({ id: t.id, table_number: t.table_number }))}
             />
           )}
         </div>
