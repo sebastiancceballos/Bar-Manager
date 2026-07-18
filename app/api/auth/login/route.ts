@@ -56,7 +56,7 @@ export async function POST(request: NextRequest) {
       if (attempts >= MAX_ATTEMPTS) {
         await sql`
           UPDATE users
-          SET failed_attempts = 0, locked_until = NOW() + (${LOCK_MINUTES} || ' minutes')::interval
+          SET failed_attempts = 0, locked_until = NOW() + (${LOCK_MINUTES} * INTERVAL '1 minute')
           WHERE id = ${user.id}
         `;
         return NextResponse.json(

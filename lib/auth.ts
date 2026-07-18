@@ -1,13 +1,21 @@
 import jwt from "jsonwebtoken";
 import { cookies } from "next/headers";
 
-if (!process.env.JWT_SECRET) {
-  throw new Error(
-    "FATAL: La variable de entorno JWT_SECRET no está configurada. " +
-    "Añádela en Vercel → Settings → Environment Variables antes de desplegar."
-  );
+// IMPORTANTE: este chequeo se hace DENTRO de las funciones (no a nivel de
+// módulo). Si estuviera fuera, un JWT_SECRET faltante tumbaría el archivo
+// completo apenas Next.js lo importa, antes de que cualquier try/catch de
+// una ruta pudiera atraparlo — y el usuario vería una página de error HTML
+// en vez de un JSON, rompiendo el fetch() del frontend.
+function getJwtSecret(): string {
+  const secret = process.env.JWT_SECRET;
+  if (!secret) {
+    throw new Error(
+      "JWT_SECRET no está configurado. Añádelo en las variables de entorno del servidor (Vercel → Settings → Environment Variables) y vuelve a desplegar."
+    );
+  }
+  return secret;
 }
-const JWT_SECRET: string = process.env.JWT_SECRET;
+
 const TOKEN_EXPIRY = "7d";
 
 export type UserRole = "owner" | "admin" | "waiter";
@@ -19,12 +27,12 @@ export interface JWTPayload {
 }
 
 export async function signToken(payload: JWTPayload): Promise<string> {
-  return jwt.sign(payload, JWT_SECRET, { expiresIn: TOKEN_EXPIRY });
+  return jwt.sign(payload, getJwtSecret(), { expiresIn: TOKEN_EXPIRY });
 }
 
 export function verifyToken(token: string): JWTPayload | null {
   try {
-    return jwt.verify(token, JWT_SECRET) as JWTPayload;
+    return jwt.verify(token, getJwtSecret()) as JWTPayload;
   } catch (error) {
     return null;
   }
