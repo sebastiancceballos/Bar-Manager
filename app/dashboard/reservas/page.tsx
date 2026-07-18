@@ -15,6 +15,11 @@ interface Reservation {
   table_number: string | null;
 }
 
+interface TableOption {
+  id: number;
+  table_number: string;
+}
+
 const STATUS_LABELS: Record<string, string> = {
   confirmada: "Confirmada",
   cancelada: "Cancelada",
@@ -29,8 +34,36 @@ const STATUS_STYLES: Record<string, string> = {
   no_show: "bg-gray-700/30 text-gray-400",
 };
 
+/**
+ * El valor que devuelve la base de datos para `reservation_time` viene sin
+ * zona horaria (es la hora local del bar, tal cual la escribió el usuario),
+ * pero el driver de Neon lo serializa como si fuera UTC (con sufijo "Z").
+ * Si hacemos `new Date(valor)` directo, JS lo interpreta como UTC y al
+ * mostrarlo con toLocaleString() lo desplaza según el huso horario del
+ * navegador — por eso aparecía una hora totalmente distinta a la elegida.
+ * Esta función lee los números tal cual vienen (año, mes, día, hora,
+ * minuto) sin ninguna conversión de zona horaria.
+ */
+function parseAsLocalWallClock(value: string): Date {
+  const match = value.match(/^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})/);
+  if (!match) return new Date(value);
+  const [, year, month, day, hour, minute] = match;
+  return new Date(
+    parseInt(year), parseInt(month) - 1, parseInt(day),
+    parseInt(hour), parseInt(minute)
+  );
+}
+
+function formatReservationTime(value: string): string {
+  return parseAsLocalWallClock(value).toLocaleString("es-CO", {
+    dateStyle: "short",
+    timeStyle: "short",
+  });
+}
+
 export default function ReservasPage() {
   const [reservations, setReservations] = useState<Reservation[]>([]);
+  const [tables, setTables] = useState<TableOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
@@ -40,6 +73,7 @@ export default function ReservasPage() {
   const [phone, setPhone] = useState("");
   const [partySize, setPartySize] = useState("2");
   const [reservationTime, setReservationTime] = useState("");
+  const [tableId, setTableId] = useState("");
   const [notes, setNotes] = useState("");
 
   const fetchReservations = async () => {
@@ -54,8 +88,21 @@ export default function ReservasPage() {
     }
   };
 
+  const fetchTables = async () => {
+    try {
+      const res = await fetch("/api/tables");
+      if (res.ok) {
+        const data = await res.json();
+        setTables(data.tables || []);
+      }
+    } catch (e) {
+      console.error("Failed to fetch tables:", e);
+    }
+  };
+
   useEffect(() => {
     fetchReservations();
+    fetchTables();
   }, []);
 
   const handleCreate = async (e: React.FormEvent) => {
@@ -71,6 +118,7 @@ export default function ReservasPage() {
           phone,
           partySize: parseInt(partySize) || 2,
           reservationTime,
+          tableId: tableId || null,
           notes,
         }),
       });
@@ -80,6 +128,7 @@ export default function ReservasPage() {
         setPhone("");
         setPartySize("2");
         setReservationTime("");
+        setTableId("");
         setNotes("");
         setShowForm(false);
         fetchReservations();
@@ -140,6 +189,15 @@ export default function ReservasPage() {
                   <label className="block text-sm font-medium mb-2">Fecha y hora</label>
                   <input type="datetime-local" required className="input w-full" value={reservationTime} onChange={(e) => setReservationTime(e.target.value)} />
                 </div>
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium mb-2">Mesa (opcional)</label>
+                  <select className="input w-full" value={tableId} onChange={(e) => setTableId(e.target.value)}>
+                    <option value="">Sin asignar todavía</option>
+                    {tables.map((t) => (
+                      <option key={t.id} value={t.id}>Mesa {t.table_number}</option>
+                    ))}
+                  </select>
+                </div>
               </div>
               <div>
                 <label className="block text-sm font-medium mb-2">Notas</label>
@@ -162,7 +220,7 @@ export default function ReservasPage() {
                   <div>
                     <p className="font-semibold">{r.customer_name} · {r.party_size} personas</p>
                     <p className="text-sm text-gray-400">
-                      {new Date(r.reservation_time).toLocaleString("es-CO")}
+                      {formatReservationTime(r.reservation_time)}
                       {r.table_number ? ` · Mesa ${r.table_number}` : ""}
                       {r.phone ? ` · ${r.phone}` : ""}
                     </p>
