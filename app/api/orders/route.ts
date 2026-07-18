@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
         FROM orders o
         JOIN tables t ON o.table_id = t.id
         LEFT JOIN users u ON o.waiter_id = u.id
-        WHERE o.status != 'closed'
+        WHERE o.status NOT IN ('closed', 'paid')
           AND o.table_id = ${parseInt(tableId)}
           AND t.location_id = ${locId}
         ORDER BY o.created_at DESC
@@ -35,7 +35,7 @@ export async function GET(request: NextRequest) {
         FROM orders o
         JOIN tables t ON o.table_id = t.id
         LEFT JOIN users u ON o.waiter_id = u.id
-        WHERE o.status != 'closed'
+        WHERE o.status NOT IN ('closed', 'paid')
           AND t.location_id = ${locId}
         ORDER BY o.created_at DESC
       `;
