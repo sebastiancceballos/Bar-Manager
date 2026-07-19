@@ -52,6 +52,7 @@ export default function ReportsPage() {
   const [topProducts, setTopProducts] = useState<ProductReport[]>([]);
   const [byPaymentMethod, setByPaymentMethod] = useState<PaymentMethodReport[]>([]);
   const [loading, setLoading] = useState(true);
+  const [reportsError, setReportsError] = useState<string | null>(null);
   const [dateRange, setDateRange] = useState("week");
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [showModal, setShowModal] = useState(false);
@@ -76,14 +77,21 @@ export default function ReportsPage() {
 
   useEffect(() => {
     const fetchReports = async () => {
+      setReportsError(null);
       try {
         const response = await fetch(`/api/reports?range=${dateRange}`);
         if (response.ok) {
           const data = await response.json();
           setReports(data.reports);
+        } else {
+          const errData = await response.json().catch(() => ({}));
+          setReportsError(errData.error || `Error del servidor (HTTP ${response.status})`);
+          setReports([]);
         }
       } catch (error) {
         console.error("Failed to fetch reports:", error);
+        setReportsError("No se pudo conectar con el servidor");
+        setReports([]);
       } finally {
         setLoading(false);
       }
@@ -97,8 +105,11 @@ export default function ReportsPage() {
           fetch(`/api/reports?range=${dateRange}&type=by-payment-method`),
         ]);
         if (waiterRes.ok) setByWaiter((await waiterRes.json()).byWaiter || []);
+        else console.error("by-waiter fetch failed:", waiterRes.status);
         if (productRes.ok) setTopProducts((await productRes.json()).topProducts || []);
+        else console.error("top-products fetch failed:", productRes.status);
         if (paymentRes.ok) setByPaymentMethod((await paymentRes.json()).byPaymentMethod || []);
+        else console.error("by-payment-method fetch failed:", paymentRes.status);
       } catch (error) {
         console.error("Failed to fetch report breakdowns:", error);
       }
@@ -248,6 +259,12 @@ export default function ReportsPage() {
               </p>
             </div>
           </div>
+
+          {reportsError && (
+            <div className="bg-error/10 border border-error text-error px-4 py-3 rounded-lg mb-6 text-sm">
+              ⚠️ No se pudieron cargar los ingresos por día: {reportsError}
+            </div>
+          )}
 
           {loading ? (
             <div className="text-gray-400">Cargando reportes...</div>

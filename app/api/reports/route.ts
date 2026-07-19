@@ -120,22 +120,28 @@ export async function GET(request: NextRequest) {
 
     // type === "timeseries" (default, comportamiento original pero con zona horaria correcta)
     const reports = await sql`
+      WITH localized AS (
+        SELECT
+          o.total_amount,
+          (o.created_at AT TIME ZONE 'UTC' AT TIME ZONE ${tz}) AS local_time
+        FROM orders o
+        JOIN tables t ON o.table_id = t.id
+        WHERE o.status IN ('closed', 'paid')
+          AND t.location_id = ${locId}
+      )
       SELECT
-        DATE(o.created_at AT TIME ZONE 'UTC' AT TIME ZONE ${tz}) as date,
-        COALESCE(SUM(o.total_amount), 0) as total,
-        COUNT(*) as order_count
-      FROM orders o
-      JOIN tables t ON o.table_id = t.id
-      WHERE (o.created_at AT TIME ZONE 'UTC' AT TIME ZONE ${tz}) >= (NOW() AT TIME ZONE ${tz}) - ${interval}::interval
-        AND o.status IN ('closed', 'paid')
-        AND t.location_id = ${locId}
-      GROUP BY DATE(o.created_at AT TIME ZONE 'UTC' AT TIME ZONE ${tz})
-      ORDER BY date ASC
+        DATE(local_time) AS report_date,
+        COALESCE(SUM(total_amount), 0) AS total,
+        COUNT(*) AS order_count
+      FROM localized
+      WHERE local_time >= (NOW() AT TIME ZONE ${tz}) - ${interval}::interval
+      GROUP BY DATE(local_time)
+      ORDER BY report_date ASC
     `;
 
     return NextResponse.json({
       reports: reports.map(r => ({
-        date: r.date,
+        date: r.report_date,
         total: parseFloat(r.total),
         orderCount: parseInt(r.order_count)
       }))
