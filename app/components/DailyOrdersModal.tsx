@@ -6,6 +6,21 @@ import { downloadInvoice } from "./InvoicePDF";
 const formatCOP = (value: number) =>
   new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", minimumFractionDigits: 0 }).format(value);
 
+/**
+ * `date` llega como "YYYY-MM-DD" (sin hora). JS interpreta un string así
+ * como medianoche UTC, pero toLocaleDateString() lo muestra en la zona
+ * horaria local del navegador — para Bogotá (UTC-5) eso resta 5 horas y
+ * hace que aparezca el día ANTERIOR. Por eso el título decía "17/7" para
+ * órdenes que en realidad son del 18/7. Esto arma la fecha localmente,
+ * sin pasar por ninguna conversión de zona horaria.
+ */
+function formatDateOnly(dateStr: string): string {
+  const match = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (!match) return new Date(dateStr).toLocaleDateString("es-ES");
+  const [, year, month, day] = match;
+  return new Date(parseInt(year), parseInt(month) - 1, parseInt(day)).toLocaleDateString("es-ES");
+}
+
 
 interface OrderItem {
   id: number;
@@ -75,7 +90,7 @@ export function DailyOrdersModal({ date, isOpen, onClose }: DailyOrdersModalProp
         <div className="sticky top-0 bg-background border-b border-border p-6 flex justify-between items-center">
           <div>
             <h2 className="text-2xl font-bold text-foreground">
-              Órdenes del {new Date(date).toLocaleDateString("es-ES")}
+              Órdenes del {formatDateOnly(date)}
             </h2>
             <p className="text-gray-400 text-sm mt-1">Total de órdenes: {orders.length}</p>
           </div>

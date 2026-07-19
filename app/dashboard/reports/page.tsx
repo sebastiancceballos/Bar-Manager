@@ -10,6 +10,19 @@ import { useRouter } from "next/navigation";
 const formatCOP = (value: number) =>
   new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", minimumFractionDigits: 0 }).format(value);
 
+/**
+ * report.date llega como "YYYY-MM-DD" (sin hora). Ver la explicación
+ * completa en DailyOrdersModal.tsx: new Date("YYYY-MM-DD") se interpreta
+ * como medianoche UTC, y toLocaleDateString() lo muestra en la zona
+ * horaria local del navegador, restando horas y mostrando el día anterior.
+ */
+function formatDateOnly(dateStr: string): string {
+  const match = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (!match) return new Date(dateStr).toLocaleDateString("es-MX");
+  const [, year, month, day] = match;
+  return new Date(parseInt(year), parseInt(month) - 1, parseInt(day)).toLocaleDateString("es-MX");
+}
+
 
 interface DailyReport {
   date: string;
@@ -290,7 +303,7 @@ export default function ReportsPage() {
                         className="border-b border-border/50 hover:bg-card/50 transition-smooth"
                       >
                         <td className="py-3 px-4">
-                          {new Date(report.date).toLocaleDateString("es-MX")}
+                          {formatDateOnly(report.date)}
                         </td>
                         <td className="py-3 px-4">{report.orderCount}</td>
                         <td className="py-3 px-4 text-success font-semibold">
