@@ -27,6 +27,10 @@ export async function GET(request: NextRequest) {
   }
 }
 
+// Cuánto tiempo se asume que una reserva "ocupa" la mesa. No se permite otra
+// reserva en la misma mesa dentro de esta ventana antes/después.
+const RESERVATION_BUFFER_HOURS = 2;
+
 export async function POST(request: NextRequest) {
   try {
     const user = await getAuthUser();
@@ -40,6 +44,35 @@ export async function POST(request: NextRequest) {
 
     if (!customerName || !reservationTime) {
       return NextResponse.json({ error: "Nombre y fecha/hora son obligatorios" }, { status: 400 });
+    }
+
+    // Regla de negocio: no se puede reservar la misma mesa dos veces cerca
+    // de la misma hora. Solo aplica si se eligió una mesa específica.
+    if (tableId) {
+      const conflicts = await sql`
+        SELECT r.id, r.customer_name, r.reservation_time
+        FROM reservations r
+        WHERE r.table_id = ${parseInt(tableId)}
+          AND r.location_id = ${locId}
+          AND r.status != 'cancelada'
+          AND r.reservation_time > ${reservationTime}::timestamp - (${RESERVATION_BUFFER_HOURS} * INTERVAL '1 hour')
+          AND r.reservation_time < ${reservationTime}::timestamp + (${RESERVATION_BUFFER_HOURS} * INTERVAL '1 hour')
+        LIMIT 1
+      `;
+
+      if (conflicts.length > 0) {
+        const conflict = conflicts[0];
+        const conflictTime = new Date(conflict.reservation_time).toLocaleString("es-CO", {
+          dateStyle: "short",
+          timeStyle: "short",
+        });
+        return NextResponse.json(
+          {
+            error: `Esa mesa ya tiene una reserva de ${conflict.customer_name} a las ${conflictTime}. Debe haber al menos ${RESERVATION_BUFFER_HOURS} horas de diferencia entre reservas de la misma mesa.`,
+          },
+          { status: 409 }
+        );
+      }
     }
 
     const created = await sql`
