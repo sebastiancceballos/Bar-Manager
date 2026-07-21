@@ -53,10 +53,11 @@ export default function CajaPage() {
     setError(null);
     setSubmitting(true);
     try {
+      const amount = parseInt(openingAmount) || 0;
       const res = await fetch("/api/cash-sessions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ openingAmount: parseFloat(openingAmount) || 0 }),
+        body: JSON.stringify({ openingAmount: amount }),
       });
       const data = await res.json();
       if (res.ok) {
@@ -78,7 +79,7 @@ export default function CajaPage() {
       const res = await fetch(`/api/cash-sessions/${open.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ closingAmount: parseFloat(closingAmount) || 0, notes }),
+        body: JSON.stringify({ closingAmount: parseInt(closingAmount) || 0, notes }),
       });
       const data = await res.json();
       if (res.ok) {
@@ -128,10 +129,12 @@ export default function CajaPage() {
                 <input
                   type="number"
                   min="0"
+                  step="1"
+                  inputMode="numeric"
                   className="input w-full"
                   placeholder="0"
                   value={closingAmount}
-                  onChange={(e) => setClosingAmount(e.target.value)}
+                  onChange={(e) => setClosingAmount(String(parseInt(e.target.value) || ""))}
                 />
                 <label className="block text-sm font-medium">Notas (opcional)</label>
                 <input
@@ -157,9 +160,11 @@ export default function CajaPage() {
               <input
                 type="number"
                 min="0"
+                step="1"
+                inputMode="numeric"
                 className="input w-full"
                 value={openingAmount}
-                onChange={(e) => setOpeningAmount(e.target.value)}
+                onChange={(e) => setOpeningAmount(String(parseInt(e.target.value) || 0))}
               />
               <button
                 onClick={handleOpen}

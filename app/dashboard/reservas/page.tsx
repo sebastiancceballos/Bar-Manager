@@ -18,6 +18,7 @@ interface Reservation {
 interface TableOption {
   id: number;
   table_number: string;
+  capacity: number;
 }
 
 const STATUS_LABELS: Record<string, string> = {
@@ -34,24 +35,15 @@ const STATUS_STYLES: Record<string, string> = {
   no_show: "bg-gray-700/30 text-gray-400",
 };
 
-/**
- * El valor que devuelve la base de datos para `reservation_time` viene sin
- * zona horaria (es la hora local del bar, tal cual la escribió el usuario),
- * pero el driver de Neon lo serializa como si fuera UTC (con sufijo "Z").
- * Si hacemos `new Date(valor)` directo, JS lo interpreta como UTC y al
- * mostrarlo con toLocaleString() lo desplaza según el huso horario del
- * navegador — por eso aparecía una hora totalmente distinta a la elegida.
- * Esta función lee los números tal cual vienen (año, mes, día, hora,
- * minuto) sin ninguna conversión de zona horaria.
- */
+// Franjas horarias disponibles. Ajusta según el horario real de tu negocio.
+const AVAILABLE_HOURS = [11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23];
+const AVAILABLE_MINUTES = ["00", "30"];
+
 function parseAsLocalWallClock(value: string): Date {
   const match = value.match(/^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})/);
   if (!match) return new Date(value);
   const [, year, month, day, hour, minute] = match;
-  return new Date(
-    parseInt(year), parseInt(month) - 1, parseInt(day),
-    parseInt(hour), parseInt(minute)
-  );
+  return new Date(parseInt(year), parseInt(month) - 1, parseInt(day), parseInt(hour), parseInt(minute));
 }
 
 function formatReservationTime(value: string): string {
@@ -59,6 +51,21 @@ function formatReservationTime(value: string): string {
     dateStyle: "short",
     timeStyle: "short",
   });
+}
+
+function getTimeSlots(): string[] {
+  const slots: string[] = [];
+  for (const h of AVAILABLE_HOURS) {
+    for (const m of AVAILABLE_MINUTES) {
+      slots.push(`${String(h).padStart(2, "0")}:${m}`);
+    }
+  }
+  return slots;
+}
+
+function getTodayDate(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
 export default function ReservasPage() {
@@ -72,9 +79,14 @@ export default function ReservasPage() {
   const [customerName, setCustomerName] = useState("");
   const [phone, setPhone] = useState("");
   const [partySize, setPartySize] = useState("2");
-  const [reservationTime, setReservationTime] = useState("");
+  const [reservationDate, setReservationDate] = useState("");
+  const [reservationHour, setReservationHour] = useState("");
   const [tableId, setTableId] = useState("");
   const [notes, setNotes] = useState("");
+
+  const selectedTable = tables.find((t) => String(t.id) === tableId);
+  const partySizeNum = parseInt(partySize) || 1;
+  const exceedsCapacity = !!selectedTable && partySizeNum > selectedTable.capacity;
 
   const fetchReservations = async () => {
     try {
@@ -105,9 +117,33 @@ export default function ReservasPage() {
     fetchTables();
   }, []);
 
+  const handlePhoneChange = (value: string) => {
+    const onlyDigits = value.replace(/\D/g, "").slice(0, 10);
+    setPhone(onlyDigits);
+  };
+
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+
+    if (!reservationDate || !reservationHour) {
+      setError("Debes seleccionar una fecha y una franja horaria.");
+      return;
+    }
+
+    const reservationTime = `${reservationDate}T${reservationHour}`;
+    const chosen = parseAsLocalWallClock(reservationTime);
+
+    if (chosen < new Date()) {
+      setError("No puedes hacer una reserva en una fecha u hora que ya pasó.");
+      return;
+    }
+
+    if (exceedsCapacity) {
+      setError(`La Mesa ${selectedTable!.table_number} tiene capacidad máxima de ${selectedTable!.capacity} personas. Tu reserva es para ${partySizeNum}.`);
+      return;
+    }
+
     setSubmitting(true);
     try {
       const res = await fetch("/api/reservations", {
@@ -116,7 +152,7 @@ export default function ReservasPage() {
         body: JSON.stringify({
           customerName,
           phone,
-          partySize: parseInt(partySize) || 2,
+          partySize: partySizeNum,
           reservationTime,
           tableId: tableId || null,
           notes,
@@ -127,7 +163,8 @@ export default function ReservasPage() {
         setCustomerName("");
         setPhone("");
         setPartySize("2");
-        setReservationTime("");
+        setReservationDate("");
+        setReservationHour("");
         setTableId("");
         setNotes("");
         setShowForm(false);
@@ -175,35 +212,113 @@ export default function ReservasPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium mb-2">Nombre del cliente</label>
-                  <input className="input w-full" required value={customerName} onChange={(e) => setCustomerName(e.target.value)} />
+                  <input
+                    className="input w-full"
+                    required
+                    value={customerName}
+                    onChange={(e) => setCustomerName(e.target.value)}
+                  />
                 </div>
+
                 <div>
-                  <label className="block text-sm font-medium mb-2">Teléfono</label>
-                  <input className="input w-full" value={phone} onChange={(e) => setPhone(e.target.value)} />
+                  <label className="block text-sm font-medium mb-2">Teléfono (solo números)</label>
+                  <input
+                    className="input w-full"
+                    type="tel"
+                    inputMode="numeric"
+                    placeholder="3001234567"
+                    value={phone}
+                    onChange={(e) => handlePhoneChange(e.target.value)}
+                    maxLength={10}
+                  />
                 </div>
+
                 <div>
                   <label className="block text-sm font-medium mb-2">Número de personas</label>
-                  <input type="number" min="1" className="input w-full" value={partySize} onChange={(e) => setPartySize(e.target.value)} />
+                  <input
+                    type="number"
+                    min="1"
+                    step="1"
+                    className="input w-full"
+                    value={partySize}
+                    onChange={(e) => setPartySize(String(Math.max(1, parseInt(e.target.value) || 1)))}
+                  />
+                  {exceedsCapacity && (
+                    <p className="text-xs text-error mt-1">
+                      ⚠️ Supera la capacidad de la Mesa {selectedTable!.table_number} ({selectedTable!.capacity} personas máx.)
+                    </p>
+                  )}
                 </div>
+
                 <div>
-                  <label className="block text-sm font-medium mb-2">Fecha y hora</label>
-                  <input type="datetime-local" required className="input w-full" value={reservationTime} onChange={(e) => setReservationTime(e.target.value)} />
+                  <label className="block text-sm font-medium mb-2">Fecha</label>
+                  <input
+                    type="date"
+                    required
+                    className="input w-full"
+                    min={getTodayDate()}
+                    value={reservationDate}
+                    onChange={(e) => setReservationDate(e.target.value)}
+                  />
                 </div>
+
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium mb-2">Franja horaria</label>
+                  <select
+                    required
+                    className="input w-full"
+                    value={reservationHour}
+                    onChange={(e) => setReservationHour(e.target.value)}
+                  >
+                    <option value="">Selecciona una hora</option>
+                    {getTimeSlots().map((slot) => {
+                      const h = parseInt(slot.split(":")[0]);
+                      const period = h < 12 ? "a.m." : "p.m.";
+                      const h12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
+                      return (
+                        <option key={slot} value={slot}>
+                          {h12}:{slot.split(":")[1]} {period}
+                        </option>
+                      );
+                    })}
+                  </select>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Horario de atención: {AVAILABLE_HOURS[0]}:00 – {AVAILABLE_HOURS[AVAILABLE_HOURS.length - 1]}:30
+                  </p>
+                </div>
+
                 <div className="md:col-span-2">
                   <label className="block text-sm font-medium mb-2">Mesa (opcional)</label>
-                  <select className="input w-full" value={tableId} onChange={(e) => setTableId(e.target.value)}>
+                  <select
+                    className="input w-full"
+                    value={tableId}
+                    onChange={(e) => setTableId(e.target.value)}
+                  >
                     <option value="">Sin asignar todavía</option>
                     {tables.map((t) => (
-                      <option key={t.id} value={t.id}>Mesa {t.table_number}</option>
+                      <option key={t.id} value={t.id}>
+                        Mesa {t.table_number} (máx. {t.capacity} personas)
+                      </option>
                     ))}
                   </select>
                 </div>
               </div>
+
               <div>
                 <label className="block text-sm font-medium mb-2">Notas</label>
-                <input className="input w-full" placeholder="Ej: mesa junto a la ventana" value={notes} onChange={(e) => setNotes(e.target.value)} />
+                <input
+                  className="input w-full"
+                  placeholder="Ej: mesa junto a la ventana"
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                />
               </div>
-              <button type="submit" disabled={submitting} className="btn btn-primary w-full disabled:opacity-50">
+
+              <button
+                type="submit"
+                disabled={submitting || exceedsCapacity}
+                className="btn btn-primary w-full disabled:opacity-50"
+              >
                 {submitting ? "Guardando..." : "Guardar Reserva"}
               </button>
             </form>

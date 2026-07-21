@@ -11,9 +11,11 @@ interface Shift {
 }
 
 function formatDuration(start: string, end?: string | null) {
-  const ms = new Date(end || Date.now()).getTime() - new Date(start).getTime();
+  const ms = (end ? new Date(end).getTime() : Date.now()) - new Date(start).getTime();
+  if (ms < 0) return "Calculando...";
   const hours = Math.floor(ms / 3600000);
   const mins = Math.floor((ms % 3600000) / 60000);
+  if (hours === 0) return `${mins}min`;
   return `${hours}h ${mins}min`;
 }
 
