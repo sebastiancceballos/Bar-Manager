@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
         FROM users u
         LEFT JOIN locations l ON u.location_id = l.id
         ORDER BY 
-          CASE u.role WHEN 'owner' THEN 1 WHEN 'admin' THEN 2 WHEN 'waiter' THEN 3 END,
+          CASE u.role WHEN 'owner' THEN 1 WHEN 'admin' THEN 2 WHEN 'waiter' THEN 3 WHEN 'cashier' THEN 4 WHEN 'kitchen' THEN 5 END,
           l.name ASC,
           u.created_at DESC
       `;
@@ -44,8 +44,10 @@ export async function GET(request: NextRequest) {
                  l.name AS location_name
           FROM users u
           LEFT JOIN locations l ON u.location_id = l.id
-          WHERE u.location_id = ${locationId} AND u.role = 'waiter'
-          ORDER BY u.created_at DESC
+          WHERE u.location_id = ${locationId} AND u.role IN ('waiter', 'cashier', 'kitchen')
+          ORDER BY
+            CASE u.role WHEN 'waiter' THEN 1 WHEN 'cashier' THEN 2 WHEN 'kitchen' THEN 3 END,
+            u.created_at DESC
         `;
         users = Array.isArray(result) ? result : [];
       }

@@ -6,9 +6,11 @@ import bcrypt from "bcryptjs";
 
 // What roles can each role delete
 const ALLOWED_DELETIONS: Record<UserRole, UserRole[]> = {
-  owner: ["admin", "waiter"],
-  admin: ["waiter"],
+  owner: ["admin", "waiter", "cashier", "kitchen"],
+  admin: ["waiter", "cashier", "kitchen"],
   waiter: [],
+  cashier: [],
+  kitchen: [],
 };
 
 export async function DELETE(
