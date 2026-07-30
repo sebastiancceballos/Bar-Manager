@@ -4,7 +4,7 @@ import { logAudit } from "@/lib/audit";
 import { generateTicketNumber } from "@/lib/self-service";
 import { getAuthUser } from "@/lib/auth";
 
-const ALLOWED_ROLES = ["owner", "admin", "cashier", "kitchen"];
+const ALLOWED_ROLES = ["owner", "admin", "cashier", "waiter", "kitchen"];
 
 // Panel de caja/cocina: lista de pedidos de autoservicio del bar del usuario,
 // con filtro opcional por estado (?status=PAID) y búsqueda por número de
@@ -179,7 +179,7 @@ export async function POST(request: NextRequest) {
       validItems.push({ productId, quantity, notes: item.notes?.trim() || undefined, price: Number(product.price) });
     }
 
-    const ticketNumber = await generateTicketNumber();
+    const ticketNumber = await generateTicketNumber(locationId);
 
     const orderRows = await sql`
       INSERT INTO orders (

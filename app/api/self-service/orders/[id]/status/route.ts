@@ -4,7 +4,7 @@ import { sql } from "@/lib/db";
 import { logAudit } from "@/lib/audit";
 import { canTransition, SELF_SERVICE_STATUSES, SelfServiceStatus } from "@/lib/self-service";
 
-const ALLOWED_ROLES = ["owner", "admin", "cashier", "kitchen"];
+const ALLOWED_ROLES = ["owner", "admin", "cashier", "waiter", "kitchen"];
 
 export async function PATCH(
   request: NextRequest,

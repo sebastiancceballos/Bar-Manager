@@ -21,7 +21,6 @@ import {
   CalendarClock,
   ShieldCheck,
   Clock,
-  ChefHat,
   Receipt
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -69,7 +68,6 @@ export function Navigation() {
       { href: "/dashboard/comandas", label: "Comandas", icon: ClipboardList, className: "nav-comandas" },
       { href: "/dashboard/caja", label: "Caja", icon: Wallet },
       { href: "/dashboard/orders", label: "Pedidos autoservicio", icon: Receipt },
-      { href: "/dashboard/kitchen", label: "Cocina", icon: ChefHat },
       { href: "/dashboard/reservas", label: "Reservas", icon: CalendarClock },
       { href: "/dashboard/reports", label: "Reportes", icon: BarChart3, className: "nav-reports" },
       { href: "/dashboard/auditoria", label: "Auditoría", icon: ShieldCheck },
@@ -81,7 +79,7 @@ export function Navigation() {
       { href: "/dashboard/turno", label: "Mi Turno", icon: Clock },
     ] : []),
     ...(isKitchen ? [
-      { href: "/dashboard/kitchen", label: "Cocina", icon: ChefHat },
+      { href: "/dashboard/comandas", label: "Comandas", icon: ClipboardList },
       { href: "/dashboard/turno", label: "Mi Turno", icon: Clock },
     ] : []),
     ...(!isAdmin && !isOwner && !isCashier && !isKitchen ? [
