@@ -172,7 +172,18 @@ export default function TrackingPage({ params }: { params: Promise<{ token: stri
 
       <div className="max-w-md mx-auto px-4 py-10 flex flex-col items-center gap-6">
         <span className="text-sm uppercase tracking-widest opacity-70">Tu ficho</span>
-        <span className="text-6xl font-black">{data.ticketNumber}</span>
+        <span className="text-6xl font-black tracking-tight">{data.ticketNumber}</span>
+
+        {data.status === "PENDING_PAYMENT" && !isCancelled && (
+          <div className="w-full rounded-xl border border-warning/40 bg-warning/10 px-4 py-3 text-center">
+            <p className="text-base font-semibold text-warning leading-snug">
+              Acércate a la caja para confirmar tu pedido
+            </p>
+            <p className="text-xs text-foreground/60 mt-1">
+              Muestra tu ficho <span className="font-bold text-foreground">{data.ticketNumber}</span> al cajero
+            </p>
+          </div>
+        )}
 
         {isCancelled ? (
           <div className="flex flex-col items-center gap-2 text-error">
