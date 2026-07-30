@@ -23,7 +23,7 @@ interface Location {
   address: string;
 }
 
-type NewUserRole = "admin" | "waiter";
+type NewUserRole = "admin" | "waiter" | "cashier" | "kitchen";
 
 export default function UsersPage() {
   const { user } = useAuth();
@@ -89,10 +89,14 @@ export default function UsersPage() {
       .catch(console.error);
   }, [canAccess]);
 
-  // Owner creates admins; Admin creates waiters
+  // Owner creates admins; Admin creates staff (mesero / cajero / cocina)
   const roleOptions: { value: NewUserRole; label: string }[] = isOwner
     ? [{ value: "admin", label: "Administrador" }]
-    : [{ value: "waiter", label: "Mesero" }];
+    : [
+        { value: "waiter", label: "Mesero" },
+        { value: "cashier", label: "Cajero" },
+        { value: "kitchen", label: "Cocina" },
+      ];
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -172,8 +176,8 @@ export default function UsersPage() {
 
   const canDeleteUser = (target: User) => {
     if (target.id === user?.id) return false;
-    if (isOwner && (target.role === "admin" || target.role === "waiter")) return true;
-    if (isAdmin && target.role === "waiter") return true;
+    if (isOwner && ["admin", "waiter", "cashier", "kitchen"].includes(target.role)) return true;
+    if (isAdmin && ["waiter", "cashier", "kitchen"].includes(target.role)) return true;
     return false;
   };
 
@@ -200,8 +204,16 @@ export default function UsersPage() {
       owner: "bg-purple-500/20 text-purple-400 border border-purple-500/30",
       admin: "bg-blue-500/20 text-blue-400 border border-blue-500/30",
       waiter: "bg-green-500/20 text-green-400 border border-green-500/30",
+      cashier: "bg-amber-500/20 text-amber-400 border border-amber-500/30",
+      kitchen: "bg-orange-500/20 text-orange-400 border border-orange-500/30",
     };
-    const labels: Record<string, string> = { owner: "Owner", admin: "Admin", waiter: "Mesero" };
+    const labels: Record<string, string> = {
+      owner: "Owner",
+      admin: "Admin",
+      waiter: "Mesero",
+      cashier: "Cajero",
+      kitchen: "Cocina",
+    };
     return (
       <span className={`px-2 py-1 rounded text-xs font-medium ${styles[role] || ""}`}>
         {labels[role] || role}
@@ -278,7 +290,7 @@ export default function UsersPage() {
               <p className="text-gray-400 mt-2">
                 {isOwner
                   ? "Como owner puedes crear y eliminar administradores de cada bar"
-                  : "Como admin puedes crear y eliminar meseros de tu bar"}
+                  : "Como admin puedes crear y eliminar meseros, cajeros y personal de cocina de tu bar"}
               </p>
             </div>
             <button

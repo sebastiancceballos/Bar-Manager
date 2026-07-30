@@ -10,7 +10,7 @@ import { sql } from "@/lib/db";
  * 
  * Permissions:
  * - "owner" can create "admin" users
- * - "admin" can create "waiter" users
+ * - "admin" can create "waiter" | "cashier" | "kitchen" users
  * - No one can create users with a higher role than their own
  * 
  * Request body example:
@@ -29,18 +29,22 @@ import { sql } from "@/lib/db";
  * - 500: Internal server error
  */
 
-// Role hierarchy: owner > admin > waiter
+// Role hierarchy: owner > admin > staff (waiter/cashier/kitchen)
 const ROLE_HIERARCHY: Record<UserRole, number> = {
   owner: 3,
   admin: 2,
   waiter: 1,
+  cashier: 1,
+  kitchen: 1,
 };
 
 // What roles can each role create
 const ALLOWED_CREATIONS: Record<UserRole, UserRole[]> = {
   owner: ["admin"],
-  admin: ["waiter"],
+  admin: ["waiter", "cashier", "kitchen"],
   waiter: [],
+  cashier: [],
+  kitchen: [],
 };
 
 export async function POST(request: NextRequest) {
@@ -76,7 +80,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Validate role is valid
-    const validRoles: UserRole[] = ["admin", "waiter"];
+    const validRoles: UserRole[] = ["admin", "waiter", "cashier", "kitchen"];
     if (!validRoles.includes(role as UserRole)) {
       return NextResponse.json(
         { error: `Rol inválido. Roles permitidos: ${validRoles.join(", ")}` },
