@@ -5,6 +5,14 @@ import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { Plus, Minus, ShoppingBag, X, Loader2, Beer, ChevronUp } from "lucide-react";
 
+const formatCOP = (value: number) =>
+  new Intl.NumberFormat("es-CO", {
+    style: "currency",
+    currency: "COP",
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(Number(value) || 0);
+
 interface Product {
   id: number;
   name: string;
@@ -224,7 +232,7 @@ export default function SelfServicePage({
                 <span className="text-xs text-foreground/60 line-clamp-2">{product.description}</span>
               )}
               <div className="mt-auto flex items-center justify-between pt-1">
-                <span className="text-primary font-bold">${product.price.toLocaleString("es-CO")}</span>
+                <span className="text-primary font-bold">{formatCOP(product.price)}</span>
                 <span className="min-w-[44px] min-h-[44px] flex items-center justify-center bg-primary/20 text-primary rounded-full">
                   <Plus className="w-4 h-4" />
                 </span>
@@ -249,7 +257,7 @@ export default function SelfServicePage({
               {cartCount} {cartCount === 1 ? "producto" : "productos"}
             </span>
             <span className="flex items-center gap-2 font-bold">
-              ${cartTotal.toLocaleString("es-CO")}
+              {formatCOP(cartTotal)}
               <ChevronUp className="w-5 h-5" />
             </span>
           </motion.button>
@@ -339,7 +347,7 @@ export default function SelfServicePage({
                   {isSubmitting ? (
                     <Loader2 className="w-5 h-5 animate-spin" />
                   ) : (
-                    <>Confirmar pedido · ${cartTotal.toLocaleString("es-CO")}</>
+                    <>Confirmar pedido · {formatCOP(cartTotal)}</>
                   )}
                 </button>
               </div>

@@ -2,6 +2,14 @@
 
 import { useEffect, useState, use as usePromise } from "react";
 
+const formatCOP = (value: number) =>
+  new Intl.NumberFormat("es-CO", {
+    style: "currency",
+    currency: "COP",
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(Number(value) || 0);
+
 interface TicketData {
   ticketNumber: string;
   clientName?: string;
@@ -67,7 +75,7 @@ export default function PrintTicketPage({ params }: { params: Promise<{ id: stri
               <span>
                 {item.quantity}× {item.name}
               </span>
-              <span>${item.subtotal.toLocaleString("es-CO")}</span>
+              <span>{formatCOP(item.subtotal)}</span>
             </div>
             {item.notes && <div style={{ fontSize: "10px", paddingLeft: 8 }}>* {item.notes}</div>}
           </div>
@@ -76,7 +84,7 @@ export default function PrintTicketPage({ params }: { params: Promise<{ id: stri
         {ticket.customerNotes && <div style={{ marginBottom: 6 }}>Nota: {ticket.customerNotes}</div>}
         <div style={{ display: "flex", justifyContent: "space-between", fontWeight: 900, fontSize: "14px" }}>
           <span>TOTAL</span>
-          <span>${ticket.total.toLocaleString("es-CO")}</span>
+          <span>{formatCOP(ticket.total)}</span>
         </div>
       </div>
     </>

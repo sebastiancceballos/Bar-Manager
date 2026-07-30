@@ -6,6 +6,14 @@ import { ProtectedLayout } from "@/app/components/ProtectedLayout";
 import { Navigation } from "@/app/components/Navigation";
 import { Search, CreditCard, CheckCircle2, Printer, Loader2, Ban } from "lucide-react";
 
+const formatCOP = (value: number) =>
+  new Intl.NumberFormat("es-CO", {
+    style: "currency",
+    currency: "COP",
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(Number(value) || 0);
+
 interface OrderItem {
   name: string;
   quantity: number;
@@ -154,7 +162,7 @@ function OrdersDashboardContent() {
                 </ul>
 
                 <div className="flex items-center justify-between mt-3">
-                  <span className="font-bold">${Number(order.total_amount).toLocaleString("es-CO")}</span>
+                  <span className="font-bold">{formatCOP(Number(order.total_amount))}</span>
                   <div className="flex gap-2">
                     <a
                       href={`/print-ticket/${order.id}`}

@@ -4,6 +4,14 @@ import { useEffect, useRef, useState, use as usePromise } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { CheckCircle2, CreditCard, ChefHat, PartyPopper, XCircle, Loader2 } from "lucide-react";
 
+const formatCOP = (value: number) =>
+  new Intl.NumberFormat("es-CO", {
+    style: "currency",
+    currency: "COP",
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(Number(value) || 0);
+
 type Status = "PENDING_PAYMENT" | "PAID" | "PREPARING" | "READY" | "COMPLETED" | "CANCELLED";
 
 interface TrackingData {
@@ -235,7 +243,7 @@ export default function TrackingPage({ params }: { params: Promise<{ token: stri
           ))}
           <div className="flex justify-between font-bold pt-2 mt-2 border-t border-border/50">
             <span>Total</span>
-            <span>${data.total.toLocaleString("es-CO")}</span>
+            <span>{formatCOP(data.total)}</span>
           </div>
         </div>
       </div>
