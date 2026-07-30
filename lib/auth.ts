@@ -18,7 +18,7 @@ function getJwtSecret(): string {
 
 const TOKEN_EXPIRY = "7d";
 
-export type UserRole = "owner" | "admin" | "waiter";
+export type UserRole = "owner" | "admin" | "waiter" | "cashier" | "kitchen";
 
 export interface JWTPayload {
   id: number;

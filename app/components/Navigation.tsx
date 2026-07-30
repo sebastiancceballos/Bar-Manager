@@ -20,7 +20,9 @@ import {
   Wallet,
   CalendarClock,
   ShieldCheck,
-  Clock
+  Clock,
+  ChefHat,
+  Receipt
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -38,6 +40,8 @@ export function Navigation() {
 
   const isAdmin = user?.role === "admin";
   const isOwner = user?.role === "owner";
+  const isCashier = user?.role === "cashier";
+  const isKitchen = user?.role === "kitchen";
 
   useEffect(() => {
     if (!user || isOwner) return;
@@ -64,12 +68,23 @@ export function Navigation() {
       { href: "/dashboard/tables", label: "Mesas", icon: TableProperties, className: "nav-tables" },
       { href: "/dashboard/comandas", label: "Comandas", icon: ClipboardList, className: "nav-comandas" },
       { href: "/dashboard/caja", label: "Caja", icon: Wallet },
+      { href: "/dashboard/orders", label: "Pedidos autoservicio", icon: Receipt },
+      { href: "/dashboard/kitchen", label: "Cocina", icon: ChefHat },
       { href: "/dashboard/reservas", label: "Reservas", icon: CalendarClock },
       { href: "/dashboard/reports", label: "Reportes", icon: BarChart3, className: "nav-reports" },
       { href: "/dashboard/auditoria", label: "Auditoría", icon: ShieldCheck },
       { href: "/dashboard/turno", label: "Mi Turno", icon: Clock },
     ] : []),
-    ...(!isAdmin && !isOwner ? [
+    ...(isCashier ? [
+      { href: "/dashboard/orders", label: "Pedidos autoservicio", icon: Receipt },
+      { href: "/dashboard/caja", label: "Caja", icon: Wallet },
+      { href: "/dashboard/turno", label: "Mi Turno", icon: Clock },
+    ] : []),
+    ...(isKitchen ? [
+      { href: "/dashboard/kitchen", label: "Cocina", icon: ChefHat },
+      { href: "/dashboard/turno", label: "Mi Turno", icon: Clock },
+    ] : []),
+    ...(!isAdmin && !isOwner && !isCashier && !isKitchen ? [
       { href: "/dashboard/tables", label: "Mesas", icon: TableProperties },
       { href: "/dashboard/comandas", label: "Comandas", icon: ClipboardList },
       { href: "/dashboard/reservas", label: "Reservas", icon: CalendarClock },

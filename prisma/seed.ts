@@ -40,7 +40,24 @@ async function main() {
     VALUES ('waiter@barmanager.com', ${waiterHash}, 'Mesero Demo', 'waiter', ${locationId})
     ON CONFLICT (email) DO NOTHING
   `;
-  console.log("Users created (admin@barmanager.com / waiter@barmanager.com, passwords: admin123 / waiter123)");
+
+  const cashierHash = await bcrypt.hash("cashier123", 10);
+  await sql`
+    INSERT INTO users (email, password_hash, name, role, location_id)
+    VALUES ('cashier@barmanager.com', ${cashierHash}, 'Cajero Demo', 'cashier', ${locationId})
+    ON CONFLICT (email) DO NOTHING
+  `;
+
+  const kitchenHash = await bcrypt.hash("kitchen123", 10);
+  await sql`
+    INSERT INTO users (email, password_hash, name, role, location_id)
+    VALUES ('kitchen@barmanager.com', ${kitchenHash}, 'Cocina Demo', 'kitchen', ${locationId})
+    ON CONFLICT (email) DO NOTHING
+  `;
+  console.log(
+    "Users created (admin@barmanager.com / waiter@barmanager.com / cashier@barmanager.com / kitchen@barmanager.com, " +
+      "passwords: admin123 / waiter123 / cashier123 / kitchen123)"
+  );
 
   for (let i = 1; i <= 6; i++) {
     await sql`

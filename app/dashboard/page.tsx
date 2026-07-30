@@ -37,6 +37,48 @@ interface DashboardStats {
 const formatCOP = (value: number) =>
   new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", minimumFractionDigits: 0 }).format(value);
 
+function SelfServiceLinkCard() {
+  const [url, setUrl] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/locations/me")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (data?.id && typeof window !== "undefined") {
+          setUrl(`${window.location.origin}/self-service/${data.id}`);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  if (!url) return null;
+
+  return (
+    <div className="card border-border p-6">
+      <h2 className="text-xs font-bold uppercase tracking-widest text-foreground/60 mb-3">
+        Autoservicio para clientes
+      </h2>
+      <p className="text-sm text-foreground/70 mb-3">
+        Comparte este enlace (o genera un QR con él) para que tus clientes pidan desde su celular.
+      </p>
+      <div className="flex items-center gap-2">
+        <input readOnly value={url} className="flex-1 bg-background border border-border rounded-lg px-3 py-2 text-xs truncate" />
+        <button
+          onClick={() => {
+            navigator.clipboard.writeText(url);
+            setCopied(true);
+            setTimeout(() => setCopied(false), 1500);
+          }}
+          className="min-h-[40px] px-3 bg-primary text-white rounded-lg text-xs font-semibold"
+        >
+          {copied ? "¡Copiado!" : "Copiar"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function DashboardPage() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [lowStockProducts, setLowStockProducts] = useState<Product[]>([]);
@@ -50,6 +92,12 @@ export default function DashboardPage() {
     }
     if (user && user.role === "owner") {
       router.push("/dashboard/owner");
+    }
+    if (user && user.role === "cashier") {
+      router.push("/dashboard/orders");
+    }
+    if (user && user.role === "kitchen") {
+      router.push("/dashboard/kitchen");
     }
   }, [user, router]);
 
@@ -115,6 +163,7 @@ export default function DashboardPage() {
               
               {/* SIDEBAR IZQUIERDO: NOVEDADES */}
               <div className="lg:col-span-4 space-y-6 lg:sticky lg:top-24">
+                <SelfServiceLinkCard />
                 <div className="card border-primary/20 bg-primary/5 p-6">
                   <div className="flex items-center gap-2 mb-6 text-primary">
                     <Package size={20} />

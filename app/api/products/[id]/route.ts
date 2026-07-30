@@ -17,7 +17,7 @@ export async function PUT(
     }
 
     const { id } = await params;
-    const { name, category, price } = await request.json();
+    const { name, category, price, imageUrl, available } = await request.json();
 
     const products = await sql`
       UPDATE products 
@@ -25,6 +25,8 @@ export async function PUT(
         name = COALESCE(${name}, name),
         category = COALESCE(${category}, category),
         price = COALESCE(${price !== undefined ? parseFloat(price) : null}, price),
+        image_url = COALESCE(${imageUrl !== undefined ? imageUrl : null}, image_url),
+        available = COALESCE(${available !== undefined ? available : null}, available),
         updated_at = NOW()
       WHERE id = ${parseInt(id)}
       RETURNING *

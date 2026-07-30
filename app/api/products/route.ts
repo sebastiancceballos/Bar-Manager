@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { name, category, price } = await request.json();
+    const { name, category, price, imageUrl, available } = await request.json();
 
     if (!name || !category || price === undefined) {
       return NextResponse.json(
@@ -62,8 +62,8 @@ export async function POST(request: NextRequest) {
     }
 
     const products = await sql`
-      INSERT INTO products (location_id, name, category, price)
-      VALUES (${locationId}, ${name}, ${category}, ${parseFloat(price)})
+      INSERT INTO products (location_id, name, category, price, image_url, available)
+      VALUES (${locationId}, ${name}, ${category}, ${parseFloat(price)}, ${imageUrl ?? null}, ${available !== undefined ? available : true})
       RETURNING *
     `;
 

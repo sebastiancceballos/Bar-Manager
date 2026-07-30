@@ -43,6 +43,7 @@ model Location {
   name      String
   address   String?
   active    Boolean  @default(true)
+  self_service_enabled Boolean @default(true)
   owner_id  Int?
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -84,6 +85,8 @@ model Product {
   price       Float
   description String?
   stock       Int      @default(0)
+  image_url   String?  // usado por el menú público de autoservicio
+  available   Boolean  @default(true) // visible/ocultable del menú de autoservicio
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
@@ -96,9 +99,16 @@ model Product {
 
 model Order {
   id           Int       @id @default(autoincrement())
-  table_id     Int
-  waiter_id    Int
-  status       String    @default("open") // "open" | "closed" | "paid"
+  table_id     Int?      // nullable: los pedidos de autoservicio no tienen mesa
+  waiter_id    Int?      // nullable: los pedidos de autoservicio no tienen mesero
+  status       String    @default("open")
+  // dine_in:      "open" | "closed" | "paid"
+  // self_service: "PENDING_PAYMENT" | "PAID" | "PREPARING" | "READY" | "COMPLETED" | "CANCELLED"
+  order_type      String   @default("dine_in") // "dine_in" | "self_service"
+  ticket_number   String?  @unique // ej. "#0042", solo self_service
+  public_token    String?  @unique // UUID impredecible para la URL de /tracking
+  client_name     String?
+  customer_notes  String?
   total_amount Float     @default(0)
   modified_by  Int?
   createdAt    DateTime  @default(now()) @map("created_at")
@@ -120,6 +130,7 @@ model OrderItem {
   quantity   Int      @default(1)
   price      Float
   status     String   @default("pendiente") // "pendiente" | "preparando" | "listo" | "entregado"
+  notes      String?  // notas de personalización del cliente (autoservicio)
   createdAt  DateTime @default(now()) @map("created_at")
 
   order   Order   @relation(fields: [order_id], references: [id], onDelete: Cascade)
