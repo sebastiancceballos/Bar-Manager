@@ -19,15 +19,12 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Se requieren fechas from y to" }, { status: 400 });
     }
 
-    // Get user's location
     const locRow = await sql`SELECT location_id FROM users WHERE id = ${user.id} LIMIT 1`;
     const locId = locRow[0]?.location_id;
     if (!locId) return NextResponse.json({ error: "Sin bar asignado" }, { status: 400 });
 
     const tz = await getLocationTimezone(locId);
 
-    // Get all closed/paid orders in the date range for this location
-    // (comparado en la hora local del bar, no UTC)
     const orders = await sql`
       SELECT
         o.id,
@@ -38,27 +35,48 @@ export async function GET(request: NextRequest) {
         o.status,
         o.created_at,
         o.closed_at,
+        o.order_type,
+        o.ticket_number,
+        o.client_name,
+        o.customer_notes,
         t.table_number,
         u.name AS waiter_name,
-        l.name AS location_name
+        COALESCE(
+          l.name,
+          (
+            SELECT l2.name
+            FROM order_items oi2
+            JOIN products p2 ON oi2.product_id = p2.id
+            JOIN locations l2 ON p2.location_id = l2.id
+            WHERE oi2.order_id = o.id
+            LIMIT 1
+          )
+        ) AS location_name
       FROM orders o
-      JOIN tables t ON o.table_id = t.id
-      JOIN locations l ON t.location_id = l.id
+      LEFT JOIN tables t ON o.table_id = t.id
+      LEFT JOIN locations l ON t.location_id = l.id
       LEFT JOIN users u ON o.waiter_id = u.id
       WHERE DATE(o.created_at AT TIME ZONE 'UTC' AT TIME ZONE ${tz}) >= ${from}::date
         AND DATE(o.created_at AT TIME ZONE 'UTC' AT TIME ZONE ${tz}) <= ${to}::date
-        AND o.status IN ('closed', 'paid')
-        AND t.location_id = ${locId}
+        AND o.status IN ('closed', 'paid', 'PAID', 'PREPARING', 'READY', 'COMPLETED')
+        AND (
+          t.location_id = ${locId}
+          OR EXISTS (
+            SELECT 1 FROM order_items oi
+            JOIN products p ON oi.product_id = p.id
+            WHERE oi.order_id = o.id AND p.location_id = ${locId}
+          )
+        )
       ORDER BY o.created_at ASC
     `;
 
-    // Get items for each order
     const result = await Promise.all(
       (Array.isArray(orders) ? orders : []).map(async (order) => {
         const items = await sql`
           SELECT
             oi.quantity,
             oi.price,
+            oi.notes,
             p.name AS product_name,
             p.category
           FROM order_items oi
@@ -67,6 +85,16 @@ export async function GET(request: NextRequest) {
         `;
         return {
           ...order,
+          table_number:
+            order.order_type === "self_service"
+              ? order.ticket_number || "Autoservicio"
+              : order.table_number,
+          waiter_name:
+            order.order_type === "self_service"
+              ? order.client_name
+                ? `Cliente: ${order.client_name}`
+                : "Autoservicio"
+              : order.waiter_name,
           items: Array.isArray(items) ? items : [],
         };
       })

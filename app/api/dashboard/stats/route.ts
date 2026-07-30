@@ -14,35 +14,46 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Get user's location
     const locRow = await sql`SELECT location_id FROM users WHERE id = ${user.id} LIMIT 1`;
     const locId = locRow[0]?.location_id;
     if (!locId) return NextResponse.json({ error: "Sin bar asignado" }, { status: 400 });
 
     const tz = await getLocationTimezone(locId);
 
-    // Get orders from today (en la hora local del bar, no UTC) for this location
+    // Órdenes de hoy (dine_in + self_service) del bar
     const ordersToday = await sql`
-      SELECT o.* FROM orders o
-      JOIN tables t ON o.table_id = t.id
+      SELECT o.id FROM orders o
+      LEFT JOIN tables t ON o.table_id = t.id
       WHERE (o.created_at AT TIME ZONE 'UTC' AT TIME ZONE ${tz}) >= date_trunc('day', NOW() AT TIME ZONE ${tz})
         AND (o.created_at AT TIME ZONE 'UTC' AT TIME ZONE ${tz}) < date_trunc('day', NOW() AT TIME ZONE ${tz}) + INTERVAL '1 day'
-        AND t.location_id = ${locId}
+        AND (
+          t.location_id = ${locId}
+          OR EXISTS (
+            SELECT 1 FROM order_items oi
+            JOIN products p ON oi.product_id = p.id
+            WHERE oi.order_id = o.id AND p.location_id = ${locId}
+          )
+        )
     `;
 
-    // Calculate total revenue from closed orders for this location
     const revenueResult = await sql`
       SELECT COALESCE(SUM(o.total_amount), 0) as total
       FROM orders o
-      JOIN tables t ON o.table_id = t.id
+      LEFT JOIN tables t ON o.table_id = t.id
       WHERE (o.created_at AT TIME ZONE 'UTC' AT TIME ZONE ${tz}) >= date_trunc('day', NOW() AT TIME ZONE ${tz})
         AND (o.created_at AT TIME ZONE 'UTC' AT TIME ZONE ${tz}) < date_trunc('day', NOW() AT TIME ZONE ${tz}) + INTERVAL '1 day'
-        AND o.status IN ('closed', 'paid')
-        AND t.location_id = ${locId}
+        AND o.status IN ('closed', 'paid', 'PAID', 'PREPARING', 'READY', 'COMPLETED')
+        AND (
+          t.location_id = ${locId}
+          OR EXISTS (
+            SELECT 1 FROM order_items oi
+            JOIN products p ON oi.product_id = p.id
+            WHERE oi.order_id = o.id AND p.location_id = ${locId}
+          )
+        )
     `;
     const totalRevenue = parseFloat(revenueResult[0]?.total || 0);
 
-    // Get occupied tables for this location
     const occupiedResult = await sql`
       SELECT COUNT(DISTINCT o.table_id) as count
       FROM orders o
@@ -51,7 +62,6 @@ export async function GET(request: NextRequest) {
     `;
     const tablesOccupied = parseInt(occupiedResult[0]?.count || 0);
 
-    // Get total tables for this location
     const tablesResult = await sql`SELECT COUNT(*) as count FROM tables WHERE location_id = ${locId}`;
     const totalTables = parseInt(tablesResult[0]?.count || 0);
 

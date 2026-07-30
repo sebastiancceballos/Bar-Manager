@@ -52,6 +52,7 @@ interface PaymentMethodReport {
 }
 
 const PAYMENT_LABELS: Record<string, string> = {
+  autoservicio: "Autoservicio",
   efectivo: "Efectivo",
   tarjeta: "Tarjeta",
   transferencia: "Transferencia",
@@ -153,19 +154,26 @@ export default function ReportsPage() {
       const orders = data.orders || [];
 
       // Build CSV rows
-      const headers = ["Fecha", "Hora", "# Orden", "Mesa", "Mesero", "Producto", "Categoría", "Cantidad", "Precio Unitario", "Subtotal", "Total Orden", "Estado"];
+      const headers = ["Fecha", "Hora", "# Orden", "Tipo", "Mesa/Ficho", "Mesero/Cliente", "Producto", "Categoría", "Cantidad", "Precio Unitario", "Subtotal", "Total Orden", "Estado"];
       const csvRows: string[] = [headers.join(";")];
 
       for (const order of orders) {
         const date = new Date(order.created_at).toLocaleDateString("es-CO");
         const time = new Date(order.created_at).toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit" });
         if (order.items.length === 0) {
-          csvRows.push([date, time, order.id, order.table_number, order.waiter_name || "-", "-", "-", "0", "0", "0", Number(order.total_amount), order.status].join(";"));
+          csvRows.push([
+            date, time, order.id,
+            order.order_type === "self_service" ? "Autoservicio" : "Mesa",
+            order.table_number, order.waiter_name || "-",
+            "-", "-", "0", "0", "0", Number(order.total_amount), order.status
+          ].join(";"));
         } else {
           order.items.forEach((item: { product_name: string; category: string; quantity: number; price: number }, idx: number) => {
             const subtotal = Number(item.price) * item.quantity;
             csvRows.push([
-              date, time, order.id, order.table_number, order.waiter_name || "-",
+              date, time, order.id,
+              order.order_type === "self_service" ? "Autoservicio" : "Mesa",
+              order.table_number, order.waiter_name || "-",
               item.product_name, item.category, item.quantity,
               Number(item.price), subtotal,
               idx === 0 ? Number(order.total_amount) : "",

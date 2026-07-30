@@ -46,6 +46,10 @@ interface Order {
   created_at: string;
   updated_at: string;
   location_name: string;
+  order_type?: string;
+  ticket_number?: string | null;
+  client_name?: string | null;
+  customer_notes?: string | null;
   items: OrderItem[];
 }
 
@@ -118,7 +122,9 @@ export function DailyOrdersModal({ date, isOpen, onClose }: DailyOrdersModalProp
                   <div className="flex justify-between items-start mb-3">
                     <div>
                       <p className="font-semibold text-foreground">
-                        Factura #{order.id} - Mesa {order.table_number}
+                        {order.order_type === "self_service"
+                          ? `Autoservicio ${order.ticket_number || "#" + order.id}`
+                          : `Factura #${order.id} - Mesa ${order.table_number}`}
                       </p>
                       <p className="text-sm text-gray-400">
                         {new Date(order.created_at).toLocaleString("es-ES")}
@@ -201,8 +207,14 @@ export function DailyOrdersModal({ date, isOpen, onClose }: DailyOrdersModalProp
                   <p className="text-foreground font-semibold">{selectedOrder.location_name}</p>
                 </div>
                 <div>
-                  <p className="text-gray-400 text-sm">Mesa</p>
-                  <p className="text-foreground font-semibold">{selectedOrder.table_number}</p>
+                  <p className="text-gray-400 text-sm">
+                    {selectedOrder.order_type === "self_service" ? "Tipo / Ficho" : "Mesa"}
+                  </p>
+                  <p className="text-foreground font-semibold">
+                    {selectedOrder.order_type === "self_service"
+                      ? `Autoservicio ${selectedOrder.ticket_number || ""}`
+                      : selectedOrder.table_number}
+                  </p>
                 </div>
                 <div>
                   <p className="text-gray-400 text-sm">Fecha</p>
@@ -220,9 +232,16 @@ export function DailyOrdersModal({ date, isOpen, onClose }: DailyOrdersModalProp
 
               {/* Mesero Info */}
               <div className="bg-card p-4 rounded border border-border">
-                <p className="text-foreground font-semibold mb-2">Mesero Responsable</p>
-                <p className="text-gray-300">{selectedOrder.waiter_name}</p>
-                <p className="text-gray-400 text-sm">{selectedOrder.waiter_email}</p>
+                <p className="text-foreground font-semibold mb-2">
+                  {selectedOrder.order_type === "self_service" ? "Cliente" : "Mesero Responsable"}
+                </p>
+                <p className="text-gray-300">{selectedOrder.waiter_name || "—"}</p>
+                {selectedOrder.order_type !== "self_service" && (
+                  <p className="text-gray-400 text-sm">{selectedOrder.waiter_email}</p>
+                )}
+                {selectedOrder.order_type === "self_service" && selectedOrder.customer_notes && (
+                  <p className="text-gray-400 text-sm mt-2">Notas: {selectedOrder.customer_notes}</p>
+                )}
               </div>
 
               {/* Modificador Info */}
