@@ -35,20 +35,30 @@ interface TrackingData {
   items: { name: string; quantity: number; notes?: string }[];
 }
 
-/** Pasos visibles al cliente. PAID se trata como PREPARING. */
+/**
+ * 5 pasos visibles al cliente:
+ * Pedido recibido → Pagado → En preparación → Listo para recoger → Entregado
+ *
+ * Nota: al cobrar, el sistema avanza a PREPARING (cocina), pero en la
+ * línea de tiempo "Pagado" queda marcado como hecho.
+ */
 const STEPS: { status: Status; label: string; icon: typeof CheckCircle2 }[] = [
   { status: "PENDING_PAYMENT", label: "Pedido recibido", icon: CheckCircle2 },
+  { status: "PAID", label: "Pagado", icon: CreditCard },
   { status: "PREPARING", label: "En preparación", icon: ChefHat },
   { status: "READY", label: "Listo para recoger", icon: PartyPopper },
   { status: "COMPLETED", label: "Entregado", icon: PackageCheck },
 ];
 
 function stepIndex(status: Status): number {
-  if (status === "PAID") return 1; // cobrado = ya en cocina
-  if (status === "COMPLETED") return 3;
-  const idx = STEPS.findIndex((s) => s.status === status);
-  if (idx === -1) return 0;
-  return idx;
+  const map: Record<string, number> = {
+    PENDING_PAYMENT: 0,
+    PAID: 1,
+    PREPARING: 2,
+    READY: 3,
+    COMPLETED: 4,
+  };
+  return map[status] ?? 0;
 }
 
 function playNotificationSound() {
@@ -187,16 +197,17 @@ export default function TrackingPage({
         </span>
 
         {data.status === "PENDING_PAYMENT" && !isCancelled && (
-          <div className="w-full rounded-xl border-2 border-warning bg-warning/15 px-4 py-4 text-center">
-            <p className="text-lg font-bold text-warning leading-snug">
-              Muestra este número en la caja
+          <div className="w-full rounded-2xl border-2 border-warning bg-warning/15 px-5 py-5 text-center">
+            <p className="text-base font-semibold text-warning leading-snug">
+              ¡Casi listo! Solo falta pagar
             </p>
-            <p className="text-3xl font-black text-foreground mt-2">
+            <p className="text-4xl font-black text-foreground mt-3 tracking-tight">
               {data.ticketNumber}
             </p>
-            <p className="text-sm text-foreground/70 mt-2">
-              Acércate a la caja y muestra <strong>{data.ticketNumber}</strong> para
-              pagar tu pedido
+            <p className="text-sm text-foreground/80 mt-3 leading-relaxed">
+              Acércate a la caja con tu número{" "}
+              <strong className="text-foreground">{data.ticketNumber}</strong> para
+              confirmar y pagar tu pedido. El cajero lo necesita para ubicar tu orden.
             </p>
           </div>
         )}
