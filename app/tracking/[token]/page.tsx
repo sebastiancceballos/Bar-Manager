@@ -10,6 +10,8 @@ import {
   PackageCheck,
   XCircle,
   Loader2,
+  Bell,
+  BellOff,
 } from "lucide-react";
 
 const formatCOP = (value: number) =>
@@ -108,6 +110,63 @@ function launchConfetti(canvas: HTMLCanvasElement) {
   draw();
 }
 
+
+function urlBase64ToUint8Array(base64String: string) {
+  const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
+  const raw = atob(base64);
+  const out = new Uint8Array(raw.length);
+  for (let i = 0; i < raw.length; i++) out[i] = raw.charCodeAt(i);
+  return out;
+}
+
+async function ensureServiceWorker(): Promise<ServiceWorkerRegistration | null> {
+  if (typeof window === "undefined" || !("serviceWorker" in navigator)) return null;
+  try {
+    const reg = await navigator.serviceWorker.register("/sw.js");
+    await navigator.serviceWorker.ready;
+    return reg;
+  } catch (e) {
+    console.warn("SW register failed", e);
+    return null;
+  }
+}
+
+async function subscribeOrderPush(publicToken: string): Promise<boolean> {
+  if (!("Notification" in window) || !("PushManager" in window)) return false;
+  const permission = await Notification.requestPermission();
+  if (permission !== "granted") return false;
+
+  const reg = await ensureServiceWorker();
+  if (!reg) return false;
+
+  const vapidRes = await fetch("/api/push/vapid");
+  if (!vapidRes.ok) return false;
+  const { publicKey } = await vapidRes.json();
+
+  let sub = await reg.pushManager.getSubscription();
+  if (!sub) {
+    sub = await reg.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(publicKey),
+    });
+  }
+
+  const json = sub.toJSON();
+  const res = await fetch("/api/push/subscribe", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      endpoint: json.endpoint,
+      keys: json.keys,
+      publicToken,
+      scope: "order",
+    }),
+  });
+  return res.ok;
+}
+
+
 export default function TrackingPage({
   params,
 }: {
@@ -116,8 +175,23 @@ export default function TrackingPage({
   const { token } = usePromise(params);
   const [data, setData] = useState<TrackingData | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [pushStatus, setPushStatus] = useState<"idle" | "on" | "denied" | "unsupported" | "error">("idle");
+  const [pushBusy, setPushBusy] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const prevStatus = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (!("Notification" in window) || !("serviceWorker" in navigator) || !("PushManager" in window)) {
+      setPushStatus("unsupported");
+    } else if (Notification.permission === "granted") {
+      setPushStatus("on");
+      // Re-suscribir por si cambió el token de pedido
+      subscribeOrderPush(token).catch(() => {});
+    } else if (Notification.permission === "denied") {
+      setPushStatus("denied");
+    }
+  }, [token]);
 
   useEffect(() => {
     let cancelled = false;
@@ -137,6 +211,19 @@ export default function TrackingPage({
           if (canvasRef.current) launchConfetti(canvasRef.current);
           playNotificationSound();
           if (navigator.vibrate) navigator.vibrate([120, 60, 120]);
+          if (
+            typeof Notification !== "undefined" &&
+            Notification.permission === "granted"
+          ) {
+            try {
+              new Notification(`¡${json.ticketNumber} listo para recoger!`, {
+                body: "Tu pedido está listo. Pasa a recogerlo.",
+                tag: `order-ready-${json.ticketNumber}`,
+              });
+            } catch {
+              /* ignore */
+            }
+          }
         }
         prevStatus.current = json.status;
         setData(json);
@@ -209,6 +296,48 @@ export default function TrackingPage({
               <strong className="text-foreground">{data.ticketNumber}</strong> para
               confirmar y pagar tu pedido. El cajero lo necesita para ubicar tu orden.
             </p>
+          </div>
+        )}
+
+        {/* Activar notificaciones push */}
+        {!isCancelled && !isDelivered && pushStatus !== "unsupported" && (
+          <div className="w-full">
+            {pushStatus === "on" ? (
+              <p className="text-xs text-center text-foreground/50 flex items-center justify-center gap-1.5">
+                <Bell className="w-3.5 h-3.5" />
+                Te avisaremos cuando tu pedido esté listo
+              </p>
+            ) : pushStatus === "denied" ? (
+              <p className="text-xs text-center text-foreground/50 flex items-center justify-center gap-1.5">
+                <BellOff className="w-3.5 h-3.5" />
+                Notificaciones bloqueadas en el navegador
+              </p>
+            ) : (
+              <button
+                type="button"
+                disabled={pushBusy}
+                onClick={async () => {
+                  setPushBusy(true);
+                  try {
+                    const ok = await subscribeOrderPush(token);
+                    setPushStatus(ok ? "on" : Notification.permission === "denied" ? "denied" : "error");
+                  } catch {
+                    setPushStatus("error");
+                  } finally {
+                    setPushBusy(false);
+                  }
+                }}
+                className="w-full min-h-[48px] rounded-xl border border-border bg-card px-4 py-3 text-sm font-semibold flex items-center justify-center gap-2 disabled:opacity-60"
+              >
+                <Bell className="w-4 h-4 text-primary" />
+                {pushBusy ? "Activando…" : "Avísame cuando esté listo"}
+              </button>
+            )}
+            {pushStatus === "error" && (
+              <p className="text-xs text-center text-error mt-2">
+                No se pudieron activar. Revisa la configuración del servidor (VAPID).
+              </p>
+            )}
           </div>
         )}
 

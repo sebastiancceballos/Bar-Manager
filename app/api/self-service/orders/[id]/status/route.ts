@@ -3,10 +3,10 @@ import { getAuthUser } from "@/lib/auth";
 import { sql } from "@/lib/db";
 import { logAudit } from "@/lib/audit";
 import { canTransition, SELF_SERVICE_STATUSES, SelfServiceStatus } from "@/lib/self-service";
+import { notifyOrder } from "@/lib/push";
 
 const ALLOWED_ROLES = ["owner", "admin", "cashier", "waiter", "kitchen"];
 
-/** Estados en los que el stock ya fue descontado (pasaron por cobro). */
 const STOCK_DEDUCTED_STATUSES = new Set(["PAID", "PREPARING", "READY", "COMPLETED"]);
 
 async function deductStockForOrder(
@@ -104,7 +104,8 @@ export async function PATCH(
     }
 
     const rows = await sql`
-      SELECT id, status, order_type, ticket_number FROM orders WHERE id = ${orderId} LIMIT 1
+      SELECT id, status, order_type, ticket_number, public_token
+      FROM orders WHERE id = ${orderId} LIMIT 1
     `;
     const order = rows[0];
     if (!order || order.order_type !== "self_service") {
@@ -122,7 +123,6 @@ export async function PATCH(
 
     let finalStatus: string = newStatus;
 
-    // Cobrar: descontar stock y pasar directo a PREPARING (pagado = ya va a cocina)
     if (newStatus === "PAID" && order.status === "PENDING_PAYMENT") {
       const result = await deductStockForOrder(
         orderId,
@@ -132,10 +132,10 @@ export async function PATCH(
       if (!result.ok) {
         return NextResponse.json({ error: result.error }, { status: 400 });
       }
+      // Cobrado → cocina (timeline del cliente sigue mostrando "Pagado" como hecho)
       finalStatus = "PREPARING";
     }
 
-    // Cancelar pedido ya cobrado → devolver stock
     if (
       newStatus === "CANCELLED" &&
       STOCK_DEDUCTED_STATUSES.has(order.status)
@@ -147,7 +147,7 @@ export async function PATCH(
       UPDATE orders
       SET status = ${finalStatus}, updated_at = NOW(), modified_by = ${user.id}
       WHERE id = ${orderId}
-      RETURNING id, ticket_number, status, updated_at
+      RETURNING id, ticket_number, status, updated_at, public_token
     `;
 
     await logAudit({
@@ -155,10 +155,48 @@ export async function PATCH(
       action: "self_service_status_change",
       entityType: "order",
       entityId: orderId,
-      details: `Ficho ${order.ticket_number}: ${order.status} -> ${finalStatus}${
-        newStatus === "PAID" && finalStatus === "PREPARING" ? " (cobro → preparación auto)" : ""
-      }`,
+      details: `Ficho ${order.ticket_number}: ${order.status} -> ${finalStatus}`,
     });
+
+    // Web Push al cliente
+    const ticket = order.ticket_number || `#${orderId}`;
+    const trackUrl = order.public_token
+      ? `/tracking/${order.public_token}`
+      : "/";
+
+    try {
+      if (finalStatus === "PREPARING" && order.status === "PENDING_PAYMENT") {
+        await notifyOrder(orderId, {
+          title: `Pedido ${ticket} en preparación`,
+          body: "Ya pagaste. Estamos preparando tu pedido.",
+          url: trackUrl,
+          tag: `order-${orderId}-preparing`,
+        });
+      } else if (finalStatus === "READY") {
+        await notifyOrder(orderId, {
+          title: `¡${ticket} listo para recoger!`,
+          body: "Tu pedido está listo. Pasa a recogerlo.",
+          url: trackUrl,
+          tag: `order-${orderId}-ready`,
+        });
+      } else if (finalStatus === "COMPLETED") {
+        await notifyOrder(orderId, {
+          title: `Pedido ${ticket} entregado`,
+          body: "¡Gracias por tu visita!",
+          url: trackUrl,
+          tag: `order-${orderId}-done`,
+        });
+      } else if (finalStatus === "CANCELLED") {
+        await notifyOrder(orderId, {
+          title: `Pedido ${ticket} cancelado`,
+          body: "Tu pedido fue cancelado. Si tienes dudas, pregunta en caja.",
+          url: trackUrl,
+          tag: `order-${orderId}-cancel`,
+        });
+      }
+    } catch (pushErr) {
+      console.error("Push notify error (no bloquea la respuesta):", pushErr);
+    }
 
     return NextResponse.json({ order: updated[0] }, { status: 200 });
   } catch (error) {
