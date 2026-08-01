@@ -30,10 +30,10 @@ export const REVENUE_STATUSES = [
 
 /**
  * Quién puede mover un pedido de autoservicio de un estado a otro.
- * owner/admin: supervisión en cualquier transición válida.
- * cashier: cobra (PENDING_PAYMENT -> PAID) y entrega (READY -> COMPLETED).
- * waiter (+ kitchen legado): prepara en el panel unificado de Comandas
- *   (PAID -> PREPARING -> READY).
+ * owner/admin: supervisión.
+ * cashier: cobra (PENDING_PAYMENT -> PAID; el API avanza a PREPARING)
+ *         y marca entregado (READY -> COMPLETED).
+ * waiter/kitchen: preparan (PAID/PREPARING -> READY) en Comandas.
  */
 const TRANSITIONS: Record<SelfServiceStatus, Partial<Record<SelfServiceStatus, UserRole[]>>> = {
   PENDING_PAYMENT: {
@@ -41,14 +41,16 @@ const TRANSITIONS: Record<SelfServiceStatus, Partial<Record<SelfServiceStatus, U
     CANCELLED: ["cashier", "admin", "owner"],
   },
   PAID: {
-    PREPARING: ["waiter", "kitchen", "admin", "owner"],
+    PREPARING: ["waiter", "kitchen", "admin", "owner", "cashier"],
     CANCELLED: ["cashier", "admin", "owner"],
   },
   PREPARING: {
     READY: ["waiter", "kitchen", "admin", "owner"],
+    CANCELLED: ["cashier", "admin", "owner"],
   },
   READY: {
     COMPLETED: ["cashier", "admin", "owner"],
+    CANCELLED: ["cashier", "admin", "owner"],
   },
   COMPLETED: {},
   CANCELLED: {},

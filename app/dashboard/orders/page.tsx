@@ -36,7 +36,6 @@ const ALLOWED_ROLES = ["owner", "admin", "cashier"];
 const TABS: { key: string; label: string }[] = [
   { key: "", label: "Todos (activos)" },
   { key: "PENDING_PAYMENT", label: "Por cobrar" },
-  { key: "PAID", label: "Pagados" },
   { key: "PREPARING", label: "En preparación" },
   { key: "READY", label: "Listos" },
 ];
@@ -49,6 +48,7 @@ function OrdersDashboardContent() {
   const [isLoading, setIsLoading] = useState(true);
   const [busyId, setBusyId] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [cancelTarget, setCancelTarget] = useState<SelfServiceOrder | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -184,9 +184,9 @@ function OrdersDashboardContent() {
                         </button>
                         <button
                           disabled={busyId === order.id}
-                          onClick={() => changeStatus(order.id, "CANCELLED")}
+                          onClick={() => setCancelTarget(order)}
                           className="min-w-[44px] min-h-[44px] flex items-center justify-center bg-background border border-border text-error rounded-lg disabled:opacity-50"
-                          title="Cancelar"
+                          title="Cancelar pedido"
                         >
                           <Ban className="w-4 h-4" />
                         </button>
@@ -207,6 +207,53 @@ function OrdersDashboardContent() {
             ))}
           </div>
         )}
+
+        {/* Confirmación al cancelar */}
+        {cancelTarget && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60">
+            <div className="bg-card border border-border rounded-2xl p-6 max-w-sm w-full shadow-xl">
+              <h2 className="text-lg font-bold text-foreground mb-2">
+                ¿Cancelar este pedido?
+              </h2>
+              <p className="text-sm text-foreground/70 mb-1">
+                Ficho{" "}
+                <span className="font-black text-foreground">
+                  {cancelTarget.ticket_number}
+                </span>
+                {cancelTarget.client_name
+                  ? ` · ${cancelTarget.client_name}`
+                  : ""}
+              </p>
+              <p className="text-sm text-foreground/60 mb-6">
+                Esta acción no se puede deshacer.
+                {cancelTarget.status !== "PENDING_PAYMENT"
+                  ? " El stock de los productos se devolverá al inventario."
+                  : ""}
+              </p>
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setCancelTarget(null)}
+                  className="flex-1 min-h-[44px] rounded-lg border border-border bg-background font-semibold"
+                >
+                  No
+                </button>
+                <button
+                  type="button"
+                  disabled={busyId === cancelTarget.id}
+                  onClick={async () => {
+                    const id = cancelTarget.id;
+                    setCancelTarget(null);
+                    await changeStatus(id, "CANCELLED");
+                  }}
+                  className="flex-1 min-h-[44px] rounded-lg bg-error text-white font-semibold disabled:opacity-50"
+                >
+                  Sí, cancelar
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </main>
     </div>
   );
@@ -218,7 +265,7 @@ function StatusBadge({ status }: { status: string }) {
     PAID: { label: "Pagado", className: "bg-primary/20 text-primary" },
     PREPARING: { label: "En preparación", className: "bg-secondary/20 text-secondary" },
     READY: { label: "Listo", className: "bg-success/20 text-success" },
-    COMPLETED: { label: "Completado", className: "bg-foreground/10 text-foreground/60" },
+    COMPLETED: { label: "Entregado", className: "bg-foreground/10 text-foreground/60" },
     CANCELLED: { label: "Cancelado", className: "bg-error/20 text-error" },
   };
   const info = map[status] || { label: status, className: "bg-foreground/10" };

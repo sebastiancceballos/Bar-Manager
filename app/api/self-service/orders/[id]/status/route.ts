@@ -6,13 +6,9 @@ import { canTransition, SELF_SERVICE_STATUSES, SelfServiceStatus } from "@/lib/s
 
 const ALLOWED_ROLES = ["owner", "admin", "cashier", "waiter", "kitchen"];
 
-/** Estados en los que el stock ya fue descontado (pasaron por PAID). */
+/** Estados en los que el stock ya fue descontado (pasaron por cobro). */
 const STOCK_DEDUCTED_STATUSES = new Set(["PAID", "PREPARING", "READY", "COMPLETED"]);
 
-/**
- * Descuenta stock de todos los ítems del pedido y registra stock_movements.
- * Falla si algún producto no tiene unidades suficientes.
- */
 async function deductStockForOrder(
   orderId: number,
   ticketNumber: string | null,
@@ -57,9 +53,6 @@ async function deductStockForOrder(
   return { ok: true };
 }
 
-/**
- * Devuelve al inventario el stock de un pedido que ya había sido cobrado.
- */
 async function restoreStockForOrder(
   orderId: number,
   ticketNumber: string | null,
@@ -127,7 +120,9 @@ export async function PATCH(
       );
     }
 
-    // Al cobrar (→ PAID): descontar inventario (el cliente nunca ve el stock)
+    let finalStatus: string = newStatus;
+
+    // Cobrar: descontar stock y pasar directo a PREPARING (pagado = ya va a cocina)
     if (newStatus === "PAID" && order.status === "PENDING_PAYMENT") {
       const result = await deductStockForOrder(
         orderId,
@@ -137,9 +132,10 @@ export async function PATCH(
       if (!result.ok) {
         return NextResponse.json({ error: result.error }, { status: 400 });
       }
+      finalStatus = "PREPARING";
     }
 
-    // Al cancelar un pedido ya cobrado: devolver stock
+    // Cancelar pedido ya cobrado → devolver stock
     if (
       newStatus === "CANCELLED" &&
       STOCK_DEDUCTED_STATUSES.has(order.status)
@@ -149,7 +145,7 @@ export async function PATCH(
 
     const updated = await sql`
       UPDATE orders
-      SET status = ${newStatus}, updated_at = NOW(), modified_by = ${user.id}
+      SET status = ${finalStatus}, updated_at = NOW(), modified_by = ${user.id}
       WHERE id = ${orderId}
       RETURNING id, ticket_number, status, updated_at
     `;
@@ -159,7 +155,9 @@ export async function PATCH(
       action: "self_service_status_change",
       entityType: "order",
       entityId: orderId,
-      details: `Ficho ${order.ticket_number}: ${order.status} -> ${newStatus}`,
+      details: `Ficho ${order.ticket_number}: ${order.status} -> ${finalStatus}${
+        newStatus === "PAID" && finalStatus === "PREPARING" ? " (cobro → preparación auto)" : ""
+      }`,
     });
 
     return NextResponse.json({ order: updated[0] }, { status: 200 });

@@ -98,15 +98,19 @@ export default function SelfServicePage({
   const cartCount = cart.reduce((sum, l) => sum + l.quantity, 0);
 
   function addToCart(product: Product) {
-    setCart((prev) => {
-      const existing = prev.find((l) => l.productId === product.id && !l.notes);
-      if (existing) {
-        return prev.map((l) =>
-          l.productId === product.id && !l.notes ? { ...l, quantity: l.quantity + 1 } : l
-        );
-      }
-      return [...prev, { productId: product.id, name: product.name, price: product.price, quantity: 1, notes: "" }];
-    });
+    // Siempre agrega una línea nueva (qty 1). Así el cliente puede poner
+    // notas distintas en cada unidad del mismo producto.
+    // Si quiere varias iguales sin notas, puede subir la cantidad con +.
+    setCart((prev) => [
+      ...prev,
+      {
+        productId: product.id,
+        name: product.name,
+        price: product.price,
+        quantity: 1,
+        notes: "",
+      },
+    ]);
     setBounceProductId(product.id);
     setTimeout(() => setBounceProductId(null), 350);
   }
@@ -132,17 +136,34 @@ export default function SelfServicePage({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          locationId: parseInt(locationId),
-          clientName: clientName || undefined,
-          customerNotes: customerNotes || undefined,
-          items: cart.map((l) => ({ productId: l.productId, quantity: l.quantity, notes: l.notes })),
+          locationId: parseInt(locationId, 10),
+          clientName: clientName.trim() || undefined,
+          customerNotes: customerNotes.trim() || undefined,
+          items: cart.map((l) => ({
+            productId: l.productId,
+            quantity: l.quantity,
+            notes: l.notes?.trim() || undefined,
+          })),
         }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "No se pudo crear el pedido");
+      let data: any = {};
+      try {
+        data = await res.json();
+      } catch {
+        throw new Error("Respuesta inválida del servidor");
+      }
+      if (!res.ok) {
+        throw new Error(data.error || data.detail || `Error ${res.status}`);
+      }
+      const token = data.order?.trackingToken || data.order?.public_token;
+      if (!token) {
+        throw new Error("Pedido creado pero sin token de seguimiento");
+      }
 
       localStorage.removeItem(cartKey(locationId));
-      router.push(`/tracking/${data.order.trackingToken}`);
+      setCart([]);
+      setIsSheetOpen(false);
+      router.push(`/tracking/${token}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "No se pudo crear el pedido");
       setIsSubmitting(false);
@@ -282,7 +303,7 @@ export default function SelfServicePage({
               transition={{ type: "spring", damping: 30, stiffness: 300 }}
               className="fixed bottom-0 left-0 right-0 z-50 bg-card rounded-t-2xl max-h-[85vh] flex flex-col"
             >
-              <div className="flex items-center justify-between p-4 border-b border-border">
+              <div className="flex items-center justify-between p-4 border-b border-border shrink-0">
                 <h2 className="font-bold text-lg">Tu pedido</h2>
                 <button
                   onClick={() => setIsSheetOpen(false)}
@@ -292,7 +313,11 @@ export default function SelfServicePage({
                 </button>
               </div>
 
-              <div className="overflow-y-auto flex-1 p-4 flex flex-col gap-3">
+              {/* min-h-0 es clave para que overflow-y funcione dentro de flex */}
+              <div className="overflow-y-auto flex-1 min-h-0 p-4 flex flex-col gap-3">
+                <p className="text-xs text-foreground/50 -mt-1">
+                  ¿Notas distintas en el mismo producto? Añádelo otra vez desde el menú y escribe la nota en cada línea.
+                </p>
                 {cart.map((line, index) => (
                   <div key={index} className="bg-background rounded-lg p-3 border border-border">
                     <div className="flex items-center justify-between">
@@ -316,7 +341,7 @@ export default function SelfServicePage({
                     <input
                       value={line.notes}
                       onChange={(e) => updateNotes(index, e.target.value)}
-                      placeholder="Notas (ej. sin hielo)"
+                      placeholder="Notas de esta línea (ej. sin cebolla)"
                       className="mt-2 w-full bg-transparent border border-border rounded-lg px-3 py-2 text-sm"
                     />
                   </div>
@@ -338,7 +363,12 @@ export default function SelfServicePage({
                 {error && <p className="text-error text-sm">{error}</p>}
               </div>
 
-              <div className="p-4 border-t border-border">
+              {/* Footer fijo: total + confirmar siempre visibles */}
+              <div className="p-4 border-t border-border shrink-0 bg-card">
+                <div className="flex justify-between text-sm mb-3">
+                  <span className="text-foreground/70">Total</span>
+                  <span className="font-bold">{formatCOP(cartTotal)}</span>
+                </div>
                 <button
                   onClick={confirmOrder}
                   disabled={isSubmitting || cart.length === 0}
