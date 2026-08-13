@@ -74,6 +74,8 @@ export function Navigation() {
       { href: "/dashboard/turno", label: "Mi Turno", icon: Clock },
     ] : []),
     ...(isCashier ? [
+      { href: "/dashboard/tables", label: "Mesas", icon: TableProperties },
+      { href: "/dashboard/comandas", label: "Comandas", icon: ClipboardList },
       { href: "/dashboard/orders", label: "Pedidos autoservicio", icon: Receipt },
       { href: "/dashboard/caja", label: "Caja", icon: Wallet },
       { href: "/dashboard/turno", label: "Mi Turno", icon: Clock },

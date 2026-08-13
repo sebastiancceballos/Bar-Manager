@@ -40,8 +40,8 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const user = await getAuthUser();
-    if (!user || (user.role !== "admin" && user.role !== "owner")) {
-      return NextResponse.json({ error: "Solo un admin puede abrir el turno de caja" }, { status: 403 });
+    if (!user || !["admin", "owner", "cashier"].includes(user.role)) {
+      return NextResponse.json({ error: "Sin permiso para abrir el turno de caja" }, { status: 403 });
     }
 
     const locRow = await sql`SELECT location_id FROM users WHERE id = ${user.id} LIMIT 1`;

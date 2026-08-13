@@ -9,8 +9,8 @@ export async function PATCH(
 ) {
   try {
     const user = await getAuthUser();
-    if (!user || (user.role !== "admin" && user.role !== "owner")) {
-      return NextResponse.json({ error: "Solo un admin puede cerrar el turno de caja" }, { status: 403 });
+    if (!user || !["admin", "owner", "cashier"].includes(user.role)) {
+      return NextResponse.json({ error: "Sin permiso para cerrar el turno de caja" }, { status: 403 });
     }
 
     const { id } = await params;

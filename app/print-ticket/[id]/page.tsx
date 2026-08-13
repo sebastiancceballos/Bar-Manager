@@ -16,10 +16,17 @@ interface TicketData {
   customerNotes?: string;
   total: number;
   createdAt: string;
+  locationName?: string | null;
+  locationAddress?: string | null;
+  cashierName?: string | null;
   items: { name: string; quantity: number; notes?: string; subtotal: number }[];
 }
 
-export default function PrintTicketPage({ params }: { params: Promise<{ id: string }> }) {
+export default function PrintTicketPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
   const { id } = usePromise(params);
   const [ticket, setTicket] = useState<TicketData | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -33,8 +40,6 @@ export default function PrintTicketPage({ params }: { params: Promise<{ id: stri
       })
       .then((data) => {
         setTicket(data);
-        // Da tiempo a que el layout de 80mm termine de pintarse antes de
-        // abrir el diálogo de impresión del navegador.
         setTimeout(() => window.print(), 300);
       })
       .catch((err) => setError(err.message));
@@ -63,10 +68,28 @@ export default function PrintTicketPage({ params }: { params: Promise<{ id: stri
           background: "white",
         }}
       >
-        <div style={{ textAlign: "center", fontSize: "28px", fontWeight: 900 }}>{ticket.ticketNumber}</div>
-        <div style={{ textAlign: "center", marginBottom: 8 }}>
+        {ticket.locationName && (
+          <div style={{ textAlign: "center", fontWeight: 900, fontSize: "14px", marginBottom: 2 }}>
+            {ticket.locationName}
+          </div>
+        )}
+        {ticket.locationAddress && (
+          <div style={{ textAlign: "center", fontSize: "10px", marginBottom: 4 }}>
+            {ticket.locationAddress}
+          </div>
+        )}
+
+        <div style={{ textAlign: "center", fontSize: "28px", fontWeight: 900 }}>
+          {ticket.ticketNumber}
+        </div>
+        <div style={{ textAlign: "center", marginBottom: 4 }}>
           {new Date(ticket.createdAt).toLocaleString("es-CO")}
         </div>
+        {ticket.cashierName && (
+          <div style={{ textAlign: "center", fontSize: "11px", marginBottom: 6 }}>
+            Cajero: {ticket.cashierName}
+          </div>
+        )}
         {ticket.clientName && <div>Cliente: {ticket.clientName}</div>}
         <hr style={{ border: "none", borderTop: "1px dashed black", margin: "6px 0" }} />
         {ticket.items.map((item, i) => (
@@ -77,14 +100,28 @@ export default function PrintTicketPage({ params }: { params: Promise<{ id: stri
               </span>
               <span>{formatCOP(item.subtotal)}</span>
             </div>
-            {item.notes && <div style={{ fontSize: "10px", paddingLeft: 8 }}>* {item.notes}</div>}
+            {item.notes && (
+              <div style={{ fontSize: "10px", paddingLeft: 8 }}>* {item.notes}</div>
+            )}
           </div>
         ))}
         <hr style={{ border: "none", borderTop: "1px dashed black", margin: "6px 0" }} />
-        {ticket.customerNotes && <div style={{ marginBottom: 6 }}>Nota: {ticket.customerNotes}</div>}
-        <div style={{ display: "flex", justifyContent: "space-between", fontWeight: 900, fontSize: "14px" }}>
+        {ticket.customerNotes && (
+          <div style={{ marginBottom: 6 }}>Nota: {ticket.customerNotes}</div>
+        )}
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            fontWeight: 900,
+            fontSize: "14px",
+          }}
+        >
           <span>TOTAL</span>
           <span>{formatCOP(ticket.total)}</span>
+        </div>
+        <div style={{ textAlign: "center", marginTop: 10, fontSize: "10px" }}>
+          ¡Gracias por su visita!
         </div>
       </div>
     </>
