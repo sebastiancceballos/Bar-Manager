@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthUser } from "@/lib/auth";
+import { canManageCashSession } from "@/lib/permissions";
 import { sql } from "@/lib/db";
 import { logAudit } from "@/lib/audit";
 
@@ -9,7 +10,7 @@ export async function PATCH(
 ) {
   try {
     const user = await getAuthUser();
-    if (!user || !["admin", "owner", "cashier"].includes(user.role)) {
+    if (!user || !canManageCashSession(user.role)) {
       return NextResponse.json({ error: "Sin permiso para cerrar el turno de caja" }, { status: 403 });
     }
 

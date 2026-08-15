@@ -3,9 +3,9 @@ import { getAuthUser } from "@/lib/auth";
 import { sql } from "@/lib/db";
 import { logAudit } from "@/lib/audit";
 import { canTransition, SELF_SERVICE_STATUSES, SelfServiceStatus } from "@/lib/self-service";
+import { canCharge, canUseComandas } from "@/lib/permissions";
 import { notifyOrder } from "@/lib/push";
 
-const ALLOWED_ROLES = ["owner", "admin", "cashier", "waiter", "kitchen"];
 
 const STOCK_DEDUCTED_STATUSES = new Set(["PAID", "PREPARING", "READY", "COMPLETED"]);
 
@@ -91,7 +91,9 @@ export async function PATCH(
     if (!user) {
       return NextResponse.json({ error: "No autenticado" }, { status: 401 });
     }
-    if (!ALLOWED_ROLES.includes(user.role)) {
+    // Cualquiera que opere comandas o cobre puede intentar la transición;
+    // canTransition valida el movimiento concreto.
+    if (!canUseComandas(user.role) && !canCharge(user.role)) {
       return NextResponse.json({ error: "Sin permiso" }, { status: 403 });
     }
 

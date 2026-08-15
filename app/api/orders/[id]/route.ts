@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthUser } from "@/lib/auth";
+import { canCharge } from "@/lib/permissions";
 import { sql } from "@/lib/db";
 import { logAudit } from "@/lib/audit";
 import bcrypt from "bcryptjs";
@@ -50,8 +51,12 @@ export async function PUT(
       const existing = await sql`SELECT * FROM orders WHERE id = ${orderId}`;
       const current = existing[0];
       if (!current) return NextResponse.json({ error: "Order not found" }, { status: 404 });
-      if (current.status !== "open") {
-        return NextResponse.json({ error: "Solo se pueden transferir órdenes abiertas" }, { status: 400 });
+      // Permitir transferir cuentas en curso o con cuenta pedida
+      if (current.status !== "open" && current.status !== "bill_requested") {
+        return NextResponse.json(
+          { error: "Solo se pueden transferir órdenes abiertas o con cuenta pedida" },
+          { status: 400 }
+        );
       }
 
       const targetTable = await sql`SELECT * FROM tables WHERE id = ${parseInt(newTableId)}`;
@@ -59,7 +64,9 @@ export async function PUT(
         return NextResponse.json({ error: "Mesa destino no encontrada" }, { status: 404 });
       }
       const openOrderOnTarget = await sql`
-        SELECT id FROM orders WHERE table_id = ${parseInt(newTableId)} AND status = 'open'
+        SELECT id FROM orders
+        WHERE table_id = ${parseInt(newTableId)}
+          AND status IN ('open', 'bill_requested')
       `;
       if (openOrderOnTarget.length > 0) {
         return NextResponse.json({ error: "La mesa destino ya tiene una orden abierta" }, { status: 409 });
@@ -100,15 +107,16 @@ export async function PUT(
 
     // --- Cerrar/cobrar orden (status: closed | paid) ---
     if (status === "closed" || status === "paid") {
-      // Mesero no puede cobrar ni cerrar cuentas
-      if (user.role === "waiter") {
+      if (!canCharge(user.role)) {
         return NextResponse.json(
-          { error: "El mesero no puede cobrar ni cerrar la cuenta. Llama a caja." },
+          {
+            error:
+              user.role === "waiter"
+                ? "El mesero no puede cobrar ni cerrar la cuenta. Llama a caja."
+                : "Sin permiso para cobrar",
+          },
           { status: 403 }
         );
-      }
-      if (!["admin", "owner", "cashier"].includes(user.role)) {
-        return NextResponse.json({ error: "Sin permiso para cobrar" }, { status: 403 });
       }
 
       const existing = await sql`SELECT * FROM orders WHERE id = ${orderId}`;
@@ -173,6 +181,41 @@ export async function PUT(
       const tax = Math.max(0, taxableAmount) * taxRate;
       const finalTotal = Math.max(0, taxableAmount) + tax + tip;
 
+      // Stock al cobrar (misma regla que autoservicio)
+      const lineItems = await sql`
+        SELECT oi.product_id, oi.quantity, p.name, COALESCE(p.stock, 0) AS stock
+        FROM order_items oi
+        JOIN products p ON oi.product_id = p.id
+        WHERE oi.order_id = ${orderId}
+      `;
+      for (const item of lineItems) {
+        const stock = Number(item.stock) || 0;
+        const qty = Number(item.quantity) || 0;
+        if (qty <= 0) continue;
+        if (stock < qty) {
+          return NextResponse.json(
+            {
+              error: `Sin stock suficiente de "${item.name}": hay ${stock}, se necesitan ${qty}. Repón inventario antes de cobrar.`,
+            },
+            { status: 400 }
+          );
+        }
+      }
+      for (const item of lineItems) {
+        const qty = Number(item.quantity) || 0;
+        if (qty <= 0 || !item.product_id) continue;
+        await sql`
+          UPDATE products
+          SET stock = COALESCE(stock, 0) - ${qty}, updated_at = NOW()
+          WHERE id = ${item.product_id}
+        `;
+        const reason = `Venta mesa (orden #${orderId})`;
+        await sql`
+          INSERT INTO stock_movements (product_id, quantity, type, reason, created_by)
+          VALUES (${item.product_id}, ${qty}, 'sale', ${reason}, ${user.id})
+        `;
+      }
+
       const updated = await sql`
         UPDATE orders
         SET status = ${status},
@@ -222,7 +265,7 @@ export async function PUT(
           { status: 403 }
         );
       }
-    } else if (!["admin", "owner", "cashier"].includes(user.role)) {
+    } else if (!canCharge(user.role) && user.role !== "waiter") {
       return NextResponse.json({ error: "Sin permiso para cambiar estado" }, { status: 403 });
     }
 

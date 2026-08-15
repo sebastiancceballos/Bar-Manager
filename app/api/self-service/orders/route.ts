@@ -3,8 +3,8 @@ import { sql } from "@/lib/db";
 import { logAudit } from "@/lib/audit";
 import { generateTicketNumber } from "@/lib/self-service";
 import { getAuthUser } from "@/lib/auth";
+import { canAccessSelfServiceQueue, canUseComandas } from "@/lib/permissions";
 
-const ALLOWED_ROLES = ["owner", "admin", "cashier", "waiter", "kitchen"];
 
 // Panel de caja/cocina: lista de pedidos de autoservicio del bar del usuario,
 // con filtro opcional por estado (?status=PAID) y búsqueda por número de
@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
     if (!user) {
       return NextResponse.json({ error: "No autenticado" }, { status: 401 });
     }
-    if (!ALLOWED_ROLES.includes(user.role)) {
+    if (!canAccessSelfServiceQueue(user.role) && !canUseComandas(user.role)) {
       return NextResponse.json({ error: "Sin permiso" }, { status: 403 });
     }
 
