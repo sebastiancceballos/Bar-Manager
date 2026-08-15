@@ -177,6 +177,18 @@ export default function TablesPage() {
     fetchData();
   };
 
+  /** Pinta la mesa al instante al cambiar estado (cuenta pedida / en curso) */
+  const handleOrderStatusChange = (tableId: number, status: string) => {
+    setOrders((prev) => {
+      const current = prev[tableId];
+      if (!current) return prev;
+      return {
+        ...prev,
+        [tableId]: { ...current, status },
+      };
+    });
+  };
+
   const handleAddTable = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -300,7 +312,7 @@ export default function TablesPage() {
               {tables.map((table) => {
                 const order = orders[table.id];
                 const isOccupied = !!order;
-                const billRequested = order?.status === "bill_requested";
+                const billRequested = String(order?.status || "").toLowerCase() === "bill_requested";
                 const borderClass = !isOccupied
                   ? "border-border bg-card hover:border-primary"
                   : billRequested
@@ -454,6 +466,7 @@ export default function TablesPage() {
                 setSelectedTableId(null);
               }}
               onUpdate={handleOrderUpdate}
+              onOrderStatusChange={handleOrderStatusChange}
               open={showOrderModal}
               availableTables={tables
                 .filter((t) => t.id !== selectedTableId && !orders[t.id])

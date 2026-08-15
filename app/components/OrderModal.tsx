@@ -19,6 +19,7 @@ interface Order {
   id: number;
   table_id: number;
   total_amount: number;
+  status?: string;
   items: OrderItem[];
 }
 
@@ -41,6 +42,8 @@ interface OrderModalProps {
   order: Order | null;
   onClose: () => void;
   onUpdate: () => void;
+  /** Actualiza estado en el mapa de mesas al instante */
+  onOrderStatusChange?: (tableId: number, status: string) => void;
   open: boolean;
   availableTables?: AvailableTable[];
 }
@@ -61,6 +64,7 @@ export function OrderModal({
   order,
   onClose,
   onUpdate,
+  onOrderStatusChange,
   open,
   availableTables = [],
 }: OrderModalProps) {
@@ -245,10 +249,9 @@ export function OrderModal({
         setError(data.error || "No se pudo cambiar el estado");
         return;
       }
+      // Actualización inmediata del color en el mapa
+      onOrderStatusChange?.(tableId, newStatus);
       onUpdate();
-      if (newStatus === "bill_requested") {
-        // mantener modal abierto; el estado se refleja al refrescar
-      }
     } catch {
       setError("Error de conexión al cambiar estado");
     } finally {
@@ -404,7 +407,18 @@ export function OrderModal({
               </div>
 
               <div className="bg-background p-4 rounded mb-4 border border-border">
-                <p className="text-gray-400 mb-2">Total</p>
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-gray-400">Total</p>
+                  {order.status === "bill_requested" ? (
+                    <span className="text-xs font-bold uppercase px-2 py-1 rounded bg-warning/20 text-warning border border-warning/40">
+                      Cuenta pedida
+                    </span>
+                  ) : (
+                    <span className="text-xs font-bold uppercase px-2 py-1 rounded bg-secondary/20 text-secondary border border-secondary/40">
+                      En curso
+                    </span>
+                  )}
+                </div>
                 <p className="text-3xl font-bold text-success">
                   {formatCOP(Number(order.total_amount))}
                 </p>
@@ -418,18 +432,26 @@ export function OrderModal({
                     <button
                       type="button"
                       onClick={() => handleManualStatus("bill_requested")}
-                      disabled={statusUpdating || updating || order.items.length === 0}
-                      className="btn btn-outline btn-sm disabled:opacity-50"
+                      disabled={statusUpdating || updating || order.items.length === 0 || order.status === "bill_requested"}
+                      className={`btn btn-sm disabled:opacity-50 ${
+                        order.status === "bill_requested"
+                          ? "btn-primary"
+                          : "btn-outline"
+                      }`}
                     >
-                      {statusUpdating ? "..." : "Cuenta pedida"}
+                      {statusUpdating ? "..." : order.status === "bill_requested" ? "✓ Cuenta pedida" : "Cuenta pedida"}
                     </button>
                   )}
                   {canCharge && (
                     <button
                       type="button"
                       onClick={() => handleManualStatus("open")}
-                      disabled={statusUpdating || updating}
-                      className="btn btn-outline btn-sm disabled:opacity-50"
+                      disabled={statusUpdating || updating || order.status === "open" || !order.status}
+                      className={`btn btn-sm disabled:opacity-50 ${
+                        order.status !== "bill_requested"
+                          ? "btn-primary"
+                          : "btn-outline"
+                      }`}
                       title="Volver a en curso"
                     >
                       En curso
