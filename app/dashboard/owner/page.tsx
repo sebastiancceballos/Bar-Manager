@@ -97,7 +97,7 @@ export default function OwnerPanel() {
         <div className="max-w-7xl mx-auto px-4 py-10">
 
           <div className="mb-8">
-            <h1 className="text-4xl font-bold text-foreground">Panel Owner</h1>
+            <h1 className="text-4xl font-bold text-foreground">Panel Superadmin</h1>
             <p className="text-gray-400 mt-1">Vista consolidada de todos tus bares</p>
           </div>
 

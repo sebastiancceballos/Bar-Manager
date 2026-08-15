@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Skeleton } from "./Skeleton";
 import { useAuth } from "@/app/providers";
+import { canCharge as roleCanCharge, canRequestBill as roleCanRequestBill } from "@/lib/permissions";
 import {
   onMoneyKeyInput,
   parseMoneyInput,
@@ -97,12 +98,9 @@ export function OrderModal({
   const [transferError, setTransferError] = useState<string | null>(null);
 
   const isAdmin = user?.role === "admin" || user?.role === "owner";
-  const isCashier = user?.role === "cashier";
   const isWaiter = user?.role === "waiter";
-  /** Solo caja / admin pueden cobrar y cerrar */
-  const canCharge = isAdmin || isCashier;
-  /** Mesero (y caja) pueden pedir cuenta */
-  const canRequestBill = isWaiter || canCharge;
+  const canCharge = roleCanCharge(user?.role);
+  const canRequestBill = roleCanRequestBill(user?.role);
 
   useEffect(() => {
     if (!open) return;

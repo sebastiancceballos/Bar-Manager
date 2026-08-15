@@ -1,6 +1,7 @@
 "use client";
 
 import { useAuth } from "@/app/providers";
+import { roleLabel } from "@/lib/roles";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -133,7 +134,7 @@ export function Navigation() {
             <div className="ml-4 pl-4 border-l border-border flex items-center gap-4">
               <div className="flex flex-col items-end">
                 <span className="text-xs font-semibold text-foreground">{user?.name}</span>
-                <span className="text-[10px] text-gray-500 uppercase tracking-wider">{user?.role}</span>
+                <span className="text-[10px] text-gray-500 tracking-wider">{roleLabel(user?.role)}</span>
               </div>
               <button
                 onClick={() => window.dispatchEvent(new CustomEvent("start-tour"))}
@@ -207,7 +208,7 @@ export function Navigation() {
                 </div>
                 <div className="ml-3">
                   <div className="text-base font-medium text-foreground">{user?.name}</div>
-                  <div className="text-sm font-medium text-gray-400">{user?.role}</div>
+                  <div className="text-sm font-medium text-gray-400">{roleLabel(user?.role)}</div>
                 </div>
               </div>
               <div className="mt-3 px-2">

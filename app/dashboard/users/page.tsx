@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { useAuth } from "@/app/providers";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { roleLabel, ROLE_DESCRIPTIONS } from "@/lib/roles";
 
 interface User {
   id: number;
@@ -91,11 +92,11 @@ export default function UsersPage() {
 
   // Owner creates admins; Admin creates staff (mesero / cajero / cocina)
   const roleOptions: { value: NewUserRole; label: string }[] = isOwner
-    ? [{ value: "admin", label: "Administrador" }]
+    ? [{ value: "admin", label: "Administrador del negocio" }]
     : [
         { value: "waiter", label: "Mesero" },
         { value: "cashier", label: "Cajero" },
-        { value: "kitchen", label: "Cocina" },
+        { value: "kitchen", label: "Comandas" },
       ];
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -208,11 +209,11 @@ export default function UsersPage() {
       kitchen: "bg-orange-500/20 text-orange-400 border border-orange-500/30",
     };
     const labels: Record<string, string> = {
-      owner: "Owner",
-      admin: "Admin",
+      owner: "Superadmin",
+      admin: "Administrador del negocio",
       waiter: "Mesero",
       cashier: "Cajero",
-      kitchen: "Cocina",
+      kitchen: "Comandas",
     };
     return (
       <span className={`px-2 py-1 rounded text-xs font-medium ${styles[role] || ""}`}>
@@ -289,15 +290,15 @@ export default function UsersPage() {
               <h1 className="text-4xl font-bold text-foreground">Gestionar Usuarios</h1>
               <p className="text-gray-400 mt-2">
                 {isOwner
-                  ? "Como owner puedes crear y eliminar administradores de cada bar"
-                  : "Como admin puedes crear y eliminar meseros, cajeros y personal de cocina de tu bar"}
+                  ? "Como Superadmin puedes crear administradores de cada negocio (bar)"
+                  : "Como administrador del negocio puedes crear meseros, cajeros y personal de comandas de tu bar"}
               </p>
             </div>
             <button
               onClick={() => { setShowForm(!showForm); setError(null); setSuccess(null); }}
               className="btn btn-primary"
             >
-              {showForm ? "Cancelar" : isOwner ? "Nuevo Administrador" : "Nuevo Mesero"}
+              {showForm ? "Cancelar" : isOwner ? "Nuevo administrador del negocio" : "Nuevo usuario"}
             </button>
           </div>
 
@@ -317,7 +318,7 @@ export default function UsersPage() {
           {showForm && (
             <div className="card mb-8">
               <h2 className="text-xl font-semibold mb-6">
-                {isOwner ? "Crear Nuevo Administrador" : "Crear Nuevo Mesero"}
+                {isOwner ? "Crear administrador del negocio" : "Crear usuario del bar"}
               </h2>
               <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
@@ -383,7 +384,7 @@ export default function UsersPage() {
                 )}
                 <div className="md:col-span-2">
                   <button type="submit" disabled={submitting} className="btn btn-primary w-full">
-                    {submitting ? "Creando..." : `Crear ${isOwner ? "Administrador" : "Mesero"}`}
+                    {submitting ? "Creando..." : `Crear ${isOwner ? "administrador" : "usuario"}`}
                   </button>
                 </div>
               </form>
