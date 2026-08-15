@@ -265,7 +265,8 @@ export async function PUT(
           { status: 403 }
         );
       }
-    } else if (!canCharge(user.role) && user.role !== "waiter") {
+    } else if (!canCharge(user.role)) {
+      // kitchen u otros roles sin cobro
       return NextResponse.json({ error: "Sin permiso para cambiar estado" }, { status: 403 });
     }
 
