@@ -299,14 +299,18 @@ export default function TablesPage() {
               {tables.map((table) => {
                 const order = orders[table.id];
                 const isOccupied = !!order;
+                const billRequested = order?.status === "bill_requested";
+                const borderClass = !isOccupied
+                  ? "border-border bg-card hover:border-primary"
+                  : billRequested
+                    ? "border-warning bg-warning/20"
+                    : "border-secondary bg-secondary/20";
+                const amountClass = billRequested ? "text-warning" : "text-secondary";
                 return (
                   <div
                     key={table.id}
                     onClick={() => handleTableClick(table.id)}
-                    className={`flex flex-col items-center justify-center rounded-full border-4 cursor-pointer select-none aspect-square w-full max-w-[140px] mx-auto transition-shadow ${isOccupied
-                      ? "border-secondary bg-secondary/20"
-                      : "border-border bg-card hover:border-primary"
-                      }`}
+                    className={`flex flex-col items-center justify-center rounded-full border-4 cursor-pointer select-none aspect-square w-full max-w-[140px] mx-auto transition-shadow ${borderClass}`}
                   >
                     <span className="text-2xl font-bold text-foreground">
                       {table.table_number}
@@ -315,8 +319,13 @@ export default function TablesPage() {
                       {table.capacity} pers.
                     </span>
                     {isOccupied && (
-                      <span className="text-xs font-semibold text-secondary mt-1">
+                      <span className={`text-xs font-semibold mt-1 ${amountClass}`}>
                         {formatCOP(Number(order.total_amount))}
+                      </span>
+                    )}
+                    {billRequested && (
+                      <span className="text-[10px] font-bold uppercase text-warning mt-0.5">
+                        Cuenta
                       </span>
                     )}
                   </div>
@@ -419,7 +428,7 @@ export default function TablesPage() {
           )}
 
           {/* Legend */}
-          <div className="flex gap-6 mt-4 text-sm text-gray-400">
+          <div className="flex flex-wrap gap-6 mt-4 text-sm text-gray-400">
             <div className="flex items-center gap-2">
               <div className="w-4 h-4 rounded-full border-2 border-border bg-card"></div>
               <span>Disponible</span>
@@ -427,6 +436,10 @@ export default function TablesPage() {
             <div className="flex items-center gap-2">
               <div className="w-4 h-4 rounded-full border-2 border-secondary bg-secondary/20"></div>
               <span>Ocupada</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-4 rounded-full border-2 border-warning bg-warning/20"></div>
+              <span>Cuenta pedida</span>
             </div>
           </div>
 

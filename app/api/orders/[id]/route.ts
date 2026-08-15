@@ -100,6 +100,17 @@ export async function PUT(
 
     // --- Cerrar/cobrar orden (status: closed | paid) ---
     if (status === "closed" || status === "paid") {
+      // Mesero no puede cobrar ni cerrar cuentas
+      if (user.role === "waiter") {
+        return NextResponse.json(
+          { error: "El mesero no puede cobrar ni cerrar la cuenta. Llama a caja." },
+          { status: 403 }
+        );
+      }
+      if (!["admin", "owner", "cashier"].includes(user.role)) {
+        return NextResponse.json({ error: "Sin permiso para cobrar" }, { status: 403 });
+      }
+
       const existing = await sql`SELECT * FROM orders WHERE id = ${orderId}`;
       const current = existing[0];
       if (!current) return NextResponse.json({ error: "Order not found" }, { status: 404 });
@@ -180,20 +191,48 @@ export async function PUT(
         RETURNING *
       `;
 
+      const amountReceived = Number(body.amountReceived);
+      const changeDue =
+        Number.isFinite(amountReceived) && amountReceived > 0
+          ? Math.max(0, amountReceived - finalTotal)
+          : null;
+
       await logAudit({
         locationId,
         userId: user.id,
         action: "close_order",
         entityType: "order",
         entityId: orderId,
-        details: `pago=${paymentMethod} propina=${tip} descuento=${discount}${discount > 0 ? ` (${discountReason}, autorizado por #${discountAuthorizedBy})` : ""} total=${finalTotal}`,
+        details: `pago=${paymentMethod} propina=${tip} descuento=${discount}${discount > 0 ? ` (${discountReason}, autorizado por #${discountAuthorizedBy})` : ""} total=${finalTotal}${
+          Number.isFinite(amountReceived) ? ` recibe=${amountReceived} vuelto=${changeDue}` : ""
+        }`,
       });
 
       const order = await attachItems(updated[0]);
       return NextResponse.json({ order, breakdown: { subtotal, discount, tax, taxRate, tip, total: finalTotal } }, { status: 200 });
     }
 
-    // --- Cualquier otro cambio de status (ej. reabrir) ---
+    // --- Cambio de estado manual (sin cobro) ---
+    const MANUAL_STATUSES = ["open", "bill_requested"];
+    if (user.role === "waiter") {
+      // Mesero solo puede pedir cuenta (bill_requested) o mantener open
+      if (status !== "bill_requested" && status !== "open") {
+        return NextResponse.json(
+          { error: "El mesero solo puede marcar 'Cuenta pedida' o dejar la orden abierta" },
+          { status: 403 }
+        );
+      }
+    } else if (!["admin", "owner", "cashier"].includes(user.role)) {
+      return NextResponse.json({ error: "Sin permiso para cambiar estado" }, { status: 403 });
+    }
+
+    if (!MANUAL_STATUSES.includes(status) && status !== "closed" && status !== "paid") {
+      // permitir solo estados conocidos de mesa
+      if (!["open", "bill_requested", "paid", "closed"].includes(status)) {
+        return NextResponse.json({ error: "Estado inválido" }, { status: 400 });
+      }
+    }
+
     const orders = await sql`
       UPDATE orders 
       SET status = ${status}, updated_at = NOW(), modified_by = ${user.id}

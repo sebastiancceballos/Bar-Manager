@@ -79,12 +79,20 @@ export function OrderModal({
   const [authorizerEmail, setAuthorizerEmail] = useState("");
   const [authorizerPassword, setAuthorizerPassword] = useState("");
   const [paymentError, setPaymentError] = useState<string | null>(null);
+  const [amountReceived, setAmountReceived] = useState("");
+  const [statusUpdating, setStatusUpdating] = useState(false);
 
   const [showTransfer, setShowTransfer] = useState(false);
   const [transferTargetId, setTransferTargetId] = useState<string>("");
   const [transferError, setTransferError] = useState<string | null>(null);
 
   const isAdmin = user?.role === "admin" || user?.role === "owner";
+  const isCashier = user?.role === "cashier";
+  const isWaiter = user?.role === "waiter";
+  /** Solo caja / admin pueden cobrar y cerrar */
+  const canCharge = isAdmin || isCashier;
+  /** Mesero (y caja) pueden pedir cuenta */
+  const canRequestBill = isWaiter || canCharge;
 
   useEffect(() => {
     if (!open) return;
@@ -218,12 +226,60 @@ export function OrderModal({
     setDiscountReason("");
     setAuthorizerEmail("");
     setAuthorizerPassword("");
+    setAmountReceived("");
     setShowPayment(true);
+  };
+
+  const handleManualStatus = async (newStatus: string) => {
+    if (!order) return;
+    setStatusUpdating(true);
+    setError(null);
+    try {
+      const response = await fetch(`/api/orders/${order.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: newStatus }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        setError(data.error || "No se pudo cambiar el estado");
+        return;
+      }
+      onUpdate();
+      if (newStatus === "bill_requested") {
+        // mantener modal abierto; el estado se refleja al refrescar
+      }
+    } catch {
+      setError("Error de conexión al cambiar estado");
+    } finally {
+      setStatusUpdating(false);
+    }
   };
 
   const handleConfirmPayment = async () => {
     if (!order) return;
     setPaymentError(null);
+
+    const tip = parseFloat(tipAmount) || 0;
+    const discount = parseFloat(discountAmount) || 0;
+    const subtotal = Number(order.total_amount) || 0;
+    // Estimación en cliente (el servidor recalcula IVA exacto)
+    const estimatedTotal = Math.max(0, subtotal - discount) + tip;
+    const received = parseFloat(amountReceived);
+
+    if (paymentMethod === "efectivo") {
+      if (!amountReceived || Number.isNaN(received)) {
+        setPaymentError("Indica con cuánto paga el cliente");
+        return;
+      }
+      if (received < estimatedTotal - 0.01) {
+        setPaymentError(
+          `El monto recibido (${formatCOP(received)}) es menor al total (${formatCOP(estimatedTotal)})`
+        );
+        return;
+      }
+    }
+
     setUpdating(true);
     try {
       const response = await fetch(`/api/orders/${order.id}`, {
@@ -232,11 +288,12 @@ export function OrderModal({
         body: JSON.stringify({
           status: "paid",
           paymentMethod,
-          tipAmount: parseFloat(tipAmount) || 0,
-          discountAmount: parseFloat(discountAmount) || 0,
+          tipAmount: tip,
+          discountAmount: discount,
           discountReason,
           authorizerEmail: isAdmin ? undefined : authorizerEmail,
           authorizerPassword: isAdmin ? undefined : authorizerPassword,
+          amountReceived: paymentMethod === "efectivo" ? received : undefined,
         }),
       });
 
@@ -353,14 +410,49 @@ export function OrderModal({
                 </p>
               </div>
 
+              {/* Estados manuales */}
+              <div className="flex flex-col gap-2 mb-3">
+                <p className="text-xs text-gray-400 uppercase tracking-wide">Estado de la cuenta</p>
+                <div className="flex flex-wrap gap-2">
+                  {canRequestBill && (
+                    <button
+                      type="button"
+                      onClick={() => handleManualStatus("bill_requested")}
+                      disabled={statusUpdating || updating || order.items.length === 0}
+                      className="btn btn-outline btn-sm disabled:opacity-50"
+                    >
+                      {statusUpdating ? "..." : "Cuenta pedida"}
+                    </button>
+                  )}
+                  {canCharge && (
+                    <button
+                      type="button"
+                      onClick={() => handleManualStatus("open")}
+                      disabled={statusUpdating || updating}
+                      className="btn btn-outline btn-sm disabled:opacity-50"
+                      title="Volver a en curso"
+                    >
+                      En curso
+                    </button>
+                  )}
+                </div>
+                {!canCharge && isWaiter && (
+                  <p className="text-xs text-warning">
+                    Solo caja puede cobrar y cerrar la mesa.
+                  </p>
+                )}
+              </div>
+
               <div className="flex gap-2">
-                <button
-                  onClick={handleOpenPayment}
-                  disabled={updating || order.items.length === 0}
-                  className="btn btn-primary flex-1 disabled:opacity-50"
-                >
-                  {updating ? "Procesando..." : "Cobrar y Cerrar"}
-                </button>
+                {canCharge && (
+                  <button
+                    onClick={handleOpenPayment}
+                    disabled={updating || order.items.length === 0}
+                    className="btn btn-primary flex-1 disabled:opacity-50"
+                  >
+                    {updating ? "Procesando..." : "Cobrar y Cerrar"}
+                  </button>
+                )}
                 {availableTables.length > 0 && (
                   <button
                     onClick={() => {
@@ -532,13 +624,82 @@ export function OrderModal({
               </div>
             )}
 
-            <div className="bg-background p-4 rounded border border-border text-sm space-y-1">
+            <div className="bg-background p-4 rounded border border-border text-sm space-y-2">
               <div className="flex justify-between text-gray-400">
                 <span>Subtotal</span>
                 <span>{formatCOP(Number(order.total_amount))}</span>
               </div>
-              <p className="text-xs text-gray-500">El total final (con IVA aplicable) se calcula al confirmar.</p>
+              {(parseFloat(discountAmount) || 0) > 0 && (
+                <div className="flex justify-between text-warning">
+                  <span>Descuento</span>
+                  <span>-{formatCOP(parseFloat(discountAmount) || 0)}</span>
+                </div>
+              )}
+              {(parseFloat(tipAmount) || 0) > 0 && (
+                <div className="flex justify-between text-gray-400">
+                  <span>Propina</span>
+                  <span>{formatCOP(parseFloat(tipAmount) || 0)}</span>
+                </div>
+              )}
+              <div className="flex justify-between font-bold text-foreground text-base pt-1 border-t border-border">
+                <span>Total a pagar</span>
+                <span>
+                  {formatCOP(
+                    Math.max(
+                      0,
+                      Number(order.total_amount) - (parseFloat(discountAmount) || 0)
+                    ) + (parseFloat(tipAmount) || 0)
+                  )}
+                </span>
+              </div>
+              <p className="text-xs text-gray-500">
+                Si el bar tiene IVA, el servidor lo suma al confirmar.
+              </p>
             </div>
+
+            {paymentMethod === "efectivo" && (
+              <div className="space-y-2">
+                <label className="text-sm text-gray-400">¿Con cuánto paga el cliente?</label>
+                <input
+                  type="number"
+                  min="0"
+                  step="1000"
+                  className="input w-full text-lg font-semibold"
+                  placeholder="Ej: 50000"
+                  value={amountReceived}
+                  onChange={(e) => setAmountReceived(e.target.value)}
+                />
+                {amountReceived && !Number.isNaN(parseFloat(amountReceived)) && (
+                  <div
+                    className={`p-3 rounded-lg border text-center ${
+                      parseFloat(amountReceived) >=
+                      Math.max(
+                        0,
+                        Number(order.total_amount) - (parseFloat(discountAmount) || 0)
+                      ) +
+                        (parseFloat(tipAmount) || 0)
+                        ? "bg-success/10 border-success/30 text-success"
+                        : "bg-error/10 border-error/30 text-error"
+                    }`}
+                  >
+                    <p className="text-xs uppercase tracking-wide opacity-80">Vuelto a devolver</p>
+                    <p className="text-2xl font-black">
+                      {formatCOP(
+                        Math.max(
+                          0,
+                          parseFloat(amountReceived) -
+                            (Math.max(
+                              0,
+                              Number(order.total_amount) - (parseFloat(discountAmount) || 0)
+                            ) +
+                              (parseFloat(tipAmount) || 0))
+                        )
+                      )}
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
 
             <button
               onClick={handleConfirmPayment}
