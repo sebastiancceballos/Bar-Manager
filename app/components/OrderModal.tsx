@@ -696,35 +696,45 @@ export function OrderModal({
                   value={amountReceived}
                   onChange={(e) => setAmountReceived(onMoneyKeyInput(e.target.value))}
                 />
-                <div className="flex flex-wrap gap-2">
-                  <button
-                    type="button"
-                    className="btn btn-outline btn-sm"
-                    onClick={() => {
-                      const exact =
-                        Math.max(
-                          0,
-                          Number(order.total_amount) - parseMoneyInput(discountAmount)
-                        ) + parseMoneyInput(tipAmount);
-                      setAmountReceived(formatMoneyInput(exact));
-                    }}
-                  >
-                    Exacto
-                  </button>
-                  {COP_DENOMS.map((d) => (
+                <div className="space-y-1.5">
+                  <p className="text-xs text-gray-400 leading-relaxed">
+                    <span className="font-semibold text-foreground/80">Botones rápidos:</span>{" "}
+                    <strong>Exacto</strong> pone el total a pagar.
+                    Los botones <strong>+1.000</strong>, <strong>+5.000</strong>, etc. suman billetes
+                    al monto (puedes pulsar varias veces). El vuelto se calcula solo.
+                  </p>
+                  <div className="flex flex-wrap gap-2">
                     <button
-                      key={d}
                       type="button"
                       className="btn btn-outline btn-sm"
-                      onClick={() =>
-                        setAmountReceived(
-                          formatMoneyInput(parseMoneyInput(amountReceived) + d)
-                        )
-                      }
+                      title="Poner el total exacto a pagar"
+                      onClick={() => {
+                        const exact =
+                          Math.max(
+                            0,
+                            Number(order.total_amount) - parseMoneyInput(discountAmount)
+                          ) + parseMoneyInput(tipAmount);
+                        setAmountReceived(formatMoneyInput(exact));
+                      }}
                     >
-                      +{formatMoneyInput(d)}
+                      Exacto
                     </button>
-                  ))}
+                    {COP_DENOMS.map((d) => (
+                      <button
+                        key={d}
+                        type="button"
+                        className="btn btn-outline btn-sm"
+                        title={`Sumar ${formatMoneyInput(d)} al monto recibido`}
+                        onClick={() =>
+                          setAmountReceived(
+                            formatMoneyInput(parseMoneyInput(amountReceived) + d)
+                          )
+                        }
+                      >
+                        +{formatMoneyInput(d)}
+                      </button>
+                    ))}
+                  </div>
                 </div>
                 {amountReceived !== "" && (
                   <div
