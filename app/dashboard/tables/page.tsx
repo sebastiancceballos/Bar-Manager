@@ -35,6 +35,7 @@ interface Order {
   id: number;
   table_id: number;
   total_amount: number;
+  status?: string;
   items: OrderItem[];
 }
 
