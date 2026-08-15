@@ -27,14 +27,32 @@ export async function PATCH(
       return NextResponse.json({ error: "Monto contado inválido" }, { status: 400 });
     }
 
-    // Efectivo esperado = monto inicial + ventas en efectivo cobradas durante el turno
+    // Efectivo esperado = monto inicial + ventas en efectivo del local durante el turno.
+    // Incluye mesas (closed/paid) y autoservicio cobrado (PREPARING/READY/COMPLETED)
+    // filtrado por location_id de la sesión de caja.
+    const locId = session.location_id;
     const cashSalesRows = await sql`
-      SELECT COALESCE(SUM(total_amount), 0) as total
-      FROM orders
-      WHERE payment_method = 'efectivo'
-        AND status IN ('closed', 'paid')
-        AND closed_at >= ${session.opened_at}
-        AND closed_at <= NOW()
+      SELECT COALESCE(SUM(o.total_amount), 0) as total
+      FROM orders o
+      WHERE o.payment_method = 'efectivo'
+        AND o.status IN ('closed', 'paid', 'PAID', 'PREPARING', 'READY', 'COMPLETED')
+        AND o.closed_at IS NOT NULL
+        AND o.closed_at >= ${session.opened_at}
+        AND o.closed_at <= NOW()
+        AND (
+          -- Pedidos de mesa del local
+          EXISTS (
+            SELECT 1 FROM tables t
+            WHERE t.id = o.table_id AND t.location_id = ${locId}
+          )
+          OR
+          -- Autoservicio: productos del local
+          EXISTS (
+            SELECT 1 FROM order_items oi
+            JOIN products p ON oi.product_id = p.id
+            WHERE oi.order_id = o.id AND p.location_id = ${locId}
+          )
+        )
     `;
     const cashSales = parseFloat(cashSalesRows[0]?.total || 0);
     const expected = parseFloat(session.opening_amount) + cashSales;

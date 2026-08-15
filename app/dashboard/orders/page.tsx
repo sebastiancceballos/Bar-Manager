@@ -70,13 +70,16 @@ function OrdersDashboardContent() {
     return () => clearInterval(interval);
   }, [load]);
 
-  async function changeStatus(id: number, status: string) {
+  async function changeStatus(id: number, status: string, paymentMethod?: string) {
     setBusyId(id);
     try {
       const res = await fetch(`/api/self-service/orders/${id}/status`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status }),
+        body: JSON.stringify({
+          status,
+          ...(status === "PAID" ? { paymentMethod: paymentMethod || "efectivo" } : {}),
+        }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);

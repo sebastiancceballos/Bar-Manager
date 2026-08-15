@@ -15,28 +15,8 @@ export async function DELETE(
 
     const { id, itemId } = await params;
 
-    // Obtener detalles antes de borrar para devolver al stock
-    const itemRows = await sql`SELECT product_id, quantity FROM order_items WHERE id = ${parseInt(itemId)}`;
-    const itemToRestore = itemRows[0];
-
-    // Delete item
+    // Delete item (stock solo se mueve al cobrar)
     await sql`DELETE FROM order_items WHERE id = ${parseInt(itemId)}`;
-
-    if (itemToRestore) {
-      // Restaurar stock
-      await sql`
-        UPDATE products 
-        SET stock = COALESCE(stock, 0) + ${itemToRestore.quantity}
-        WHERE id = ${itemToRestore.product_id}
-      `;
-
-      // Registrar ajuste
-      const reason = `Cancelación/Eliminación de item en Orden #${id}`;
-      await sql`
-        INSERT INTO stock_movements (product_id, quantity, type, reason, created_by)
-        VALUES (${itemToRestore.product_id}, ${itemToRestore.quantity}, 'entry', ${reason}, ${user.id})
-      `;
-    }
 
     // Update order total
     const totalResult = await sql`
@@ -141,19 +121,7 @@ export async function PATCH(
       await sql`DELETE FROM order_items WHERE id = ${parseInt(itemId)}`;
     }
 
-    // Restaurar 1 unidad de stock
-    await sql`
-      UPDATE products 
-      SET stock = COALESCE(stock, 0) + 1
-      WHERE id = ${item.product_id}
-    `;
-
-    // Registrar ajuste
-    const reason = `Reducción de cantidad en Orden #${id}`;
-    await sql`
-      INSERT INTO stock_movements (product_id, quantity, type, reason, created_by)
-      VALUES (${item.product_id}, 1, 'entry', ${reason}, ${user.id})
-    `;
+    // Stock no se restaura aquí (se descuenta solo al cobrar)
 
     // Actualizar total de la orden
     const totalResult = await sql`

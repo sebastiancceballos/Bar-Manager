@@ -97,7 +97,10 @@ export async function PATCH(
 
     const { id } = await params;
     const orderId = parseInt(id);
-    const { status: newStatus } = await request.json();
+    const body = await request.json();
+    const newStatus = body.status;
+    const paymentMethodRaw = body.paymentMethod as string | undefined;
+    const VALID_PAYMENT = ["efectivo", "tarjeta", "transferencia", "otro"];
 
     if (!SELF_SERVICE_STATUSES.includes(newStatus)) {
       return NextResponse.json({ error: "Estado inválido" }, { status: 400 });
@@ -143,19 +146,43 @@ export async function PATCH(
       await restoreStockForOrder(orderId, order.ticket_number, user.id);
     }
 
-    const updated = await sql`
-      UPDATE orders
-      SET status = ${finalStatus}, updated_at = NOW(), modified_by = ${user.id}
-      WHERE id = ${orderId}
-      RETURNING id, ticket_number, status, updated_at, public_token
-    `;
+    // Al cobrar: método de pago + closed_at (para arqueo de caja)
+    let paymentMethod: string | null = null;
+    let setClosedAt = false;
+    if (newStatus === "PAID" && order.status === "PENDING_PAYMENT") {
+      paymentMethod =
+        paymentMethodRaw && VALID_PAYMENT.includes(paymentMethodRaw)
+          ? paymentMethodRaw
+          : "efectivo";
+      setClosedAt = true;
+    }
+
+    const updated = setClosedAt
+      ? await sql`
+          UPDATE orders
+          SET status = ${finalStatus},
+              updated_at = NOW(),
+              modified_by = ${user.id},
+              payment_method = ${paymentMethod},
+              closed_at = NOW()
+          WHERE id = ${orderId}
+          RETURNING id, ticket_number, status, updated_at, public_token, payment_method, closed_at
+        `
+      : await sql`
+          UPDATE orders
+          SET status = ${finalStatus}, updated_at = NOW(), modified_by = ${user.id}
+          WHERE id = ${orderId}
+          RETURNING id, ticket_number, status, updated_at, public_token
+        `;
 
     await logAudit({
       userId: user.id,
       action: "self_service_status_change",
       entityType: "order",
       entityId: orderId,
-      details: `Ficho ${order.ticket_number}: ${order.status} -> ${finalStatus}`,
+      details: `Ficho ${order.ticket_number}: ${order.status} -> ${finalStatus}${
+        paymentMethod ? ` pago=${paymentMethod}` : ""
+      }`,
     });
 
     // Web Push al cliente
