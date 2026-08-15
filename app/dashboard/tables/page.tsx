@@ -369,29 +369,39 @@ export default function TablesPage() {
               {tables.map((table) => {
                 const order = orders[table.id];
                 const isOccupied = !!order;
+                const billRequested =
+                  String(order?.status || "").toLowerCase() === "bill_requested";
                 const size = getTableSize(table.capacity);
                 const isDragging = draggingTable === table.id;
+
+                const stateClass = !isOccupied
+                  ? "border-border bg-card hover:border-primary hover:shadow-primary/20"
+                  : billRequested
+                    ? "border-warning bg-warning/20 shadow-warning/30"
+                    : "border-secondary bg-secondary/20 shadow-secondary/30";
+
+                const amountClass = billRequested ? "text-warning" : "text-secondary";
+
+                const glowShadow = !isOccupied
+                  ? isDragging
+                    ? "0 10px 40px rgba(0,0,0,0.3)"
+                    : "0 4px 12px rgba(0,0,0,0.15)"
+                  : billRequested
+                    ? "0 0 20px rgba(245, 158, 11, 0.35)"
+                    : "0 0 20px rgba(236, 72, 153, 0.3)";
 
                 return (
                   <div
                     key={table.id}
                     onMouseDown={(e) => handleMouseDown(e, table.id)}
                     onClick={() => !isDragging && handleTableClick(table.id)}
-                    className={`absolute flex flex-col items-center justify-center rounded-full border-4 transition-shadow select-none ${isDragging ? "z-50 shadow-2xl scale-105" : "z-10"
-                      } ${isOccupied
-                        ? "border-secondary bg-secondary/20 shadow-secondary/30"
-                        : "border-border bg-card hover:border-primary hover:shadow-primary/20"
-                      } ${canDrag ? "cursor-grab active:cursor-grabbing" : "cursor-pointer"}`}
+                    className={`absolute flex flex-col items-center justify-center rounded-full border-4 transition-shadow select-none ${isDragging ? "z-50 shadow-2xl scale-105" : "z-10"} ${stateClass} ${canDrag ? "cursor-grab active:cursor-grabbing" : "cursor-pointer"}`}
                     style={{
                       width: `${size}px`,
                       height: `${size}px`,
                       left: `${table.x_position || 50}px`,
                       top: `${table.y_position || 50}px`,
-                      boxShadow: isOccupied
-                        ? "0 0 20px rgba(var(--secondary-rgb), 0.3)"
-                        : isDragging
-                          ? "0 10px 40px rgba(0,0,0,0.3)"
-                          : "0 4px 12px rgba(0,0,0,0.15)",
+                      boxShadow: glowShadow,
                     }}
                   >
                     <span className="text-xl font-bold text-foreground">
@@ -401,8 +411,13 @@ export default function TablesPage() {
                       {table.capacity} pers.
                     </span>
                     {isOccupied && (
-                      <span className="text-xs font-semibold text-secondary mt-1">
+                      <span className={`text-xs font-semibold mt-1 ${amountClass}`}>
                         {formatCOP(Number(order.total_amount))}
+                      </span>
+                    )}
+                    {billRequested && (
+                      <span className="text-[10px] font-bold uppercase text-warning mt-0.5">
+                        Cuenta
                       </span>
                     )}
 

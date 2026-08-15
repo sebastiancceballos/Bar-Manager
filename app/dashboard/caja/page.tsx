@@ -3,6 +3,7 @@
 import { ProtectedLayout } from "@/app/components/ProtectedLayout";
 import { Navigation } from "@/app/components/Navigation";
 import { useEffect, useState } from "react";
+import { onMoneyKeyInput, parseMoneyInput } from "@/lib/money-input";
 
 const formatCOP = (value: number) =>
   new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", minimumFractionDigits: 0 }).format(value);
@@ -53,7 +54,7 @@ export default function CajaPage() {
     setError(null);
     setSubmitting(true);
     try {
-      const amount = parseInt(openingAmount) || 0;
+      const amount = parseMoneyInput(openingAmount);
       const res = await fetch("/api/cash-sessions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -79,7 +80,7 @@ export default function CajaPage() {
       const res = await fetch(`/api/cash-sessions/${open.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ closingAmount: parseInt(closingAmount) || 0, notes }),
+        body: JSON.stringify({ closingAmount: parseMoneyInput(closingAmount), notes }),
       });
       const data = await res.json();
       if (res.ok) {
@@ -127,14 +128,12 @@ export default function CajaPage() {
               <div className="border-t border-border pt-4 space-y-3">
                 <label className="block text-sm font-medium">Efectivo contado al cerrar</label>
                 <input
-                  type="number"
-                  min="0"
-                  step="1"
+                  type="text"
                   inputMode="numeric"
                   className="input w-full"
-                  placeholder="0"
+                  placeholder="Ej: 250.000"
                   value={closingAmount}
-                  onChange={(e) => setClosingAmount(String(parseInt(e.target.value) || ""))}
+                  onChange={(e) => setClosingAmount(onMoneyKeyInput(e.target.value))}
                 />
                 <label className="block text-sm font-medium">Notas (opcional)</label>
                 <input
@@ -158,13 +157,12 @@ export default function CajaPage() {
               <span className="text-xs font-bold uppercase px-2 py-1 rounded-full bg-warning/10 text-warning">Sin turno abierto</span>
               <label className="block text-sm font-medium">Monto inicial en caja</label>
               <input
-                type="number"
-                min="0"
-                step="1"
+                type="text"
                 inputMode="numeric"
                 className="input w-full"
+                placeholder="Ej: 100.000"
                 value={openingAmount}
-                onChange={(e) => setOpeningAmount(String(parseInt(e.target.value) || 0))}
+                onChange={(e) => setOpeningAmount(onMoneyKeyInput(e.target.value))}
               />
               <button
                 onClick={handleOpen}

@@ -3,6 +3,12 @@
 import { useEffect, useState } from "react";
 import { Skeleton } from "./Skeleton";
 import { useAuth } from "@/app/providers";
+import {
+  onMoneyKeyInput,
+  parseMoneyInput,
+  formatMoneyInput,
+  COP_DENOMS,
+} from "@/lib/money-input";
 
 interface OrderItem {
   id: number;
@@ -263,19 +269,19 @@ export function OrderModal({
     if (!order) return;
     setPaymentError(null);
 
-    const tip = parseFloat(tipAmount) || 0;
-    const discount = parseFloat(discountAmount) || 0;
+    const tip = parseMoneyInput(tipAmount);
+    const discount = parseMoneyInput(discountAmount);
     const subtotal = Number(order.total_amount) || 0;
     // Estimación en cliente (el servidor recalcula IVA exacto)
     const estimatedTotal = Math.max(0, subtotal - discount) + tip;
-    const received = parseFloat(amountReceived);
+    const received = parseMoneyInput(amountReceived);
 
     if (paymentMethod === "efectivo") {
-      if (!amountReceived || Number.isNaN(received)) {
+      if (!amountReceived || received <= 0) {
         setPaymentError("Indica con cuánto paga el cliente");
         return;
       }
-      if (received < estimatedTotal - 0.01) {
+      if (received < estimatedTotal) {
         setPaymentError(
           `El monto recibido (${formatCOP(received)}) es menor al total (${formatCOP(estimatedTotal)})`
         );
@@ -589,28 +595,28 @@ export function OrderModal({
             <div>
               <label className="block text-sm font-medium mb-2">Propina</label>
               <input
-                type="number"
-                min="0"
-                step="1"
+                type="text"
+                inputMode="numeric"
                 className="input w-full"
+                placeholder="0"
                 value={tipAmount}
-                onChange={(e) => setTipAmount(e.target.value)}
+                onChange={(e) => setTipAmount(onMoneyKeyInput(e.target.value))}
               />
             </div>
 
             <div>
               <label className="block text-sm font-medium mb-2">Descuento (COP)</label>
               <input
-                type="number"
-                min="0"
-                step="1"
+                type="text"
+                inputMode="numeric"
                 className="input w-full"
+                placeholder="0"
                 value={discountAmount}
-                onChange={(e) => setDiscountAmount(e.target.value)}
+                onChange={(e) => setDiscountAmount(onMoneyKeyInput(e.target.value))}
               />
             </div>
 
-            {parseFloat(discountAmount) > 0 && (
+            {parseMoneyInput(discountAmount) > 0 && (
               <div className="space-y-3 bg-background p-3 rounded-lg border border-border">
                 <div>
                   <label className="block text-sm font-medium mb-2">Motivo del descuento</label>
@@ -651,16 +657,16 @@ export function OrderModal({
                 <span>Subtotal</span>
                 <span>{formatCOP(Number(order.total_amount))}</span>
               </div>
-              {(parseFloat(discountAmount) || 0) > 0 && (
+              {(parseMoneyInput(discountAmount) || 0) > 0 && (
                 <div className="flex justify-between text-warning">
                   <span>Descuento</span>
-                  <span>-{formatCOP(parseFloat(discountAmount) || 0)}</span>
+                  <span>-{formatCOP(parseMoneyInput(discountAmount) || 0)}</span>
                 </div>
               )}
-              {(parseFloat(tipAmount) || 0) > 0 && (
+              {(parseMoneyInput(tipAmount) || 0) > 0 && (
                 <div className="flex justify-between text-gray-400">
                   <span>Propina</span>
-                  <span>{formatCOP(parseFloat(tipAmount) || 0)}</span>
+                  <span>{formatCOP(parseMoneyInput(tipAmount) || 0)}</span>
                 </div>
               )}
               <div className="flex justify-between font-bold text-foreground text-base pt-1 border-t border-border">
@@ -669,8 +675,8 @@ export function OrderModal({
                   {formatCOP(
                     Math.max(
                       0,
-                      Number(order.total_amount) - (parseFloat(discountAmount) || 0)
-                    ) + (parseFloat(tipAmount) || 0)
+                      Number(order.total_amount) - (parseMoneyInput(discountAmount) || 0)
+                    ) + (parseMoneyInput(tipAmount) || 0)
                   )}
                 </span>
               </div>
@@ -680,26 +686,55 @@ export function OrderModal({
             </div>
 
             {paymentMethod === "efectivo" && (
-              <div className="space-y-2">
+              <div className="space-y-3">
                 <label className="text-sm text-gray-400">¿Con cuánto paga el cliente?</label>
                 <input
-                  type="number"
-                  min="0"
-                  step="1000"
-                  className="input w-full text-lg font-semibold"
-                  placeholder="Ej: 50000"
+                  type="text"
+                  inputMode="numeric"
+                  className="input w-full text-lg font-semibold tracking-wide"
+                  placeholder="Ej: 50.000"
                   value={amountReceived}
-                  onChange={(e) => setAmountReceived(e.target.value)}
+                  onChange={(e) => setAmountReceived(onMoneyKeyInput(e.target.value))}
                 />
-                {amountReceived && !Number.isNaN(parseFloat(amountReceived)) && (
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    className="btn btn-outline btn-sm"
+                    onClick={() => {
+                      const exact =
+                        Math.max(
+                          0,
+                          Number(order.total_amount) - parseMoneyInput(discountAmount)
+                        ) + parseMoneyInput(tipAmount);
+                      setAmountReceived(formatMoneyInput(exact));
+                    }}
+                  >
+                    Exacto
+                  </button>
+                  {COP_DENOMS.map((d) => (
+                    <button
+                      key={d}
+                      type="button"
+                      className="btn btn-outline btn-sm"
+                      onClick={() =>
+                        setAmountReceived(
+                          formatMoneyInput(parseMoneyInput(amountReceived) + d)
+                        )
+                      }
+                    >
+                      +{formatMoneyInput(d)}
+                    </button>
+                  ))}
+                </div>
+                {amountReceived !== "" && (
                   <div
                     className={`p-3 rounded-lg border text-center ${
-                      parseFloat(amountReceived) >=
+                      parseMoneyInput(amountReceived) >=
                       Math.max(
                         0,
-                        Number(order.total_amount) - (parseFloat(discountAmount) || 0)
+                        Number(order.total_amount) - parseMoneyInput(discountAmount)
                       ) +
-                        (parseFloat(tipAmount) || 0)
+                        parseMoneyInput(tipAmount)
                         ? "bg-success/10 border-success/30 text-success"
                         : "bg-error/10 border-error/30 text-error"
                     }`}
@@ -709,12 +744,12 @@ export function OrderModal({
                       {formatCOP(
                         Math.max(
                           0,
-                          parseFloat(amountReceived) -
+                          parseMoneyInput(amountReceived) -
                             (Math.max(
                               0,
-                              Number(order.total_amount) - (parseFloat(discountAmount) || 0)
+                              Number(order.total_amount) - parseMoneyInput(discountAmount)
                             ) +
-                              (parseFloat(tipAmount) || 0))
+                              parseMoneyInput(tipAmount))
                         )
                       )}
                     </p>
