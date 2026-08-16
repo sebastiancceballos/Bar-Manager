@@ -130,10 +130,21 @@ export async function POST(request: NextRequest) {
     const passwordHash = await bcrypt.hash(password, saltRounds);
 
     // 6. Create user in database
+    const locIdNum = location_id ? parseInt(String(location_id), 10) : null;
+    let orgIdForUser: number | null = null;
+    if (locIdNum) {
+      try {
+        const locOrg = await sql`SELECT organization_id FROM locations WHERE id = ${locIdNum} LIMIT 1`;
+        orgIdForUser = locOrg[0]?.organization_id ?? null;
+      } catch {
+        orgIdForUser = null;
+      }
+    }
+
     const result = await sql`
-      INSERT INTO users (name, email, password_hash, role, location_id)
-      VALUES (${name}, ${email}, ${passwordHash}, ${role}, ${location_id || null})
-      RETURNING id, name, email, role, location_id, created_at
+      INSERT INTO users (name, email, password_hash, role, location_id, organization_id)
+      VALUES (${name}, ${email}, ${passwordHash}, ${role}, ${locIdNum}, ${orgIdForUser})
+      RETURNING id, name, email, role, location_id, organization_id, created_at
     `;
 
     const newUser = Array.isArray(result) ? result[0] : result;

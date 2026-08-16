@@ -2,6 +2,7 @@
 
 import { useAuth } from "@/app/providers";
 import { roleLabel } from "@/lib/roles";
+import { LocationSwitcher } from "@/app/components/LocationSwitcher";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -22,7 +23,8 @@ import {
   CalendarClock,
   ShieldCheck,
   Clock,
-  Receipt
+  Receipt,
+  Building2
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -59,6 +61,7 @@ export function Navigation() {
   const navLinks = [
     ...(isOwner ? [
       { href: "/dashboard/owner", label: "Panel", icon: LayoutDashboard },
+      { href: "/dashboard/organizations", label: "Organizaciones", icon: Building2 },
       { href: "/dashboard/bars", label: "Bares", icon: Beer },
       { href: "/dashboard/users", label: "Usuarios", icon: Users },
     ] : []),
@@ -135,6 +138,7 @@ export function Navigation() {
               <div className="flex flex-col items-end">
                 <span className="text-xs font-semibold text-foreground">{user?.name}</span>
                 <span className="text-[10px] text-gray-500 tracking-wider">{roleLabel(user?.role)}</span>
+                <LocationSwitcher />
               </div>
               <button
                 onClick={() => window.dispatchEvent(new CustomEvent("start-tour"))}

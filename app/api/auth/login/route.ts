@@ -100,6 +100,31 @@ export async function POST(request: NextRequest) {
 
     await setAuthCookie(token);
 
+    // Contexto multi-sucursal (si la migración 11 ya corrió)
+    let locationId = null as number | null;
+    let organizationId = null as number | null;
+    let locations: { id: number; name: string }[] = [];
+    let activeLocationId: number | null = null;
+    try {
+      const extra = await sql`
+        SELECT location_id, organization_id FROM users WHERE id = ${user.id} LIMIT 1
+      `;
+      locationId = extra[0]?.location_id ?? null;
+      organizationId = extra[0]?.organization_id ?? null;
+      if (user.role === "owner") {
+        locations = (await sql`SELECT id, name FROM locations ORDER BY name`) as any;
+      } else if (organizationId && user.role === "admin") {
+        locations = (await sql`
+          SELECT id, name FROM locations WHERE organization_id = ${organizationId} ORDER BY name
+        `) as any;
+      } else if (locationId) {
+        locations = (await sql`SELECT id, name FROM locations WHERE id = ${locationId}`) as any;
+      }
+      activeLocationId = locationId || (locations[0]?.id ?? null);
+    } catch {
+      // sin columnas organization_id todavía
+    }
+
     return NextResponse.json(
       {
         user: {
@@ -107,6 +132,10 @@ export async function POST(request: NextRequest) {
           email: user.email,
           name: user.name,
           role: user.role,
+          locationId,
+          organizationId,
+          activeLocationId,
+          locations,
         },
       },
       { status: 200 }

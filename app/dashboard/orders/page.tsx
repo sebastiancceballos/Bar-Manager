@@ -46,6 +46,7 @@ function OrdersDashboardContent() {
   const [tab, setTab] = useState("");
   const [search, setSearch] = useState("");
   const [isLoading, setIsLoading] = useState(true);
+  const [payMethod, setPayMethod] = useState<"efectivo" | "tarjeta" | "transferencia" | "otro">("efectivo");
   const [busyId, setBusyId] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [cancelTarget, setCancelTarget] = useState<SelfServiceOrder | null>(null);
@@ -177,10 +178,22 @@ function OrdersDashboardContent() {
                       <Printer className="w-4 h-4" />
                     </a>
                     {order.status === "PENDING_PAYMENT" && (
-                      <>
+                      <div className="flex flex-col gap-2 w-full sm:w-auto">
+                        <label className="text-xs text-gray-400">Medio de pago</label>
+                        <select
+                          className="input py-1.5 text-sm"
+                          value={payMethod}
+                          onChange={(e) => setPayMethod(e.target.value as typeof payMethod)}
+                        >
+                          <option value="efectivo">Efectivo</option>
+                          <option value="tarjeta">Tarjeta</option>
+                          <option value="transferencia">Transferencia</option>
+                          <option value="otro">Otro</option>
+                        </select>
+                        <div className="flex gap-2">
                         <button
                           disabled={busyId === order.id}
-                          onClick={() => changeStatus(order.id, "PAID")}
+                          onClick={() => changeStatus(order.id, "PAID", payMethod)}
                           className="min-h-[44px] px-4 bg-success text-white rounded-lg flex items-center gap-2 font-semibold disabled:opacity-50"
                         >
                           <CreditCard className="w-4 h-4" /> Confirmar pago
@@ -193,7 +206,8 @@ function OrdersDashboardContent() {
                         >
                           <Ban className="w-4 h-4" />
                         </button>
-                      </>
+                        </div>
+                      </div>
                     )}
                     {order.status === "READY" && (
                       <button

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthUser } from "@/lib/auth";
+import { resolveLocationId } from "@/lib/org";
 import { sql } from "@/lib/db";
 
 export async function GET(request: NextRequest) {
@@ -10,8 +11,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const userRow = await sql`SELECT location_id FROM users WHERE id = ${user.id} LIMIT 1`;
-    const locationId = userRow[0]?.location_id;
+    const locationId = await resolveLocationId(user.id, user.role);
     if (!locationId) return NextResponse.json({ error: "Sin bar asignado" }, { status: 400 });
 
     const tables = await sql`
@@ -50,9 +50,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const userRow2 = await sql`SELECT location_id FROM users WHERE id = ${user.id} LIMIT 1`;
-    const locationId2 = userRow2[0]?.location_id;
-    if (!locationId2) return NextResponse.json({ error: "Admin sin bar asignado" }, { status: 400 });
+    const locationId2 = await resolveLocationId(user.id, user.role);
+    if (!locationId2) return NextResponse.json({ error: "Sin bar asignado" }, { status: 400 });
 
     const tables = await sql`
       INSERT INTO tables (location_id, table_number, capacity, x_position, y_position)

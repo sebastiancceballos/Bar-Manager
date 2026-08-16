@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthUser } from "@/lib/auth";
+import { resolveLocationId } from "@/lib/org";
 import { canManageCashSession } from "@/lib/permissions";
 import { sql } from "@/lib/db";
 import { logAudit } from "@/lib/audit";
@@ -9,8 +10,7 @@ export async function GET(request: NextRequest) {
     const user = await getAuthUser();
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    const locRow = await sql`SELECT location_id FROM users WHERE id = ${user.id} LIMIT 1`;
-    const locId = locRow[0]?.location_id;
+    const locId = await resolveLocationId(user.id, user.role);
     if (!locId) return NextResponse.json({ error: "Sin bar asignado" }, { status: 400 });
 
     const open = await sql`
@@ -45,8 +45,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Sin permiso para abrir el turno de caja" }, { status: 403 });
     }
 
-    const locRow = await sql`SELECT location_id FROM users WHERE id = ${user.id} LIMIT 1`;
-    const locId = locRow[0]?.location_id;
+    const locId = await resolveLocationId(user.id, user.role);
     if (!locId) return NextResponse.json({ error: "Sin bar asignado" }, { status: 400 });
 
     const { openingAmount } = await request.json();

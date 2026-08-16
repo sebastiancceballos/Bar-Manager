@@ -7,6 +7,10 @@ interface User {
   email: string;
   name: string;
   role: "owner" | "admin" | "waiter" | "cashier" | "kitchen";
+  locationId?: number | null;
+  organizationId?: number | null;
+  activeLocationId?: number | null;
+  locations?: { id: number; name: string }[];
 }
 
 interface AuthContextType {
@@ -15,6 +19,7 @@ interface AuthContextType {
   error: string | null;
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
+  refreshUser?: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -69,6 +74,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const refreshUser = async () => {
+    try {
+      const response = await fetch("/api/auth/me");
+      if (response.ok) {
+        const data = await response.json();
+        setUser(data.user);
+      }
+    } catch (err) {
+      console.error("refreshUser failed:", err);
+    }
+  };
+
   const logout = async () => {
     setIsLoading(true);
     try {
@@ -82,7 +99,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, error, login, logout }}>
+    <AuthContext.Provider value={{ user, isLoading, error, login, logout, refreshUser, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );
