@@ -83,6 +83,7 @@ export function canAccessReservations(role: string | undefined): boolean {
 export const DASHBOARD_ROUTE_ROLES: { prefix: string; roles: UserRole[] }[] = [
   { prefix: "/dashboard/owner", roles: ["owner"] },
   { prefix: "/dashboard/bars", roles: ["owner"] },
+  { prefix: "/dashboard/organizations", roles: ["owner"] },
   { prefix: "/dashboard/users", roles: ["owner", "admin"] },
   { prefix: "/dashboard/products", roles: ["owner", "admin"] },
   { prefix: "/dashboard/reports", roles: ["owner", "admin"] },
@@ -151,7 +152,7 @@ export function staffNavHrefs(role: UserRole | string): string[] {
     case "kitchen":
       return ["/dashboard/comandas", "/dashboard/turno"];
     case "owner":
-      return ["/dashboard/owner", "/dashboard/bars", "/dashboard/users"];
+      return ["/dashboard/owner", "/dashboard/organizations", "/dashboard/bars", "/dashboard/users"];
     default:
       return ["/dashboard/turno"];
   }
