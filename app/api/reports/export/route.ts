@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthUser } from "@/lib/auth";
+import { resolveLocationId } from "@/lib/org";
 import { sql } from "@/lib/db";
 import { getLocationTimezone } from "@/lib/location";
 
@@ -19,8 +20,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Se requieren fechas from y to" }, { status: 400 });
     }
 
-    const locRow = await sql`SELECT location_id FROM users WHERE id = ${user.id} LIMIT 1`;
-    const locId = locRow[0]?.location_id;
+    const locId = await resolveLocationId(user.id, user.role);
     if (!locId) return NextResponse.json({ error: "Sin bar asignado" }, { status: 400 });
 
     const tz = await getLocationTimezone(locId);

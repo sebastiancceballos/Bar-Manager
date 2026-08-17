@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthUser } from "@/lib/auth";
+import { resolveLocationId } from "@/lib/org";
 import { sql } from "@/lib/db";
 import { getLocationTimezone } from "@/lib/location";
 
@@ -10,7 +11,7 @@ export async function GET(request: NextRequest) {
   try {
     const user = await getAuthUser();
 
-    if (!user || user.role !== "admin") {
+    if (!user || (user.role !== "admin" && user.role !== "owner")) {
       return NextResponse.json(
         { error: "Unauthorized" },
         { status: 403 }
@@ -34,11 +35,58 @@ export async function GET(request: NextRequest) {
         interval = "7 days";
     }
 
-    const locRow = await sql`SELECT location_id FROM users WHERE id = ${user.id} LIMIT 1`;
-    const locId = locRow[0]?.location_id;
+    const locId = await resolveLocationId(user.id, user.role);
     if (!locId) return NextResponse.json({ error: "Sin bar asignado" }, { status: 400 });
 
     const tz = await getLocationTimezone(locId);
+
+    // Consolidado por organización (todas las sucursales del negocio)
+    if (type === "org_summary") {
+      const orgRow = await sql`
+        SELECT organization_id FROM locations WHERE id = ${locId} LIMIT 1
+      `;
+      const orgId = orgRow[0]?.organization_id;
+      if (!orgId) {
+        return NextResponse.json(
+          { error: "Esta sucursal no tiene organización asignada" },
+          { status: 400 }
+        );
+      }
+      const rows = await sql`
+        SELECT
+          l.id as location_id,
+          l.name as location_name,
+          COALESCE(SUM(o.total_amount), 0) as total,
+          COUNT(o.id) as order_count
+        FROM locations l
+        LEFT JOIN orders o ON (
+          o.status IN ('closed', 'paid', 'PAID', 'PREPARING', 'READY', 'COMPLETED')
+          AND (o.created_at AT TIME ZONE 'UTC' AT TIME ZONE ${tz}) >= (NOW() AT TIME ZONE ${tz}) - ${interval}::interval
+          AND (
+            EXISTS (SELECT 1 FROM tables t WHERE t.id = o.table_id AND t.location_id = l.id)
+            OR EXISTS (
+              SELECT 1 FROM order_items oi
+              JOIN products p ON oi.product_id = p.id
+              WHERE oi.order_id = o.id AND p.location_id = l.id
+            )
+          )
+        )
+        WHERE l.organization_id = ${orgId}
+        GROUP BY l.id, l.name
+        ORDER BY l.name
+      `;
+      const grandTotal = rows.reduce((s: number, r: any) => s + parseFloat(String(r.total || 0)), 0);
+      const grandOrders = rows.reduce((s: number, r: any) => s + parseInt(String(r.order_count || 0), 10), 0);
+      return NextResponse.json({
+        scope: "organization",
+        organizationId: orgId,
+        locations: rows,
+        totals: { total: grandTotal, order_count: grandOrders },
+        range,
+      }, { status: 200 });
+    }
+
+
 
     // Un pedido pertenece al bar si:
     // - tiene mesa de ese bar (dine_in), o

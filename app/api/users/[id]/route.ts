@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthUser, UserRole } from "@/lib/auth";
+import { resolveLocationId } from "@/lib/org";
 import { sql } from "@/lib/db";
 import { logAudit } from "@/lib/audit";
 import bcrypt from "bcryptjs";
@@ -57,13 +58,10 @@ export async function DELETE(
       );
     }
 
-    // Admin can only delete waiters from their own location
+    // Admin can only delete staff from their active location
     if (currentUser.role === "admin") {
-      const adminResult = await sql`SELECT location_id FROM users WHERE id = ${currentUser.id} LIMIT 1`;
-      const adminUsers = Array.isArray(adminResult) ? adminResult : [];
-      const adminData = adminUsers[0];
-
-      if (adminData?.location_id && targetUser.location_id !== adminData.location_id) {
+      const adminLoc = await resolveLocationId(currentUser.id, currentUser.role);
+      if (adminLoc && targetUser.location_id !== adminLoc) {
         return NextResponse.json(
           { error: "Solo puedes eliminar meseros de tu propio bar" },
           { status: 403 }
@@ -125,9 +123,8 @@ export async function PATCH(
     }
 
     if (currentUser.role === "admin" && targetId !== currentUser.id) {
-      const adminResult = await sql`SELECT location_id FROM users WHERE id = ${currentUser.id} LIMIT 1`;
-      const adminLocId = adminResult[0]?.location_id;
-      if (adminLocId && targetUser.location_id !== adminLocId) {
+      const adminLoc = await resolveLocationId(currentUser.id, currentUser.role);
+      if (adminLoc && targetUser.location_id !== adminLoc) {
         return NextResponse.json({ error: "Solo puedes restablecer contraseñas de tu propio bar" }, { status: 403 });
       }
     }

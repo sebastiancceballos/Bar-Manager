@@ -66,6 +66,8 @@ export default function ReportsPage() {
   const [topProducts, setTopProducts] = useState<ProductReport[]>([]);
   const [byPaymentMethod, setByPaymentMethod] = useState<PaymentMethodReport[]>([]);
   const [loading, setLoading] = useState(true);
+  const [orgSummary, setOrgSummary] = useState<any[] | null>(null);
+  const [orgTotals, setOrgTotals] = useState<{ total: number; order_count: number } | null>(null);
   const [reportsError, setReportsError] = useState<string | null>(null);
   const [dateRange, setDateRange] = useState("week");
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
@@ -124,6 +126,20 @@ export default function ReportsPage() {
         else console.error("top-products fetch failed:", productRes.status);
         if (paymentRes.ok) setByPaymentMethod((await paymentRes.json()).byPaymentMethod || []);
         else console.error("by-payment-method fetch failed:", paymentRes.status);
+
+        try {
+          const orgRes = await fetch(`/api/reports?range=${dateRange}&type=org_summary`);
+          if (orgRes.ok) {
+            const od = await orgRes.json();
+            setOrgSummary(od.locations || []);
+            setOrgTotals(od.totals || null);
+          } else {
+            setOrgSummary(null);
+            setOrgTotals(null);
+          }
+        } catch {
+          setOrgSummary(null);
+        }
       } catch (error) {
         console.error("Failed to fetch report breakdowns:", error);
       }
@@ -284,6 +300,36 @@ export default function ReportsPage() {
           {reportsError && (
             <div className="bg-error/10 border border-error text-error px-4 py-3 rounded-lg mb-6 text-sm">
               ⚠️ No se pudieron cargar los ingresos por día: {reportsError}
+            </div>
+          )}
+
+
+          {orgSummary && orgSummary.length > 0 && (
+            <div className="card mb-6">
+              <h2 className="text-lg font-semibold mb-2">Consolidado por organización</h2>
+              <p className="text-xs text-gray-400 mb-3">
+                Ventas de todas las sucursales del mismo negocio (org de la sucursal activa).
+              </p>
+              {orgTotals && (
+                <p className="text-sm mb-3">
+                  Total: <strong>{formatCOP(Number(orgTotals.total))}</strong>
+                  {" · "}
+                  {orgTotals.order_count} pedidos
+                </p>
+              )}
+              <ul className="space-y-2 text-sm">
+                {orgSummary.map((row: any) => (
+                  <li
+                    key={row.location_id || row.location_name}
+                    className="flex justify-between border-b border-border py-2"
+                  >
+                    <span>{row.location_name}</span>
+                    <span>
+                      {formatCOP(Number(row.total))} · {row.order_count} pedidos
+                    </span>
+                  </li>
+                ))}
+              </ul>
             </div>
           )}
 

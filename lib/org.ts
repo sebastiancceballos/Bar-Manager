@@ -90,7 +90,7 @@ export async function resolveLocationId(
       }
     }
   } catch {
-    // sin cookies (edge raro)
+    // sin cookies
   }
 
   const userRows = await sql`

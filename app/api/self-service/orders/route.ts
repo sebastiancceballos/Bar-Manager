@@ -3,6 +3,7 @@ import { sql } from "@/lib/db";
 import { logAudit } from "@/lib/audit";
 import { generateTicketNumber } from "@/lib/self-service";
 import { getAuthUser } from "@/lib/auth";
+import { resolveLocationId } from "@/lib/org";
 import { canAccessSelfServiceQueue, canUseComandas } from "@/lib/permissions";
 
 
@@ -23,9 +24,8 @@ export async function GET(request: NextRequest) {
     const statusFilter = searchParams.get("status");
     const ticketSearch = searchParams.get("ticket");
 
-    const locRow = await sql`SELECT location_id FROM users WHERE id = ${user.id} LIMIT 1`;
-    // owner no tiene location_id propio; en ese caso ve todo (supervisión).
-    const locId = locRow[0]?.location_id ?? null;
+    const locId =
+      user.role === "owner" ? null : await resolveLocationId(user.id, user.role);
     if (!locId && user.role !== "owner") {
       return NextResponse.json({ error: "Sin bar asignado" }, { status: 400 });
     }

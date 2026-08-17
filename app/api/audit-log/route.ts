@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthUser } from "@/lib/auth";
+import { resolveLocationId } from "@/lib/org";
 import { sql } from "@/lib/db";
 
 export async function GET(request: NextRequest) {
@@ -11,8 +12,7 @@ export async function GET(request: NextRequest) {
 
     let locId: number | null = null;
     if (user.role === "admin") {
-      const locRow = await sql`SELECT location_id FROM users WHERE id = ${user.id} LIMIT 1`;
-      locId = locRow[0]?.location_id ?? null;
+      locId = await resolveLocationId(user.id, user.role);
       if (!locId) return NextResponse.json({ error: "Admin sin bar asignado" }, { status: 400 });
     }
 

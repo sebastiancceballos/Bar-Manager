@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthUser } from "@/lib/auth";
+import { resolveLocationId } from "@/lib/org";
 import { sql } from "@/lib/db";
 
 export async function GET(request: NextRequest) {
@@ -31,9 +32,7 @@ export async function GET(request: NextRequest) {
       users = Array.isArray(result) ? result : [];
     } else {
       // Admin sees only users from their own location
-      const adminResult = await sql`SELECT location_id FROM users WHERE id = ${currentUser.id} LIMIT 1`;
-      const adminData = Array.isArray(adminResult) ? adminResult[0] : null;
-      const locationId = adminData?.location_id;
+      const locationId = await resolveLocationId(currentUser.id, currentUser.role);
 
       if (!locationId) {
         // Admin without location sees only themselves
