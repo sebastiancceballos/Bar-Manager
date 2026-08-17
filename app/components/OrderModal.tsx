@@ -560,17 +560,18 @@ export function OrderModal({
         </div>
       </div>
 
-      {/* Modal de Cobro */}
+      {/* Modal de Cobro — scroll en móvil + botón fijo abajo */}
       {showPayment && order && (
-        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[110] p-4">
-          <div className="bg-card border border-border rounded-lg max-w-md w-full p-6 space-y-4">
-            <div className="flex justify-between items-center">
+        <div className="fixed inset-0 bg-black/70 flex items-end sm:items-center justify-center z-[110] p-0 sm:p-4">
+          <div className="bg-card border border-border rounded-t-2xl sm:rounded-lg max-w-md w-full max-h-[92dvh] flex flex-col shadow-xl">
+            <div className="flex justify-between items-center p-4 pb-2 border-b border-border shrink-0">
               <h3 className="text-xl font-bold">Cobrar Mesa {tableNumber}</h3>
-              <button onClick={() => setShowPayment(false)} className="text-gray-400 hover:text-foreground text-2xl">&times;</button>
+              <button type="button" onClick={() => setShowPayment(false)} className="text-gray-400 hover:text-foreground text-2xl leading-none px-2">&times;</button>
             </div>
 
+            <div className="overflow-y-auto flex-1 p-4 space-y-4 overscroll-contain">
             {paymentError && (
-              <div className="bg-error/10 border border-error text-error px-4 py-3 rounded-lg text-sm">
+              <div className="bg-error/10 border border-error text-error px-4 py-3 rounded-lg text-sm sticky top-0 z-10">
                 ⚠️ {paymentError}
               </div>
             )}
@@ -766,13 +767,18 @@ export function OrderModal({
               </div>
             )}
 
-            <button
-              onClick={handleConfirmPayment}
-              disabled={updating}
-              className="btn btn-primary w-full disabled:opacity-50"
-            >
-              {updating ? "Procesando..." : "Confirmar cobro"}
-            </button>
+            </div>
+
+            <div className="p-4 pt-2 border-t border-border shrink-0 bg-card safe-area-pb">
+              <button
+                type="button"
+                onClick={handleConfirmPayment}
+                disabled={updating}
+                className="btn btn-primary w-full min-h-[48px] text-base font-semibold disabled:opacity-50"
+              >
+                {updating ? "Procesando..." : "Confirmar cobro"}
+              </button>
+            </div>
           </div>
         </div>
       )}
