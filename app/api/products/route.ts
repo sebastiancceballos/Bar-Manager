@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
 
     // Get the authenticated user's location
     const locationId = await resolveLocationId(user.id, user.role);
-    if (!locationId) return NextResponse.json({ error: "Sin bar asignado" }, { status: 400 });
+    if (!locationId) {
       return NextResponse.json(
         { error: "Admin does not have a location assigned" },
         { status: 400 }
