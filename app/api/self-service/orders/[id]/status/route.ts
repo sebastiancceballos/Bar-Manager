@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getAuthUser } from "@/lib/auth";
+import { getAuthUser, type UserRole } from "@/lib/auth";
 import { assertOwnsOrder } from "@/lib/tenant";
 import { sql } from "@/lib/db";
 import { logAudit } from "@/lib/audit";
@@ -121,7 +121,7 @@ export async function PATCH(
       return NextResponse.json({ error: "Pedido no encontrado" }, { status: 404 });
     }
 
-    if (!canTransition(order.status, newStatus as SelfServiceStatus, user.role)) {
+    if (!canTransition(order.status, newStatus as SelfServiceStatus, user.role as UserRole)) {
       return NextResponse.json(
         {
           error: `Tu rol (${user.role}) no puede pasar el pedido de ${order.status} a ${newStatus}`,
