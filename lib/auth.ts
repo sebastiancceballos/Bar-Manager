@@ -1,11 +1,6 @@
 import jwt from "jsonwebtoken";
 import { cookies } from "next/headers";
 
-// IMPORTANTE: este chequeo se hace DENTRO de las funciones (no a nivel de
-// módulo). Si estuviera fuera, un JWT_SECRET faltante tumbaría el archivo
-// completo apenas Next.js lo importa, antes de que cualquier try/catch de
-// una ruta pudiera atraparlo — y el usuario vería una página de error HTML
-// en vez de un JSON, rompiendo el fetch() del frontend.
 function getJwtSecret(): string {
   const secret = process.env.JWT_SECRET;
   if (!secret) {
@@ -16,25 +11,24 @@ function getJwtSecret(): string {
   return secret;
 }
 
-const TOKEN_EXPIRY = "7d";
-
-/** Valores en DB. UI: owner=Superadmin, admin=Administrador del negocio, kitchen=Comandas */
 export type UserRole = "owner" | "admin" | "waiter" | "cashier" | "kitchen";
 
 export interface JWTPayload {
   id: number;
   email: string;
-  role: UserRole;
+  role: UserRole | string;
+  /** Si true, el usuario debe cambiar contraseña antes de usar el resto del sistema */
+  mustChangePassword?: boolean;
 }
 
 export async function signToken(payload: JWTPayload): Promise<string> {
-  return jwt.sign(payload, getJwtSecret(), { expiresIn: TOKEN_EXPIRY });
+  return jwt.sign(payload, getJwtSecret(), { expiresIn: "7d" });
 }
 
 export function verifyToken(token: string): JWTPayload | null {
   try {
     return jwt.verify(token, getJwtSecret()) as JWTPayload;
-  } catch (error) {
+  } catch {
     return null;
   }
 }
@@ -45,8 +39,8 @@ export async function setAuthCookie(token: string): Promise<void> {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
-    maxAge: 7 * 24 * 60 * 60, // 7 days
     path: "/",
+    maxAge: 60 * 60 * 24 * 7,
   });
 }
 

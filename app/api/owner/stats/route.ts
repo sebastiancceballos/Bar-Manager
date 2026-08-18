@@ -11,7 +11,6 @@ export async function GET(request: NextRequest) {
     }
 
     try {
-      await sql`ALTER TABLE locations ADD COLUMN IF NOT EXISTS active BOOLEAN DEFAULT true`;
     } catch (_) { }
 
     const locations = await sql`SELECT id, name, address, COALESCE(active, true) as active FROM locations ORDER BY name ASC`;

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthUser } from "@/lib/auth";
+import { toErrorResponse } from "@/lib/errors";
 import { resolveLocationId } from "@/lib/org";
 import { sql } from "@/lib/db";
 
@@ -22,11 +23,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ tables }, { status: 200 });
   } catch (error) {
-    console.error("Get tables error:", error);
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 }
-    );
+    return toErrorResponse(error);
   }
 }
 
@@ -61,10 +58,6 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ table: tables[0] }, { status: 201 });
   } catch (error) {
-    console.error("Create table error:", error);
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 }
-    );
+    return toErrorResponse(error);
   }
 }

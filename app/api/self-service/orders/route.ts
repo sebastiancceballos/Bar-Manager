@@ -103,13 +103,23 @@ export async function GET(request: NextRequest) {
           `;
     }
 
-    for (const order of orders) {
-      const items = await sql`
-        SELECT oi.quantity, oi.notes, p.name, p.price
-        FROM order_items oi JOIN products p ON oi.product_id = p.id
-        WHERE oi.order_id = ${order.id}
+    if (orders.length > 0) {
+      const ids = orders.map((o: { id: number }) => o.id);
+      const allItems = await sql`
+        SELECT oi.order_id, oi.quantity, oi.notes, p.name, p.price
+        FROM order_items oi
+        JOIN products p ON oi.product_id = p.id
+        WHERE oi.order_id = ANY(${ids})
       `;
-      order.items = items;
+      const byOrder = new Map<number, any[]>();
+      for (const item of allItems) {
+        const list = byOrder.get(item.order_id) || [];
+        list.push(item);
+        byOrder.set(item.order_id, list);
+      }
+      for (const order of orders) {
+        order.items = byOrder.get(order.id) || [];
+      }
     }
 
     return NextResponse.json({ orders }, { status: 200 });

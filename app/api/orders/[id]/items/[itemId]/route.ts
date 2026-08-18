@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthUser } from "@/lib/auth";
+import { assertOwnsOrder } from "@/lib/tenant";
 import { sql } from "@/lib/db";
 
 export async function DELETE(
@@ -14,9 +15,32 @@ export async function DELETE(
     }
 
     const { id, itemId } = await params;
+    const orderId = parseInt(id, 10);
+    const orderGuard = await assertOwnsOrder(orderId, user);
+    if (orderGuard.error) return orderGuard.error;
 
-    // Delete item (stock solo se mueve al cobrar)
+    // Obtener detalles antes de borrar para devolver al stock
+    const itemRows = await sql`SELECT product_id, quantity FROM order_items WHERE id = ${parseInt(itemId)}`;
+    const itemToRestore = itemRows[0];
+
+    // Delete item
     await sql`DELETE FROM order_items WHERE id = ${parseInt(itemId)}`;
+
+    if (itemToRestore) {
+      // Restaurar stock
+      await sql`
+        UPDATE products 
+        SET stock = COALESCE(stock, 0) + ${itemToRestore.quantity}
+        WHERE id = ${itemToRestore.product_id}
+      `;
+
+      // Registrar ajuste
+      const reason = `Cancelación/Eliminación de item en Orden #${id}`;
+      await sql`
+        INSERT INTO stock_movements (product_id, quantity, type, reason, created_by)
+        VALUES (${itemToRestore.product_id}, ${itemToRestore.quantity}, 'entry', ${reason}, ${user.id})
+      `;
+    }
 
     // Update order total
     const totalResult = await sql`
@@ -69,6 +93,9 @@ export async function PATCH(
     }
 
     const { id, itemId } = await params;
+    const orderId = parseInt(id, 10);
+    const orderGuard = await assertOwnsOrder(orderId, user);
+    if (orderGuard.error) return orderGuard.error;
     const { action, status } = await request.json();
 
     if (action !== "decrement" && action !== "set_status") {
@@ -121,7 +148,19 @@ export async function PATCH(
       await sql`DELETE FROM order_items WHERE id = ${parseInt(itemId)}`;
     }
 
-    // Stock no se restaura aquí (se descuenta solo al cobrar)
+    // Restaurar 1 unidad de stock
+    await sql`
+      UPDATE products 
+      SET stock = COALESCE(stock, 0) + 1
+      WHERE id = ${item.product_id}
+    `;
+
+    // Registrar ajuste
+    const reason = `Reducción de cantidad en Orden #${id}`;
+    await sql`
+      INSERT INTO stock_movements (product_id, quantity, type, reason, created_by)
+      VALUES (${item.product_id}, 1, 'entry', ${reason}, ${user.id})
+    `;
 
     // Actualizar total de la orden
     const totalResult = await sql`

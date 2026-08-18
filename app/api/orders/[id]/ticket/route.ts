@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthUser } from "@/lib/auth";
+import { assertOwnsOrder } from "@/lib/tenant";
 import { sql } from "@/lib/db";
 
 const ALLOWED_ROLES = ["owner", "admin", "cashier", "kitchen", "waiter"];
@@ -20,6 +21,8 @@ export async function GET(
 
     const { id } = await params;
     const orderId = parseInt(id);
+    const orderGuard = await assertOwnsOrder(orderId, user);
+    if (orderGuard.error) return orderGuard.error;
 
     const rows = await sql`
       SELECT

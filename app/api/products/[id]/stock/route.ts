@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthUser } from "@/lib/auth";
-import { sql } from "@/lib/db";
+import { toErrorResponse } from "@/lib/errors";
+import { assertOwnsProduct } from "@/lib/tenant";
+import { withTransaction, InsufficientStockError } from "@/lib/withTransaction";
 
 export async function POST(
   request: NextRequest,
@@ -8,11 +10,19 @@ export async function POST(
 ) {
   try {
     const user = await getAuthUser();
-    if (!user || user.role !== "admin") {
+    if (!user || (user.role !== "admin" && user.role !== "owner")) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const { id } = await params;
+    const productId = parseInt(id, 10);
+    if (isNaN(productId)) {
+      return NextResponse.json({ error: "ID de producto inválido" }, { status: 400 });
+    }
+
+    const guard = await assertOwnsProduct(productId, user);
+    if (guard.error) return guard.error;
+
     const body = await request.json();
     const { quantity, type, reason } = body;
 
@@ -20,49 +30,47 @@ export async function POST(
       return NextResponse.json({ error: "Cantidad y tipo son obligatorios" }, { status: 400 });
     }
 
-    const productId = parseInt(id);
-    if (isNaN(productId)) {
-      return NextResponse.json({ error: "ID de producto inválido" }, { status: 400 });
+    const qtyNum = parseInt(quantity, 10);
+    if (!Number.isFinite(qtyNum) || qtyNum <= 0) {
+      return NextResponse.json({ error: "Cantidad inválida" }, { status: 400 });
     }
 
-    const qtyNum = parseInt(quantity);
-    const multiplier = (type === 'entry') ? 1 : -1;
-    const change = qtyNum * multiplier;
+    const isEntry = type === "entry";
 
-    if (multiplier === -1) {
-      // Verificar stock actual antes de restar
-      const productRows = await sql`SELECT stock, name FROM products WHERE id = ${productId}`;
-      const product = productRows[0];
-      
-      if (!product) {
-        return NextResponse.json({ error: "Producto no encontrado" }, { status: 404 });
-      }
-
-      const currentStock = product.stock || 0;
-      if (currentStock < qtyNum) {
-        return NextResponse.json(
-          { error: `Stock insuficiente. Solo tienes ${currentStock} unidades de ${product.name}.` },
-          { status: 400 }
+    try {
+      await withTransaction(async (client) => {
+        if (isEntry) {
+          await client.query(
+            `UPDATE products SET stock = COALESCE(stock, 0) + $1, updated_at = NOW() WHERE id = $2`,
+            [qtyNum, productId]
+          );
+        } else {
+          const result = await client.query(
+            `UPDATE products
+             SET stock = COALESCE(stock, 0) - $1, updated_at = NOW()
+             WHERE id = $2 AND COALESCE(stock, 0) >= $1
+             RETURNING id, stock, name`,
+            [qtyNum, productId]
+          );
+          if (result.rowCount === 0) {
+            throw new InsufficientStockError("Stock insuficiente para esta salida");
+          }
+        }
+        await client.query(
+          `INSERT INTO stock_movements (product_id, quantity, type, reason, created_by)
+           VALUES ($1, $2, $3, $4, $5)`,
+          [productId, qtyNum, type, reason || null, user.id]
         );
+      });
+    } catch (e) {
+      if (e instanceof InsufficientStockError) {
+        return NextResponse.json({ error: e.message }, { status: 400 });
       }
+      throw e;
     }
-
-    // 1. Update product stock
-    await sql`
-      UPDATE products 
-      SET stock = COALESCE(stock, 0) + ${change}
-      WHERE id = ${productId}
-    `;
-
-    // 2. Record movement
-    await sql`
-      INSERT INTO stock_movements (product_id, quantity, type, reason, created_by)
-      VALUES (${productId}, ${qtyNum}, ${type}, ${reason || null}, ${user.id})
-    `;
 
     return NextResponse.json({ message: "Inventario actualizado correctamente" });
   } catch (error) {
-    console.error("Update stock error:", error);
-    return NextResponse.json({ error: "Error al actualizar inventario (posiblemente falta ejecutar /api/setup-inventory)" }, { status: 500 });
+    return toErrorResponse(error);
   }
 }

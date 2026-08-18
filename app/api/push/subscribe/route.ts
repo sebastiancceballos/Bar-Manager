@@ -1,15 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { sql } from "@/lib/db";
 import { getAuthUser } from "@/lib/auth";
+import { resolveLocationId } from "@/lib/org";
+import { toErrorResponse } from "@/lib/errors";
 
 /**
  * POST body:
  * {
  *   endpoint, keys: { p256dh, auth },
- *   publicToken?: string,   // cliente tracking
- *   scope?: "order" | "staff",
- *   locationId?: number     // staff
+ *   publicToken?: string,   // cliente tracking (scope order)
+ *   scope?: "order" | "staff"
  * }
+ * Staff: location_id SIEMPRE del servidor (resolveLocationId), nunca del body.
  */
 export async function POST(request: NextRequest) {
   try {
@@ -19,7 +21,6 @@ export async function POST(request: NextRequest) {
     const auth = body?.keys?.auth;
     const scope = body?.scope === "staff" ? "staff" : "order";
     const publicToken = body?.publicToken as string | undefined;
-    const locationId = body?.locationId ? parseInt(String(body.locationId)) : null;
 
     if (!endpoint || !p256dh || !auth) {
       return NextResponse.json(
@@ -51,16 +52,16 @@ export async function POST(request: NextRequest) {
       orderId = rows[0].id;
       token = rows[0].public_token;
     } else {
-      // staff
       const user = await getAuthUser();
       if (!user) {
         return NextResponse.json({ error: "No autenticado" }, { status: 401 });
       }
       userId = user.id;
-      locId = locationId;
+      // Nunca confiar en body.locationId (aislamiento multi-tenant)
+      locId = await resolveLocationId(user.id, user.role);
       if (!locId) {
         return NextResponse.json(
-          { error: "locationId requerido para notificaciones del personal" },
+          { error: "Sin bar asignado para notificaciones del personal" },
           { status: 400 }
         );
       }
@@ -79,20 +80,13 @@ export async function POST(request: NextRequest) {
         auth = EXCLUDED.auth,
         order_id = COALESCE(EXCLUDED.order_id, push_subscriptions.order_id),
         public_token = COALESCE(EXCLUDED.public_token, push_subscriptions.public_token),
-        location_id = COALESCE(EXCLUDED.location_id, push_subscriptions.location_id),
+        location_id = EXCLUDED.location_id,
         user_id = COALESCE(EXCLUDED.user_id, push_subscriptions.user_id),
         scope = EXCLUDED.scope
     `;
 
-    return NextResponse.json({ ok: true }, { status: 201 });
+    return NextResponse.json({ ok: true, locationId: locId }, { status: 201 });
   } catch (error) {
-    console.error("Push subscribe error:", error);
-    return NextResponse.json(
-      {
-        error:
-          "No se pudo guardar la suscripción. ¿Ejecutaste scripts/11_push_subscriptions.sql?",
-      },
-      { status: 500 }
-    );
+    return toErrorResponse(error);
   }
 }

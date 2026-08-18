@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthUser } from "@/lib/auth";
+import { toErrorResponse } from "@/lib/errors";
 import { resolveLocationId } from "@/lib/org";
 import { canManageCashSession } from "@/lib/permissions";
 import { sql } from "@/lib/db";
@@ -33,8 +34,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ open: open[0] || null, history }, { status: 200 });
   } catch (error) {
-    console.error("Cash session GET error:", error);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return toErrorResponse(error);
   }
 }
 
@@ -74,7 +74,6 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ session: created[0] }, { status: 201 });
   } catch (error) {
-    console.error("Cash session POST error:", error);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return toErrorResponse(error);
   }
 }

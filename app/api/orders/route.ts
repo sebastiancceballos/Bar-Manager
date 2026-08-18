@@ -42,17 +42,26 @@ export async function GET(request: NextRequest) {
     }
 
     // Get items for each order
-    for (const order of orders) {
-      const items = await sql`
+        if (orders.length > 0) {
+      const ids = orders.map((o: { id: number }) => o.id);
+      const allItems = await sql`
         SELECT oi.*, p.name as product_name, p.category
         FROM order_items oi
         JOIN products p ON oi.product_id = p.id
-        WHERE oi.order_id = ${order.id}
+        WHERE oi.order_id = ANY(${ids})
       `;
-      order.items = items.map(item => ({
-        ...item,
-        product: { name: item.product_name, price: item.price, category: item.category }
-      }));
+      const byOrder = new Map<number, any[]>();
+      for (const item of allItems) {
+        const list = byOrder.get(item.order_id) || [];
+        list.push({
+          ...item,
+          product: { name: item.product_name, price: item.price, category: item.category },
+        });
+        byOrder.set(item.order_id, list);
+      }
+      for (const order of orders) {
+        order.items = byOrder.get(order.id) || [];
+      }
     }
 
     return NextResponse.json({ orders }, { status: 200 });

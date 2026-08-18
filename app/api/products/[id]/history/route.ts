@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthUser } from "@/lib/auth";
+import { assertOwnsProduct } from "@/lib/tenant";
 import { sql } from "@/lib/db";
 
 export async function GET(
@@ -13,6 +14,10 @@ export async function GET(
     }
 
     const { id } = await params;
+    const productId = parseInt(id, 10);
+    const guard = await assertOwnsProduct(productId, user);
+    if (guard.error) return guard.error;
+
 
     const movements = await sql`
       SELECT * FROM stock_movements 

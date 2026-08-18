@@ -11,7 +11,7 @@ export async function GET() {
     }
 
     const rows = await sql`
-      SELECT id, email, name, role, location_id, organization_id
+      SELECT id, email, name, role, location_id, organization_id, must_change_password
       FROM users WHERE id = ${payload.id} LIMIT 1
     `;
     const dbUser = rows[0];
@@ -38,6 +38,7 @@ export async function GET() {
         organizationId: dbUser.organization_id,
         activeLocationId,
         locations,
+        mustChangePassword: Boolean(dbUser.must_change_password),
       },
     });
   } catch (error) {

@@ -1,49 +1,40 @@
 import { NextRequest, NextResponse } from "next/server";
 import { sql } from "@/lib/db";
 import { getAuthUser } from "@/lib/auth";
+import { toErrorResponse } from "@/lib/errors";
 
-// NOTA: esto ya está cubierto por scripts/06_consolidate_hidden_migrations.sql.
-// Se deja como POST (nunca GET, porque esto muta la base de datos y un GET
-// puede dispararse por accidente vía prefetch del navegador o un crawler)
-// como botón de "reparar" manual por si una base de datos vieja no corrió
-// esa migración.
-export async function POST(request: NextRequest) {
+/**
+ * Ya no ejecuta DDL. El esquema debe venir de migraciones
+ * (scripts/16_locations_active_and_inventory.sql y anteriores).
+ * Solo limpia stock negativo si las columnas existen.
+ */
+export async function POST(_request: NextRequest) {
   try {
     const user = await getAuthUser();
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-
-    const isAdminOrOwner = user.role === "admin" || user.role === "owner";
-    if (!isAdminOrOwner) {
+    if (user.role !== "admin" && user.role !== "owner") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
     }
 
-    // 1. Add stock column to products
-    await sql`ALTER TABLE products ADD COLUMN IF NOT EXISTS stock INTEGER DEFAULT 0`;
-    
-    // 1.1 Add owner_id to locations
-    await sql`ALTER TABLE locations ADD COLUMN IF NOT EXISTS owner_id INTEGER REFERENCES users(id)`;
+    try {
+      await sql`UPDATE products SET stock = 0 WHERE stock < 0`;
+    } catch {
+      return NextResponse.json(
+        {
+          error:
+            "Falta el esquema de inventario. Ejecuta en Neon: scripts/16_locations_active_and_inventory.sql (y migraciones de stock_movements si aplica).",
+        },
+        { status: 400 }
+      );
+    }
 
-    // 2. Create stock_movements table
-    await sql`
-      CREATE TABLE IF NOT EXISTS stock_movements (
-        id SERIAL PRIMARY KEY,
-        product_id INTEGER REFERENCES products(id) ON DELETE CASCADE,
-        quantity INTEGER NOT NULL,
-        type VARCHAR(20) NOT NULL,
-        reason TEXT,
-        created_by INTEGER REFERENCES users(id),
-        created_at TIMESTAMP DEFAULT NOW()
-      )
-    `;
-
-    // 3. Reset negative stock to 0 (Data cleanup)
-    await sql`UPDATE products SET stock = 0 WHERE stock < 0`;
-
-    return NextResponse.json({ message: "Base de datos actualizada para inventario y stock corregido" });
+    return NextResponse.json({
+      message:
+        "Stock negativo corregido. El esquema no se modifica desde la API; usa los scripts SQL de migración.",
+    });
   } catch (error) {
-    console.error("Setup inventory error:", error);
-    return NextResponse.json({ error: "Error actualizando base de datos" }, { status: 500 });
+    return toErrorResponse(error);
   }
 }

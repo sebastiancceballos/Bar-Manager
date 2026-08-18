@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthUser } from "@/lib/auth";
+import { assertOwnsOrder } from "@/lib/tenant";
 import { sql } from "@/lib/db";
 import { logAudit } from "@/lib/audit";
 import { canTransition, SELF_SERVICE_STATUSES, SelfServiceStatus } from "@/lib/self-service";
@@ -99,6 +100,9 @@ export async function PATCH(
 
     const { id } = await params;
     const orderId = parseInt(id);
+    const ssGuard = await assertOwnsOrder(orderId, user);
+    if (ssGuard.error) return ssGuard.error;
+
     const body = await request.json();
     const newStatus = body.status;
     const paymentMethodRaw = body.paymentMethod as string | undefined;

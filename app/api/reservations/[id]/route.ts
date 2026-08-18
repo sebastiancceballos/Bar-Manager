@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthUser } from "@/lib/auth";
+import { toErrorResponse } from "@/lib/errors";
 import { sql } from "@/lib/db";
+import { assertOwnsReservation } from "@/lib/tenant";
 
 const VALID_STATUSES = ["confirmada", "cancelada", "completada", "no_show"];
 
@@ -13,6 +15,10 @@ export async function PATCH(
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const { id } = await params;
+    const reservationId = parseInt(id, 10);
+    const guard = await assertOwnsReservation(reservationId, user);
+    if (guard.error) return guard.error;
+
     const { status } = await request.json();
 
     if (!VALID_STATUSES.includes(status)) {
@@ -20,7 +26,7 @@ export async function PATCH(
     }
 
     const updated = await sql`
-      UPDATE reservations SET status = ${status} WHERE id = ${parseInt(id)}
+      UPDATE reservations SET status = ${status} WHERE id = ${reservationId}
       RETURNING *
     `;
 
@@ -30,7 +36,6 @@ export async function PATCH(
 
     return NextResponse.json({ reservation: updated[0] }, { status: 200 });
   } catch (error) {
-    console.error("Reservation PATCH error:", error);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return toErrorResponse(error);
   }
 }

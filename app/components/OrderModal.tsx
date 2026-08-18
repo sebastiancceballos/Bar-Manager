@@ -82,6 +82,11 @@ export function OrderModal({
   const [updating, setUpdating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const [showSplit, setShowSplit] = useState(false);
+  const [splitParts, setSplitParts] = useState(2);
+  const [splits, setSplits] = useState<any[] | null>(null);
+  const [splitBusy, setSplitBusy] = useState(false);
+  const [splitError, setSplitError] = useState<string | null>(null);
   const [showPayment, setShowPayment] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState("efectivo");
   const [tipAmount, setTipAmount] = useState("0");
@@ -319,6 +324,85 @@ export function OrderModal({
       setUpdating(false);
     }
   };
+
+
+  const loadSplits = async () => {
+    if (!order) return;
+    try {
+      const res = await fetch(`/api/orders/${order.id}/split`);
+      if (res.ok) {
+        const data = await res.json();
+        setSplits(data.splits || []);
+      }
+    } catch { /* ignore */ }
+  };
+
+  const handleCreateSplit = async () => {
+    if (!order) return;
+    setSplitBusy(true);
+    setSplitError(null);
+    try {
+      const res = await fetch(`/api/orders/${order.id}/split`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ parts: splitParts }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "No se pudo dividir");
+      setSplits(data.splits || []);
+      setShowSplit(true);
+    } catch (e) {
+      setSplitError(e instanceof Error ? e.message : "Error");
+    } finally {
+      setSplitBusy(false);
+    }
+  };
+
+  const handlePaySplit = async (splitIndex: number, method: string) => {
+    if (!order) return;
+    setSplitBusy(true);
+    setSplitError(null);
+    try {
+      const res = await fetch(`/api/orders/${order.id}/split/${splitIndex}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ paymentMethod: method }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Error al cobrar parte");
+      setSplits(data.splits || []);
+      if (data.orderClosed) {
+        onUpdate();
+        onClose();
+      }
+    } catch (e) {
+      setSplitError(e instanceof Error ? e.message : "Error");
+    } finally {
+      setSplitBusy(false);
+    }
+  };
+
+  const handleCancelSplit = async () => {
+    if (!order) return;
+    setSplitBusy(true);
+    setSplitError(null);
+    try {
+      const res = await fetch(`/api/orders/${order.id}/split`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ cancel: true }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "No se pudo cancelar");
+      setSplits([]);
+      setShowSplit(false);
+    } catch (e) {
+      setSplitError(e instanceof Error ? e.message : "Error");
+    } finally {
+      setSplitBusy(false);
+    }
+  };
+
 
   const handleTransfer = async () => {
     if (!order || !transferTargetId) return;
@@ -778,6 +862,86 @@ export function OrderModal({
               >
                 {updating ? "Procesando..." : "Confirmar cobro"}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+
+      {/* Modal Dividir cuenta */}
+      {showSplit && order && (
+        <div className="fixed inset-0 bg-black/70 flex items-end sm:items-center justify-center z-[110] p-0 sm:p-4">
+          <div className="bg-card border border-border rounded-t-2xl sm:rounded-lg max-w-md w-full max-h-[92dvh] flex flex-col">
+            <div className="flex justify-between items-center p-4 border-b border-border">
+              <h3 className="text-lg font-bold">Dividir cuenta — Mesa {tableNumber}</h3>
+              <button type="button" className="text-2xl text-gray-400" onClick={() => setShowSplit(false)}>&times;</button>
+            </div>
+            <div className="overflow-y-auto flex-1 p-4 space-y-4">
+              {splitError && (
+                <div className="bg-error/10 border border-error text-error text-sm px-3 py-2 rounded">{splitError}</div>
+              )}
+              <p className="text-sm text-gray-400">
+                Total orden: <strong className="text-foreground">{formatCOP(Number(order.total_amount) || 0)}</strong>.
+                El residuo de centavos/pesos queda a favor de la casa.
+              </p>
+              {(!splits || splits.length === 0) && (
+                <div className="space-y-3">
+                  <label className="text-sm">Número de comensales (partes)</label>
+                  <input
+                    type="number"
+                    min={2}
+                    max={20}
+                    className="input w-full"
+                    value={splitParts}
+                    onChange={(e) => setSplitParts(Math.max(2, parseInt(e.target.value) || 2))}
+                  />
+                  <button
+                    type="button"
+                    className="btn btn-primary w-full"
+                    disabled={splitBusy}
+                    onClick={handleCreateSplit}
+                  >
+                    {splitBusy ? "Creando..." : "Crear partes"}
+                  </button>
+                </div>
+              )}
+              {splits && splits.length > 0 && (
+                <ul className="space-y-3">
+                  {splits.map((s: any) => (
+                    <li key={s.split_index} className="border border-border rounded-lg p-3 flex flex-col gap-2">
+                      <div className="flex justify-between text-sm">
+                        <span>Parte {s.split_index}</span>
+                        <strong>{formatCOP(Number(s.amount))}</strong>
+                      </div>
+                      {s.paid ? (
+                        <span className="text-xs text-success">Pagado ({s.payment_method})</span>
+                      ) : (
+                        <div className="grid grid-cols-2 gap-2">
+                          {["efectivo", "tarjeta", "transferencia", "otro"].map((m) => (
+                            <button
+                              key={m}
+                              type="button"
+                              className="btn btn-outline btn-sm capitalize"
+                              disabled={splitBusy}
+                              onClick={() => handlePaySplit(s.split_index, m)}
+                            >
+                              {m}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </li>
+                  ))}
+                  <button
+                    type="button"
+                    className="btn btn-outline w-full text-error"
+                    disabled={splitBusy}
+                    onClick={handleCancelSplit}
+                  >
+                    Cancelar división (si nadie pagó)
+                  </button>
+                </ul>
+              )}
             </div>
           </div>
         </div>

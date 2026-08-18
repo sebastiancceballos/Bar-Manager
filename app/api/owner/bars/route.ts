@@ -17,13 +17,6 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: "Faltan campos id y active" }, { status: 400 });
     }
 
-    // Add active column if it doesn't exist yet (safe migration)
-    try {
-      await sql`ALTER TABLE locations ADD COLUMN IF NOT EXISTS active BOOLEAN DEFAULT true`;
-    } catch (_) {
-      // Column may already exist, ignore
-    }
-
     await sql`UPDATE locations SET active = ${active} WHERE id = ${parseInt(id)}`;
 
     return NextResponse.json({

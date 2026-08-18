@@ -8,9 +8,10 @@ interface DbUser {
   email: string;
   name: string;
   password_hash: string;
-  role: "owner" | "admin" | "waiter";
+  role: string;
   failed_attempts: number;
   locked_until: string | null;
+  must_change_password?: boolean;
 }
 
 const MAX_ATTEMPTS = 5;
@@ -92,10 +93,15 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    const mustChangePassword = Boolean(
+      (user as DbUser).must_change_password
+    );
+
     const token = await signToken({
       id: user.id,
       email: user.email,
       role: user.role,
+      mustChangePassword: mustChangePassword || undefined,
     });
 
     await setAuthCookie(token);
@@ -136,6 +142,7 @@ export async function POST(request: NextRequest) {
           organizationId,
           activeLocationId,
           locations,
+          mustChangePassword,
         },
       },
       { status: 200 }

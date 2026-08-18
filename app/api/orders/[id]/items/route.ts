@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthUser } from "@/lib/auth";
+import { assertOwnsOrder } from "@/lib/tenant";
 import { sql } from "@/lib/db";
 
 export async function POST(
@@ -14,6 +15,9 @@ export async function POST(
     }
 
     const { id } = await params;
+    const orderId = parseInt(id, 10);
+    const orderGuard = await assertOwnsOrder(orderId, user);
+    if (orderGuard.error) return orderGuard.error;
     const { productId, quantity } = await request.json();
 
     if (!productId || !quantity) {
@@ -31,7 +35,7 @@ export async function POST(
       return NextResponse.json({ error: "Product not found" }, { status: 404 });
     }
 
-    // Aviso de stock (no se descuenta hasta cobrar la mesa)
+    // --- BLOQUEO DE VENTA SIN STOCK ---
     const currentStock = product.stock || 0;
     if (currentStock < quantity) {
       return NextResponse.json(
@@ -39,6 +43,7 @@ export async function POST(
         { status: 400 }
       );
     }
+    // ----------------------------------
 
     // Check if item already exists
     const existingItems = await sql`
@@ -75,7 +80,21 @@ export async function POST(
       WHERE id = ${parseInt(id)}
     `;
 
-    // Stock se descuenta al cobrar (misma regla que autoservicio)
+    // --- LOGICA DE TRAZABILIDAD ---
+    // Descontar stock automáticamente al agregar al pedido
+    await sql`
+      UPDATE products 
+      SET stock = COALESCE(stock, 0) - ${quantity}
+      WHERE id = ${parseInt(productId)}
+    `;
+
+    // Registrar el movimiento de salida por venta
+    const reason = `Venta en mesa (Orden #${id})`;
+    await sql`
+      INSERT INTO stock_movements (product_id, quantity, type, reason, created_by)
+      VALUES (${parseInt(productId)}, ${quantity}, 'sale', ${reason}, ${user.id})
+    `;
+    // ------------------------------
 
     // Get updated order with items
     const orders = await sql`SELECT * FROM orders WHERE id = ${parseInt(id)}`;

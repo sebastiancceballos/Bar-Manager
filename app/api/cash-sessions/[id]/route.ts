@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthUser } from "@/lib/auth";
+import { toErrorResponse } from "@/lib/errors";
+import { assertOwnsCashSession } from "@/lib/tenant";
 import { canManageCashSession } from "@/lib/permissions";
 import { sql } from "@/lib/db";
 import { logAudit } from "@/lib/audit";
@@ -17,6 +19,8 @@ export async function PATCH(
     const { id } = await params;
     const sessionId = parseInt(id);
 
+    const guard = await assertOwnsCashSession(sessionId, user);
+    if (guard.error) return guard.error;
     const sessions = await sql`SELECT * FROM cash_sessions WHERE id = ${sessionId}`;
     const session = sessions[0];
     if (!session) return NextResponse.json({ error: "Turno no encontrado" }, { status: 404 });
@@ -79,7 +83,6 @@ export async function PATCH(
 
     return NextResponse.json({ session: updated[0] }, { status: 200 });
   } catch (error) {
-    console.error("Cash session close error:", error);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return toErrorResponse(error);
   }
 }
