@@ -104,7 +104,7 @@ export async function GET(request: NextRequest) {
     }
 
     if (orders.length > 0) {
-      const ids = orders.map((o: { id: number }) => o.id);
+      const ids = orders.map((o: any) => Number(o.id));
       const allItems = await sql`
         SELECT oi.order_id, oi.quantity, oi.notes, p.name, p.price
         FROM order_items oi
