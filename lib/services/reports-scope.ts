@@ -12,7 +12,7 @@ export async function resolveReportLocationIds(
   const orgId = orgRow[0]?.organization_id;
   if (!orgId) return [locId];
   const locs = await sql`SELECT id FROM locations WHERE organization_id = ${orgId}`;
-  return locs.map((r: { id: number }) => r.id);
+  return locs.map((r: any) => Number(r.id));
 }
 
 /** Cutoff UTC para filtros sargables (sin envolver created_at en WHERE) */
