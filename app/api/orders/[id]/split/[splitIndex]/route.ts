@@ -58,7 +58,7 @@ export async function PATCH(
     const all = await sql`
       SELECT * FROM order_splits WHERE order_id = ${orderId} ORDER BY split_index
     `;
-    const allPaid = all.every((s: any) => Boolean(s.paid));
+    const allPaid = all.every((s: { paid: boolean }) => s.paid);
 
     let orderClosed = false;
     if (allPaid) {
@@ -141,7 +141,7 @@ export async function PATCH(
     `;
 
     return NextResponse.json({
-      split: splits.find((s: any) => s.split_index === splitIndex),
+      split: splits.find((s: { split_index: number }) => s.split_index === splitIndex),
       splits,
       orderClosed: allPaid && orderClosed,
       allPaid,

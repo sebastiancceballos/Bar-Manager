@@ -43,7 +43,7 @@ export async function GET(request: NextRequest) {
 
     // Get items for each order
         if (orders.length > 0) {
-      const ids = orders.map((o: any) => Number(o.id));
+      const ids = orders.map((o: { id: number }) => o.id);
       const allItems = await sql`
         SELECT oi.*, p.name as product_name, p.category
         FROM order_items oi
