@@ -1,0 +1,515 @@
+"use client";
+
+import { ProtectedLayout } from "@/app/components/ProtectedLayout";
+import { Navigation } from "@/app/components/Navigation";
+import { DailyOrdersModal } from "@/app/components/DailyOrdersModal";
+import { useEffect, useState } from "react";
+import { useAuth } from "@/app/providers";
+import { useRouter } from "next/navigation";
+
+const formatCOP = (value: number) =>
+  new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", minimumFractionDigits: 0 }).format(value);
+
+/**
+ * report.date llega como "YYYY-MM-DD" (sin hora). Ver la explicación
+ * completa en DailyOrdersModal.tsx: new Date("YYYY-MM-DD") se interpreta
+ * como medianoche UTC, y toLocaleDateString() lo muestra en la zona
+ * horaria local del navegador, restando horas y mostrando el día anterior.
+ */
+function formatDateOnly(dateStr: string): string {
+  const match = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (!match) return new Date(dateStr).toLocaleDateString("es-MX");
+  const [, year, month, day] = match;
+  return new Date(parseInt(year), parseInt(month) - 1, parseInt(day)).toLocaleDateString("es-MX");
+}
+
+
+interface DailyReport {
+  date: string;
+  total: number;
+  orderCount: number;
+}
+
+interface WaiterReport {
+  waiterId: number | null;
+  waiterName: string;
+  orderCount: number;
+  total: number;
+  totalTips: number;
+}
+
+interface ProductReport {
+  productName: string;
+  category: string;
+  unitsSold: number;
+  total: number;
+}
+
+interface PaymentMethodReport {
+  paymentMethod: string;
+  orderCount: number;
+  total: number;
+}
+
+const PAYMENT_LABELS: Record<string, string> = {
+  autoservicio: "Autoservicio",
+  efectivo: "Efectivo",
+  tarjeta: "Tarjeta",
+  transferencia: "Transferencia",
+  otro: "Otro",
+  sin_registrar: "Sin registrar",
+};
+
+export default function ReportsPage() {
+  const [reports, setReports] = useState<DailyReport[]>([]);
+  const [byWaiter, setByWaiter] = useState<WaiterReport[]>([]);
+  const [topProducts, setTopProducts] = useState<ProductReport[]>([]);
+  const [byPaymentMethod, setByPaymentMethod] = useState<PaymentMethodReport[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [orgSummary, setOrgSummary] = useState<any[] | null>(null);
+  const [orgTotals, setOrgTotals] = useState<{ total: number; order_count: number } | null>(null);
+  const [reportsError, setReportsError] = useState<string | null>(null);
+  const [dateRange, setDateRange] = useState("day");
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [showModal, setShowModal] = useState(false);
+  const { user } = useAuth();
+
+  const payTotal = (key: string) =>
+    byPaymentMethod
+      .filter((p) => (p.paymentMethod || "").toLowerCase() === key)
+      .reduce((s, p) => s + Number(p.total || 0), 0);
+  const payCount = (key: string) =>
+    byPaymentMethod
+      .filter((p) => (p.paymentMethod || "").toLowerCase() === key)
+      .reduce((s, p) => s + Number(p.orderCount || 0), 0);
+  const totalPeriod = reports.reduce((s, r) => s + Number(r.total || 0), 0);
+  const ordersPeriod = reports.reduce((s, r) => s + Number(r.orderCount || 0), 0);
+
+  const router = useRouter();
+
+  // Excel export state
+  const today = new Date();
+  const firstOfMonth = new Date(today.getFullYear(), today.getMonth(), 1)
+    .toISOString().split("T")[0];
+  const todayStr = today.toISOString().split("T")[0];
+  const [exportFrom, setExportFrom] = useState(firstOfMonth);
+  const [exportTo, setExportTo] = useState(todayStr);
+  const [exporting, setExporting] = useState(false);
+
+  // Redirect non-admin users
+  useEffect(() => {
+    if (user && user.role !== "admin" && user.role !== "owner") {
+      router.push("/dashboard/tables");
+    }
+  }, [user, router]);
+
+  useEffect(() => {
+    const fetchReports = async () => {
+      setReportsError(null);
+      try {
+        const response = await fetch(`/api/reports?range=${dateRange}`);
+        if (response.ok) {
+          const data = await response.json();
+          setReports(data.reports);
+        } else {
+          const errData = await response.json().catch(() => ({}));
+          setReportsError(errData.error || `Error del servidor (HTTP ${response.status})`);
+          setReports([]);
+        }
+      } catch (error) {
+        console.error("Failed to fetch reports:", error);
+        setReportsError("No se pudo conectar con el servidor");
+        setReports([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    const fetchBreakdowns = async () => {
+      try {
+        const [waiterRes, productRes, paymentRes] = await Promise.all([
+          fetch(`/api/reports?range=${dateRange}&type=by-waiter`),
+          fetch(`/api/reports?range=${dateRange}&type=top-products`),
+          fetch(`/api/reports?range=${dateRange}&type=by-payment-method`),
+        ]);
+        if (waiterRes.ok) setByWaiter((await waiterRes.json()).byWaiter || []);
+        else console.error("by-waiter fetch failed:", waiterRes.status);
+        if (productRes.ok) setTopProducts((await productRes.json()).topProducts || []);
+        else console.error("top-products fetch failed:", productRes.status);
+        if (paymentRes.ok) setByPaymentMethod((await paymentRes.json()).byPaymentMethod || []);
+        else console.error("by-payment-method fetch failed:", paymentRes.status);
+
+        try {
+          const orgRes = await fetch(`/api/reports?range=${dateRange}&type=org_summary`);
+          if (orgRes.ok) {
+            const od = await orgRes.json();
+            setOrgSummary(od.locations || []);
+            setOrgTotals(od.totals || null);
+          } else {
+            setOrgSummary(null);
+            setOrgTotals(null);
+          }
+        } catch {
+          setOrgSummary(null);
+        }
+      } catch (error) {
+        console.error("Failed to fetch report breakdowns:", error);
+      }
+    };
+
+    fetchReports();
+    fetchBreakdowns();
+  }, [dateRange]);
+
+  const totalRevenue = reports.reduce((sum, r) => sum + r.total, 0);
+  const totalOrders = reports.reduce((sum, r) => sum + r.orderCount, 0);
+  const averagePerOrder = totalOrders > 0 ? totalRevenue / totalOrders : 0;
+
+  const handleViewMore = (date: string) => {
+    setSelectedDate(date);
+    setShowModal(true);
+  };
+
+  const handleExportExcel = async () => {
+    setExporting(true);
+    try {
+      const res = await fetch(`/api/reports/export?from=${exportFrom}&to=${exportTo}`);
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(`HTTP ${res.status}: ${errData.error || res.statusText}`);
+      }
+      const data = await res.json();
+      const orders = data.orders || [];
+
+      // Build CSV rows
+      const headers = ["Fecha", "Hora", "# Orden", "Tipo", "Mesa/Ficho", "Mesero/Cliente", "Producto", "Categoría", "Cantidad", "Precio Unitario", "Subtotal", "Total Orden", "Estado"];
+      const csvRows: string[] = [headers.join(";")];
+
+      for (const order of orders) {
+        const date = new Date(order.created_at).toLocaleDateString("es-CO");
+        const time = new Date(order.created_at).toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit" });
+        if (order.items.length === 0) {
+          csvRows.push([
+            date, time, order.id,
+            order.order_type === "self_service" ? "Autoservicio" : "Mesa",
+            order.table_number, order.waiter_name || "-",
+            "-", "-", "0", "0", "0", Number(order.total_amount), order.status
+          ].join(";"));
+        } else {
+          order.items.forEach((item: { product_name: string; category: string; quantity: number; price: number }, idx: number) => {
+            const subtotal = Number(item.price) * item.quantity;
+            csvRows.push([
+              date, time, order.id,
+              order.order_type === "self_service" ? "Autoservicio" : "Mesa",
+              order.table_number, order.waiter_name || "-",
+              item.product_name, item.category, item.quantity,
+              Number(item.price), subtotal,
+              idx === 0 ? Number(order.total_amount) : "",
+              idx === 0 ? order.status : "",
+            ].join(";"));
+          });
+        }
+      }
+
+      // BOM and sep=; for Excel to read UTF-8 and delimiters correctly
+      const bom = "\uFEFF";
+      const csvContent = bom + "sep=;\n" + csvRows.join("\n");
+      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `pedidos_${exportFrom}_${exportTo}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error("Export failed:", msg);
+      alert("Error al exportar: " + msg);
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  return (
+    <ProtectedLayout>
+      <Navigation />
+      <div className="min-h-screen bg-background">
+        <div className="max-w-7xl mx-auto px-4 py-12">
+          <div className="flex items-center justify-between mb-8">
+            <h1 className="text-4xl font-bold text-foreground">Reportes</h1>
+                        <div className="flex flex-wrap gap-2">
+              {[
+                { id: "day", label: "Hoy" },
+                { id: "week", label: "Semana" },
+                { id: "month", label: "Mes" },
+                { id: "year", label: "Año" },
+              ].map((opt) => (
+                <button
+                  key={opt.id}
+                  type="button"
+                  onClick={() => setDateRange(opt.id)}
+                  className={`px-4 py-2 rounded-lg text-sm font-semibold border transition-colors ${
+                    dateRange === opt.id
+                      ? "bg-primary text-white border-primary"
+                      : "bg-card text-foreground border-border hover:border-primary"
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
+          {/* Resumen periodo + efectivo / transferencia */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+            <div className="card p-4 border border-border">
+              <p className="text-xs text-gray-400 mb-1">
+                {dateRange === "day" ? "Ventas de hoy" : "Ventas del periodo"}
+              </p>
+              <p className="text-2xl font-bold text-primary">{formatCOP(totalPeriod)}</p>
+              <p className="text-xs text-gray-500 mt-1">{ordersPeriod} pedidos</p>
+            </div>
+            <div className="card p-4 border border-green-500/40 bg-green-500/5">
+              <p className="text-xs text-green-400 mb-1">Efectivo</p>
+              <p className="text-2xl font-bold text-green-400">{formatCOP(payTotal("efectivo"))}</p>
+              <p className="text-xs text-gray-500 mt-1">{payCount("efectivo")} pagos</p>
+            </div>
+            <div className="card p-4 border border-blue-500/40 bg-blue-500/5">
+              <p className="text-xs text-blue-400 mb-1">Transferencia</p>
+              <p className="text-2xl font-bold text-blue-400">{formatCOP(payTotal("transferencia"))}</p>
+              <p className="text-xs text-gray-500 mt-1">{payCount("transferencia")} pagos</p>
+            </div>
+            <div className="card p-4 border border-border">
+              <p className="text-xs text-gray-400 mb-1">Tarjeta / otros</p>
+              <p className="text-2xl font-bold text-foreground">
+                {formatCOP(payTotal("tarjeta") + payTotal("otro") + payTotal("sin_dato") + payTotal("sin_registrar"))}
+              </p>
+              <p className="text-xs text-gray-500 mt-1">
+                {payCount("tarjeta") + payCount("otro")} pagos
+              </p>
+            </div>
+          </div>
+
+
+          {/* Excel Export Section */}
+          <div className="card mb-8">
+            <h3 className="text-lg font-semibold mb-4">Exportar historial de pedidos</h3>
+            <div className="flex flex-wrap items-end gap-4">
+              <div>
+                <label className="block text-sm text-gray-400 mb-1">Desde</label>
+                <input
+                  type="date"
+                  value={exportFrom}
+                  onChange={(e) => setExportFrom(e.target.value)}
+                  className="input"
+                />
+              </div>
+              <div>
+                <label className="block text-sm text-gray-400 mb-1">Hasta</label>
+                <input
+                  type="date"
+                  value={exportTo}
+                  onChange={(e) => setExportTo(e.target.value)}
+                  className="input"
+                />
+              </div>
+              <button
+                onClick={handleExportExcel}
+                disabled={exporting}
+                className="btn btn-primary flex items-center gap-2 disabled:opacity-50"
+              >
+                {exporting ? "Generando..." : "⬇ Descargar Excel"}
+              </button>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <div className="card">
+              <h3 className="text-gray-400 text-sm font-medium mb-2">
+                Ingresos Totales
+              </h3>
+              <p className="text-3xl font-bold text-success">
+                {formatCOP(totalRevenue)}
+              </p>
+            </div>
+
+            <div className="card">
+              <h3 className="text-gray-400 text-sm font-medium mb-2">
+                Total de Órdenes
+              </h3>
+              <p className="text-3xl font-bold text-primary">
+                {totalOrders}
+              </p>
+            </div>
+
+            <div className="card">
+              <h3 className="text-gray-400 text-sm font-medium mb-2">
+                Promedio por Orden
+              </h3>
+              <p className="text-3xl font-bold text-secondary">
+                {formatCOP(averagePerOrder)}
+              </p>
+            </div>
+          </div>
+
+          {reportsError && (
+            <div className="bg-error/10 border border-error text-error px-4 py-3 rounded-lg mb-6 text-sm">
+              ⚠️ No se pudieron cargar los ingresos por día: {reportsError}
+            </div>
+          )}
+
+
+          {orgSummary && orgSummary.length > 0 && (
+            <div className="card mb-6">
+              <h2 className="text-lg font-semibold mb-2">Consolidado por organización</h2>
+              <p className="text-xs text-gray-400 mb-3">
+                Ventas de todas las sucursales del mismo negocio (org de la sucursal activa).
+              </p>
+              {orgTotals && (
+                <p className="text-sm mb-3">
+                  Total: <strong>{formatCOP(Number(orgTotals.total))}</strong>
+                  {" · "}
+                  {orgTotals.order_count} pedidos
+                </p>
+              )}
+              <ul className="space-y-2 text-sm">
+                {orgSummary.map((row: any) => (
+                  <li
+                    key={row.location_id || row.location_name}
+                    className="flex justify-between border-b border-border py-2"
+                  >
+                    <span>{row.location_name}</span>
+                    <span>
+                      {formatCOP(Number(row.total))} · {row.order_count} pedidos
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {loading ? (
+            <div className="text-gray-400">Cargando reportes...</div>
+          ) : (
+            <div className="card">
+              <h3 className="text-xl font-semibold mb-6">
+                Ingresos por Día
+              </h3>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-sm">
+                  <thead>
+                    <tr className="border-b border-border">
+                      <th className="pb-3 px-4 font-semibold">Fecha</th>
+                      <th className="pb-3 px-4 font-semibold">Órdenes</th>
+                      <th className="pb-3 px-4 font-semibold">Ingresos</th>
+                      <th className="pb-3 px-4 font-semibold">Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {reports.map((report) => (
+                      <tr
+                        key={report.date}
+                        className="border-b border-border/50 hover:bg-card/50 transition-smooth"
+                      >
+                        <td className="py-3 px-4">
+                          {formatDateOnly(report.date)}
+                        </td>
+                        <td className="py-3 px-4">{report.orderCount}</td>
+                        <td className="py-3 px-4 text-success font-semibold">
+                          {formatCOP(report.total)}
+                        </td>
+                        <td className="py-3 px-4">
+                          <button
+                            onClick={() => handleViewMore(report.date)}
+                            className="bg-primary text-white px-4 py-1 rounded text-sm hover:bg-primary/90 transition-colors"
+                          >
+                            Ver más
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+
+                {reports.length === 0 && (
+                  <div className="py-8 text-center text-gray-400">
+                    No hay datos disponibles
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-8">
+            <div className="card">
+              <h3 className="text-lg font-semibold mb-4">Ventas por Mesero</h3>
+              {byWaiter.length === 0 ? (
+                <p className="text-gray-400 text-sm">Sin datos</p>
+              ) : (
+                <div className="space-y-3">
+                  {byWaiter.map((w) => (
+                    <div key={w.waiterId ?? w.waiterName} className="flex justify-between items-center text-sm">
+                      <div>
+                        <p className="font-medium">{w.waiterName}</p>
+                        <p className="text-xs text-gray-500">{w.orderCount} órdenes · propinas {formatCOP(w.totalTips)}</p>
+                      </div>
+                      <span className="font-semibold text-success">{formatCOP(w.total)}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="card">
+              <h3 className="text-lg font-semibold mb-4">Productos Más Vendidos</h3>
+              {topProducts.length === 0 ? (
+                <p className="text-gray-400 text-sm">Sin datos</p>
+              ) : (
+                <div className="space-y-3">
+                  {topProducts.slice(0, 8).map((p) => (
+                    <div key={p.productName} className="flex justify-between items-center text-sm">
+                      <div>
+                        <p className="font-medium">{p.productName}</p>
+                        <p className="text-xs text-gray-500">{p.unitsSold} unidades · {p.category}</p>
+                      </div>
+                      <span className="font-semibold text-primary">{formatCOP(p.total)}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="card">
+              <h3 className="text-lg font-semibold mb-4">Por Método de Pago</h3>
+              {byPaymentMethod.length === 0 ? (
+                <p className="text-gray-400 text-sm">Sin datos</p>
+              ) : (
+                <div className="space-y-3">
+                  {byPaymentMethod.map((p) => (
+                    <div key={p.paymentMethod} className="flex justify-between items-center text-sm">
+                      <div>
+                        <p className="font-medium">{PAYMENT_LABELS[p.paymentMethod] || p.paymentMethod}</p>
+                        <p className="text-xs text-gray-500">{p.orderCount} órdenes</p>
+                      </div>
+                      <span className="font-semibold text-secondary">{formatCOP(p.total)}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {selectedDate && (
+        <DailyOrdersModal
+          date={selectedDate}
+          isOpen={showModal}
+          onClose={() => {
+            setShowModal(false);
+            setSelectedDate(null);
+          }}
+        />
+      )}
+    </ProtectedLayout>
+  );
+}
