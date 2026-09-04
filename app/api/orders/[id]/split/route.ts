@@ -29,7 +29,7 @@ export async function GET(
     const orderRows = await sql`SELECT total_amount, status FROM orders WHERE id = ${orderId}`;
     const total = Math.floor(Number(orderRows[0]?.total_amount) || 0);
     const paidSum = splits
-      .filter((s: { paid: boolean }) => s.paid)
+      .filter((s: any) => Boolean(s.paid))
       .reduce((a: number, s: { amount: number }) => a + Math.floor(Number(s.amount)), 0);
     const house =
       splits.length > 0 ? houseRemainder(total, splits.length) : 0;
@@ -38,7 +38,7 @@ export async function GET(
       splits,
       total,
       houseRemainder: house,
-      allPaid: splits.length > 0 && splits.every((s: { paid: boolean }) => s.paid),
+      allPaid: splits.length > 0 && splits.every((s: any) => Boolean(s.paid)),
       paidSum,
     });
   } catch (error) {

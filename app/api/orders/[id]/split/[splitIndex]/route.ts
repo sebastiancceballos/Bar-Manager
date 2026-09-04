@@ -58,7 +58,7 @@ export async function PATCH(
     const all = await sql`
       SELECT * FROM order_splits WHERE order_id = ${orderId} ORDER BY split_index
     `;
-    const allPaid = all.every((s: { paid: boolean }) => s.paid);
+    const allPaid = all.every((s: any) => Boolean(s.paid));
 
     let orderClosed = false;
     if (allPaid) {
