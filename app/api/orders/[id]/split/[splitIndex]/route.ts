@@ -141,7 +141,7 @@ export async function PATCH(
     `;
 
     return NextResponse.json({
-      split: splits.find((s: { split_index: number }) => s.split_index === splitIndex),
+      split: splits.find((s: any) => Number(s.split_index) === splitIndex),
       splits,
       orderClosed: allPaid && orderClosed,
       allPaid,
