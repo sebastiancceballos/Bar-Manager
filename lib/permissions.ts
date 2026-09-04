@@ -90,6 +90,7 @@ export const DASHBOARD_ROUTE_ROLES: { prefix: string; roles: UserRole[] }[] = [
   { prefix: "/dashboard/auditoria", roles: ["owner", "admin"] },
   { prefix: "/dashboard/orders", roles: ["owner", "admin", "cashier"] },
   { prefix: "/dashboard/caja", roles: ["owner", "admin", "cashier"] },
+  { prefix: "/dashboard/historial", roles: ["cashier"] },
   { prefix: "/dashboard/tables", roles: ["owner", "admin", "cashier", "waiter"] },
   { prefix: "/dashboard/comandas", roles: ["owner", "admin", "cashier", "waiter", "kitchen"] },
   { prefix: "/dashboard/kitchen", roles: ["owner", "admin", "cashier", "waiter", "kitchen"] },
@@ -140,6 +141,7 @@ export function staffNavHrefs(role: UserRole | string): string[] {
         "/dashboard/comandas",
         "/dashboard/orders",
         "/dashboard/caja",
+        "/dashboard/historial",
         "/dashboard/turno",
       ];
     case "waiter":

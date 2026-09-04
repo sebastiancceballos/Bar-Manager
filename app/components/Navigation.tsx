@@ -7,8 +7,7 @@ import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Onboarding } from "./Onboarding";
-import { 
-  Menu, 
+import { Menu, 
   X, 
   LayoutDashboard, 
   Package, 
@@ -24,8 +23,7 @@ import {
   ShieldCheck,
   Clock,
   Receipt,
-  Building2
-} from "lucide-react";
+  Building2, History } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 export function Navigation() {
@@ -82,6 +80,7 @@ export function Navigation() {
       { href: "/dashboard/comandas", label: "Comandas", icon: ClipboardList },
       { href: "/dashboard/orders", label: "Pedidos autoservicio", icon: Receipt },
       { href: "/dashboard/caja", label: "Caja", icon: Wallet },
+      { href: "/dashboard/historial", label: "Historial", icon: History },
       { href: "/dashboard/turno", label: "Mi Turno", icon: Clock },
     ] : []),
     ...(isKitchen ? [

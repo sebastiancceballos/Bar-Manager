@@ -10,6 +10,7 @@ import {
   formatMoneyInput,
   COP_DENOMS,
 } from "@/lib/money-input";
+import { downloadInvoice } from "@/app/components/InvoicePDF";
 
 interface OrderItem {
   id: number;
@@ -27,6 +28,8 @@ interface Order {
   table_id: number;
   total_amount: number;
   status?: string;
+  created_at?: string;
+  payment_method?: string;
   items: OrderItem[];
 }
 
@@ -88,6 +91,8 @@ export function OrderModal({
   const [splitBusy, setSplitBusy] = useState(false);
   const [splitError, setSplitError] = useState<string | null>(null);
   const [showPayment, setShowPayment] = useState(false);
+  const [paidSuccess, setPaidSuccess] = useState(false);
+  const [lastPaidOrder, setLastPaidOrder] = useState<any>(null);
   const [paymentMethod, setPaymentMethod] = useState("efectivo");
   const [tipAmount, setTipAmount] = useState("0");
   const [discountAmount, setDiscountAmount] = useState("0");
@@ -268,6 +273,31 @@ export function OrderModal({
     }
   };
 
+
+  const buildInvoiceFromOrder = () => {
+    if (!order) return null;
+    return {
+      id: order.id,
+      table_number: String(tableNumber),
+      total_amount: order.total_amount,
+      status: order.status || "open",
+      created_at: order.created_at || new Date().toISOString(),
+      payment_method: order.payment_method,
+      items: (order.items || []).map((it: any) => ({
+        id: it.id,
+        product_name: it.product?.name || it.product_name || "Producto",
+        quantity: it.quantity,
+        price: it.price,
+        notes: it.notes,
+      })),
+    };
+  };
+
+  const handlePrintTicket = () => {
+    const inv = lastPaidOrder || buildInvoiceFromOrder();
+    if (inv) downloadInvoice(inv as any);
+  };
+
   const handleConfirmPayment = async () => {
     if (!order) return;
     setPaymentError(null);
@@ -311,9 +341,26 @@ export function OrderModal({
 
       const data = await response.json();
       if (response.ok) {
+        const paid = data.order || order;
+        setLastPaidOrder({
+          ...paid,
+          items: (paid.items || order.items || []).map((it: any) => ({
+            id: it.id,
+            product_name: it.product?.name || it.product_name || it.name || "Producto",
+            quantity: it.quantity,
+            price: it.price,
+            notes: it.notes,
+          })),
+          table_number: String(tableNumber),
+          location_name: paid.location_name,
+          total_amount: paid.total_amount ?? order.total_amount,
+          payment_method: paymentMethod,
+          status: "paid",
+          created_at: paid.created_at || order.created_at || new Date().toISOString(),
+        });
         setShowPayment(false);
+        setPaidSuccess(true);
         onUpdate();
-        onClose();
       } else {
         setPaymentError(data.error || "Error al cobrar la orden");
       }
@@ -372,8 +419,24 @@ export function OrderModal({
       if (!res.ok) throw new Error(data.error || "Error al cobrar parte");
       setSplits(data.splits || []);
       if (data.orderClosed) {
+        const paid = {
+          id: order.id,
+          table_number: String(tableNumber),
+          total_amount: order.total_amount,
+          status: "paid",
+          created_at: (order as any).created_at || new Date().toISOString(),
+          payment_method: method,
+          items: (order.items || []).map((it: any) => ({
+            id: it.id,
+            product_name: it.product?.name || it.product_name || "Producto",
+            quantity: it.quantity,
+            price: it.price,
+            notes: it.notes,
+          })),
+        };
+        setLastPaidOrder(paid);
+        setPaidSuccess(true);
         onUpdate();
-        onClose();
       }
     } catch (e) {
       setSplitError(e instanceof Error ? e.message : "Error");
@@ -553,12 +616,23 @@ export function OrderModal({
                 )}
               </div>
 
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
+                {canCharge && (
+                  <button
+                    type="button"
+                    onClick={handlePrintTicket}
+                    disabled={updating || !order.items?.length}
+                    className="btn btn-outline flex-1 min-w-[120px] disabled:opacity-50"
+                    title="Imprimir precuenta o ticket"
+                  >
+                    🖨 Imprimir
+                  </button>
+                )}
                 {canCharge && (
                   <button
                     onClick={handleOpenPayment}
-                    disabled={updating || order.items.length === 0}
-                    className="btn btn-primary flex-1 disabled:opacity-50"
+                    disabled={updating || !order.items?.length}
+                    className="btn btn-primary flex-1 min-w-[140px] disabled:opacity-50"
                   >
                     {updating ? "Procesando..." : "Cobrar y Cerrar"}
                   </button>
@@ -645,6 +719,45 @@ export function OrderModal({
       </div>
 
       {/* Modal de Cobro — scroll en móvil + botón fijo abajo */}
+      
+      {/* Al cerrar mesa: preguntar si imprimir factura */}
+      {paidSuccess && lastPaidOrder && (
+        <div className="fixed inset-0 bg-black/70 flex items-end sm:items-center justify-center z-[120] p-0 sm:p-4">
+          <div className="bg-card border border-border rounded-t-2xl sm:rounded-xl max-w-sm w-full p-6 space-y-4 shadow-xl">
+            <div className="text-center space-y-2">
+              <p className="text-3xl" aria-hidden>✓</p>
+              <h3 className="text-xl font-bold text-success">Mesa cerrada</h3>
+              <p className="text-sm text-gray-400">
+                Mesa {tableNumber} · {formatCOP(Number(lastPaidOrder.total_amount) || 0)}
+              </p>
+              <p className="text-base font-medium text-foreground pt-2">
+                ¿Deseas imprimir la factura?
+              </p>
+            </div>
+            <button
+              type="button"
+              className="btn btn-primary w-full py-3 text-lg"
+              onClick={() => {
+                downloadInvoice(lastPaidOrder, { skipConfirm: true });
+              }}
+            >
+              Sí, imprimir
+            </button>
+            <button
+              type="button"
+              className="btn btn-outline w-full"
+              onClick={() => {
+                setPaidSuccess(false);
+                setLastPaidOrder(null);
+                onClose();
+              }}
+            >
+              No, gracias
+            </button>
+          </div>
+        </div>
+      )}
+
       {showPayment && order && (
         <div className="fixed inset-0 bg-black/70 flex items-end sm:items-center justify-center z-[110] p-0 sm:p-4">
           <div className="bg-card border border-border rounded-t-2xl sm:rounded-lg max-w-md w-full max-h-[92dvh] flex flex-col shadow-xl">

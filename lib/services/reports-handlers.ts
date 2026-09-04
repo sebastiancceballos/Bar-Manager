@@ -9,6 +9,7 @@ import { reportCutoffIso } from "@/lib/services/reports-scope";
 const PAID = `('closed', 'paid', 'PAID', 'PREPARING', 'READY', 'COMPLETED')`;
 
 function intervalSql(range: string): string {
+  if (range === "day") return "1 day";
   if (range === "month") return "30 days";
   if (range === "year") return "365 days";
   return "7 days";
@@ -22,7 +23,7 @@ async function belongsToLocationClause(locId: number, tz: string, interval: stri
 export async function reportOrgSummary(locId: number, range: string) {
   const interval = intervalSql(range);
   const tz = await getLocationTimezone(locId);
-  const cutoffIso = reportCutoffIso(range);
+  const cutoffIso = await reportCutoffIso(range, tz);
   const orgRow = await sql`
     SELECT organization_id FROM locations WHERE id = ${locId} LIMIT 1
   `;
@@ -69,7 +70,7 @@ export async function reportOrgSummary(locId: number, range: string) {
 export async function reportByWaiter(locId: number, range: string) {
   const interval = intervalSql(range);
   const tz = await getLocationTimezone(locId);
-  const cutoffIso = reportCutoffIso(range);
+  const cutoffIso = await reportCutoffIso(range, tz);
   const rows = await sql`
     SELECT
       CASE WHEN o.order_type = 'self_service' THEN NULL ELSE u.id END as waiter_id,
@@ -107,7 +108,7 @@ export async function reportByWaiter(locId: number, range: string) {
 export async function reportTopProducts(locId: number, range: string) {
   const interval = intervalSql(range);
   const tz = await getLocationTimezone(locId);
-  const cutoffIso = reportCutoffIso(range);
+  const cutoffIso = await reportCutoffIso(range, tz);
   const rows = await sql`
     SELECT
       p.name as product_name,
@@ -138,7 +139,7 @@ export async function reportTopProducts(locId: number, range: string) {
 export async function reportByPaymentMethod(locId: number, range: string) {
   const interval = intervalSql(range);
   const tz = await getLocationTimezone(locId);
-  const cutoffIso = reportCutoffIso(range);
+  const cutoffIso = await reportCutoffIso(range, tz);
   const rows = await sql`
     SELECT
       COALESCE(o.payment_method, 'sin_dato') as payment_method,
@@ -171,7 +172,7 @@ export async function reportByPaymentMethod(locId: number, range: string) {
 export async function reportByOrderType(locId: number, range: string) {
   const interval = intervalSql(range);
   const tz = await getLocationTimezone(locId);
-  const cutoffIso = reportCutoffIso(range);
+  const cutoffIso = await reportCutoffIso(range, tz);
   const rows = await sql`
     SELECT
       COALESCE(o.order_type, 'dine_in') as order_type,
@@ -203,7 +204,7 @@ export async function reportByOrderType(locId: number, range: string) {
 export async function reportTimeseries(locId: number, range: string) {
   const interval = intervalSql(range);
   const tz = await getLocationTimezone(locId);
-  const cutoffIso = reportCutoffIso(range);
+  const cutoffIso = await reportCutoffIso(range, tz);
   const reports = await sql`
     WITH localized AS (
       SELECT

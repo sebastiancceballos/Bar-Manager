@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getAuthUser, type UserRole } from "@/lib/auth";
+import { getAuthUser } from "@/lib/auth";
 import { assertOwnsOrder } from "@/lib/tenant";
 import { sql } from "@/lib/db";
 import { logAudit } from "@/lib/audit";
 import { canTransition, SELF_SERVICE_STATUSES, SelfServiceStatus } from "@/lib/self-service";
 import { canCharge, canUseComandas } from "@/lib/permissions";
+import type { UserRole } from "@/lib/auth";
 import { notifyOrder } from "@/lib/push";
 
 

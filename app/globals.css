@@ -68,6 +68,9 @@ body {
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
+  /* Touch target mínimo recomendado (Apple HIG / Material) para que
+     cualquier botón siga siendo fácil de tocar en pantallas de celular. */
+  min-height: 44px;
 }
 
 .btn-primary {
@@ -112,6 +115,16 @@ body {
 
 .textarea {
   resize: vertical;
+}
+
+/* Safe-area (notch / home-indicator) para elementos fijos al borde de la
+   pantalla en iOS/Android. Requiere viewport-fit=cover en el <meta viewport>. */
+.safe-area-pb {
+  padding-bottom: calc(1rem + env(safe-area-inset-bottom));
+}
+
+.safe-area-pt {
+  padding-top: env(safe-area-inset-top);
 }
 
 /* Grid utilities */

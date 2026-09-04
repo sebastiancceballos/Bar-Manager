@@ -69,10 +69,22 @@ export default function ReportsPage() {
   const [orgSummary, setOrgSummary] = useState<any[] | null>(null);
   const [orgTotals, setOrgTotals] = useState<{ total: number; order_count: number } | null>(null);
   const [reportsError, setReportsError] = useState<string | null>(null);
-  const [dateRange, setDateRange] = useState("week");
+  const [dateRange, setDateRange] = useState("day");
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [showModal, setShowModal] = useState(false);
   const { user } = useAuth();
+
+  const payTotal = (key: string) =>
+    byPaymentMethod
+      .filter((p) => (p.paymentMethod || "").toLowerCase() === key)
+      .reduce((s, p) => s + Number(p.total || 0), 0);
+  const payCount = (key: string) =>
+    byPaymentMethod
+      .filter((p) => (p.paymentMethod || "").toLowerCase() === key)
+      .reduce((s, p) => s + Number(p.orderCount || 0), 0);
+  const totalPeriod = reports.reduce((s, r) => s + Number(r.total || 0), 0);
+  const ordersPeriod = reports.reduce((s, r) => s + Number(r.orderCount || 0), 0);
+
   const router = useRouter();
 
   // Excel export state
@@ -225,16 +237,58 @@ export default function ReportsPage() {
         <div className="max-w-7xl mx-auto px-4 py-12">
           <div className="flex items-center justify-between mb-8">
             <h1 className="text-4xl font-bold text-foreground">Reportes</h1>
-            <select
-              value={dateRange}
-              onChange={(e) => setDateRange(e.target.value)}
-              className="select"
-            >
-              <option value="week">Última Semana</option>
-              <option value="month">Último Mes</option>
-              <option value="year">Último Año</option>
-            </select>
+                        <div className="flex flex-wrap gap-2">
+              {[
+                { id: "day", label: "Hoy" },
+                { id: "week", label: "Semana" },
+                { id: "month", label: "Mes" },
+                { id: "year", label: "Año" },
+              ].map((opt) => (
+                <button
+                  key={opt.id}
+                  type="button"
+                  onClick={() => setDateRange(opt.id)}
+                  className={`px-4 py-2 rounded-lg text-sm font-semibold border transition-colors ${
+                    dateRange === opt.id
+                      ? "bg-primary text-white border-primary"
+                      : "bg-card text-foreground border-border hover:border-primary"
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
           </div>
+          {/* Resumen periodo + efectivo / transferencia */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+            <div className="card p-4 border border-border">
+              <p className="text-xs text-gray-400 mb-1">
+                {dateRange === "day" ? "Ventas de hoy" : "Ventas del periodo"}
+              </p>
+              <p className="text-2xl font-bold text-primary">{formatCOP(totalPeriod)}</p>
+              <p className="text-xs text-gray-500 mt-1">{ordersPeriod} pedidos</p>
+            </div>
+            <div className="card p-4 border border-green-500/40 bg-green-500/5">
+              <p className="text-xs text-green-400 mb-1">Efectivo</p>
+              <p className="text-2xl font-bold text-green-400">{formatCOP(payTotal("efectivo"))}</p>
+              <p className="text-xs text-gray-500 mt-1">{payCount("efectivo")} pagos</p>
+            </div>
+            <div className="card p-4 border border-blue-500/40 bg-blue-500/5">
+              <p className="text-xs text-blue-400 mb-1">Transferencia</p>
+              <p className="text-2xl font-bold text-blue-400">{formatCOP(payTotal("transferencia"))}</p>
+              <p className="text-xs text-gray-500 mt-1">{payCount("transferencia")} pagos</p>
+            </div>
+            <div className="card p-4 border border-border">
+              <p className="text-xs text-gray-400 mb-1">Tarjeta / otros</p>
+              <p className="text-2xl font-bold text-foreground">
+                {formatCOP(payTotal("tarjeta") + payTotal("otro") + payTotal("sin_dato") + payTotal("sin_registrar"))}
+              </p>
+              <p className="text-xs text-gray-500 mt-1">
+                {payCount("tarjeta") + payCount("otro")} pagos
+              </p>
+            </div>
+          </div>
+
 
           {/* Excel Export Section */}
           <div className="card mb-8">

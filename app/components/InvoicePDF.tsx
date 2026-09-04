@@ -241,8 +241,31 @@ export function buildThermalTicketHTML(order: Order): string {
 </html>`;
 }
 
-/** Abre ticket térmico en nueva ventana (el usuario confirma imprimir). */
-export function downloadInvoice(order: Order): void {
+/**
+ * Abre ticket térmico 58 mm.
+ * Por defecto pide confirmación: "¿Imprimir factura…?"
+ * Pasa { skipConfirm: true } si el usuario ya aceptó en otro diálogo.
+ */
+export function downloadInvoice(
+  order: Order,
+  opts?: { skipConfirm?: boolean }
+): void {
+  const label = order.ticket_number
+    ? `ficho ${order.ticket_number}`
+    : order.table_number
+      ? `mesa ${order.table_number}`
+      : `#${order.id}`;
+  const total = formatCOP(Number(order.total_amount) || 0);
+
+  if (!opts?.skipConfirm) {
+    const ok = window.confirm(
+      `¿Imprimir la factura de ${label}?
+
+Total: ${total}`
+    );
+    if (!ok) return;
+  }
+
   const html = buildThermalTicketHTML(order);
   const blob = new Blob([html], { type: "text/html;charset=utf-8" });
   const url = URL.createObjectURL(blob);
@@ -250,7 +273,6 @@ export function downloadInvoice(order: Order): void {
   if (win) {
     win.focus();
   } else {
-    // Popup bloqueado: navegar en la misma pestaña
     const a = document.createElement("a");
     a.href = url;
     a.target = "_blank";

@@ -15,9 +15,38 @@ export async function resolveReportLocationIds(
   return locs.map((r: any) => Number(r.id));
 }
 
-/** Cutoff UTC para filtros sargables (sin envolver created_at en WHERE) */
-export function reportCutoffIso(range: string, now = new Date()): string {
+/**
+ * Inicio del rango en ISO (UTC).
+ * - day: medianoche de HOY en la timezone del bar
+ * - week/month/year: ahora menos N días
+ */
+export async function reportCutoffIso(
+  range: string,
+  tz: string = "America/Bogota"
+): Promise<string> {
+  if (range === "day") {
+    const rows = await sql`
+      SELECT (
+        ((CURRENT_TIMESTAMP AT TIME ZONE ${tz})::date)::timestamp
+        AT TIME ZONE ${tz}
+      ) AS start
+    `;
+    const start = rows[0]?.start;
+    return start ? new Date(start).toISOString() : new Date().toISOString();
+  }
+
   const days = range === "year" ? 365 : range === "month" ? 30 : 7;
-  const d = new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
+  const d = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
   return d.toISOString();
+}
+
+/** @deprecated usar reportCutoffIso async con tz */
+export function reportCutoffIsoSync(range: string, now = new Date()): string {
+  if (range === "day") {
+    const d = new Date(now);
+    d.setUTCHours(0, 0, 0, 0);
+    return d.toISOString();
+  }
+  const days = range === "year" ? 365 : range === "month" ? 30 : 7;
+  return new Date(now.getTime() - days * 24 * 60 * 60 * 1000).toISOString();
 }
