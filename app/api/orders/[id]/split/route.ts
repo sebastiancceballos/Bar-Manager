@@ -30,7 +30,7 @@ export async function GET(
     const total = Math.floor(Number(orderRows[0]?.total_amount) || 0);
     const paidSum = splits
       .filter((s: any) => Boolean(s.paid))
-      .reduce((a: number, s: { amount: number }) => a + Math.floor(Number(s.amount)), 0);
+      .reduce((a: number, s: any) => a + Math.floor(Number(s.amount)), 0);
     const house =
       splits.length > 0 ? houseRemainder(total, splits.length) : 0;
 
