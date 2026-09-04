@@ -38,7 +38,7 @@ export default function LoginPage() {
           <h1 className="text-3xl font-bold text-foreground mb-2">
             Bar Manager
           </h1>
-          <p className="text-gray-400">Sistema de gestión para bares</p>
+          <p className="text-gray-400">Sistema de gestión </p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
@@ -104,11 +104,47 @@ export default function LoginPage() {
             {isLoading ? "Iniciando sesión..." : "Iniciar Sesión"}
           </button>
 
-          <div className="bg-card p-4 rounded-lg text-sm text-gray-400">
-            <p className="font-semibold mb-2">Credenciales de demo:</p>
-            <p><span className="text-purple-400">Owner:</span> owner@barmanager.com / owner123</p>
-            <p><span className="text-blue-400">Admin:</span> admin@barmanager.com / admin123</p>
-            <p><span className="text-green-400">Mesero:</span> waiter@barmanager.com / waiter123</p>
+          <div className="pt-8 border-t border-border/50">
+            <p className="text-sm font-medium text-gray-400 mb-4 text-center">Credenciales Demo</p>
+            <div className="grid grid-cols-1 gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  const emailInput = document.getElementById('email') as HTMLInputElement;
+                  const passwordInput = document.getElementById('password') as HTMLInputElement;
+                  if (emailInput && passwordInput) {
+                    emailInput.value = 'demo@barmanager.com';
+                    passwordInput.value = 'demo**';
+                  }
+                }}
+                className="flex items-center justify-between p-3 rounded-xl bg-primary/5 border border-primary/10 hover:bg-primary/10 transition-colors text-left group"
+              >
+                <div>
+                  <p className="text-xs font-bold text-primary uppercase tracking-wider mb-1">Administrador</p>
+                  <p className="text-sm text-foreground">demo@barmanager.com</p>
+                </div>
+                <span className="text-xs text-primary/40 group-hover:text-primary transition-colors italic">Auto-completar</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  const emailInput = document.getElementById('email') as HTMLInputElement;
+                  const passwordInput = document.getElementById('password') as HTMLInputElement;
+                  if (emailInput && passwordInput) {
+                    emailInput.value = 'MeseroDemo@barmanager.com';
+                    passwordInput.value = 'DEMO--';
+                  }
+                }}
+                className="flex items-center justify-between p-3 rounded-xl bg-secondary/5 border border-secondary/10 hover:bg-secondary/10 transition-colors text-left group"
+              >
+                <div>
+                  <p className="text-xs font-bold text-secondary uppercase tracking-wider mb-1">Mesero</p>
+                  <p className="text-sm text-foreground">MeseroDemo@barmanager.com</p>
+                </div>
+                <span className="text-xs text-secondary/40 group-hover:text-secondary transition-colors italic">Auto-completar</span>
+              </button>
+            </div>
           </div>
         </form>
       </div>

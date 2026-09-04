@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthUser } from "@/lib/auth";
+import { assertOwnsLocation } from "@/lib/tenant";
 import { sql } from "@/lib/db";
 
 // Only owner can delete locations
@@ -20,6 +21,9 @@ export async function DELETE(
 
     const { id } = await params;
     const locationId = parseInt(id);
+    const locGuard = await assertOwnsLocation(locationId, currentUser);
+    if (locGuard.error) return locGuard.error;
+
 
     if (isNaN(locationId)) {
       return NextResponse.json({ error: "ID invalido" }, { status: 400 });
@@ -74,6 +78,9 @@ export async function PUT(
 
     const { id } = await params;
     const locationId = parseInt(id);
+    const locGuard = await assertOwnsLocation(locationId, currentUser);
+    if (locGuard.error) return locGuard.error;
+
     const body = await request.json();
     const { name, address } = body;
 

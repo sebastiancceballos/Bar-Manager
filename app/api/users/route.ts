@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthUser } from "@/lib/auth";
+import { resolveLocationId } from "@/lib/org";
 import { sql } from "@/lib/db";
 
 export async function GET(request: NextRequest) {
@@ -14,7 +15,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Sin permiso" }, { status: 403 });
     }
 
-    let users;
+    let users: Record<string, unknown>[] = [];
 
     if (currentUser.role === "owner") {
       // Owner sees all users grouped with location info
@@ -24,16 +25,14 @@ export async function GET(request: NextRequest) {
         FROM users u
         LEFT JOIN locations l ON u.location_id = l.id
         ORDER BY 
-          CASE u.role WHEN 'owner' THEN 1 WHEN 'admin' THEN 2 WHEN 'waiter' THEN 3 END,
+          CASE u.role WHEN 'owner' THEN 1 WHEN 'admin' THEN 2 WHEN 'waiter' THEN 3 WHEN 'cashier' THEN 4 WHEN 'kitchen' THEN 5 END,
           l.name ASC,
           u.created_at DESC
       `;
       users = Array.isArray(result) ? result : [];
     } else {
       // Admin sees only users from their own location
-      const adminResult = await sql`SELECT location_id FROM users WHERE id = ${currentUser.id} LIMIT 1`;
-      const adminData = Array.isArray(adminResult) ? adminResult[0] : null;
-      const locationId = adminData?.location_id;
+      const locationId = await resolveLocationId(currentUser.id, currentUser.role);
 
       if (!locationId) {
         // Admin without location sees only themselves
@@ -44,8 +43,10 @@ export async function GET(request: NextRequest) {
                  l.name AS location_name
           FROM users u
           LEFT JOIN locations l ON u.location_id = l.id
-          WHERE u.location_id = ${locationId} AND u.role = 'waiter'
-          ORDER BY u.created_at DESC
+          WHERE u.location_id = ${locationId} AND u.role IN ('waiter', 'cashier', 'kitchen')
+          ORDER BY
+            CASE u.role WHEN 'waiter' THEN 1 WHEN 'cashier' THEN 2 WHEN 'kitchen' THEN 3 END,
+            u.created_at DESC
         `;
         users = Array.isArray(result) ? result : [];
       }

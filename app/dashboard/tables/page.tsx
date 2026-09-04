@@ -5,6 +5,11 @@ import { Navigation } from "@/app/components/Navigation";
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useAuth } from "@/app/providers";
 import { OrderModal } from "@/app/components/OrderModal";
+import { Skeleton } from "@/app/components/Skeleton";
+
+const formatCOP = (value: number) =>
+  new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", minimumFractionDigits: 0 }).format(value);
+
 
 interface Table {
   id: number;
@@ -16,8 +21,10 @@ interface Table {
 
 interface OrderItem {
   id: number;
+  product_id: number;
   productId: number;
   quantity: number;
+  price: number;
   product: {
     name: string;
     price: number;
@@ -28,6 +35,7 @@ interface Order {
   id: number;
   table_id: number;
   total_amount: number;
+  status?: string;
   items: OrderItem[];
 }
 
@@ -42,10 +50,18 @@ export default function TablesPage() {
   const [showAddForm, setShowAddForm] = useState(false);
   const [newTable, setNewTable] = useState({ table_number: "", capacity: 4 });
   const containerRef = useRef<HTMLDivElement>(null);
+  const [isMobile, setIsMobile] = useState(false);
   const { user } = useAuth();
 
   const isAdmin = user?.role === "admin";
-  const canDrag = isAdmin;
+  const canDrag = isAdmin && !isMobile;
+
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 768);
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
+  }, []);
 
   const fetchData = useCallback(async () => {
     try {
@@ -86,7 +102,7 @@ export default function TablesPage() {
   const handleMouseDown = (e: React.MouseEvent, tableId: number) => {
     if (!canDrag) return;
     e.preventDefault();
-    
+
     const table = tables.find(t => t.id === tableId);
     if (!table) return;
 
@@ -161,9 +177,21 @@ export default function TablesPage() {
     fetchData();
   };
 
+  /** Pinta la mesa al instante al cambiar estado (cuenta pedida / en curso) */
+  const handleOrderStatusChange = (tableId: number, status: string) => {
+    setOrders((prev) => {
+      const current = prev[tableId];
+      if (!current) return prev;
+      return {
+        ...prev,
+        [tableId]: { ...current, status },
+      };
+    });
+  };
+
   const handleAddTable = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     try {
       const res = await fetch("/api/tables", {
         method: "POST",
@@ -187,7 +215,7 @@ export default function TablesPage() {
 
   const handleDeleteTable = async (tableId: number) => {
     if (!confirm("Eliminar esta mesa?")) return;
-    
+
     try {
       await fetch(`/api/tables/${tableId}`, { method: "DELETE" });
       fetchData();
@@ -269,8 +297,61 @@ export default function TablesPage() {
           )}
 
           {loading ? (
-            <div className="text-gray-400">Cargando mesas...</div>
+            <div className={isMobile ? "grid grid-cols-2 gap-4 p-2" : "grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8 p-2"}>
+              {[...Array(8)].map((_, i) => (
+                <div key={i} className="flex flex-col items-center gap-4 card-sm !bg-transparent border-dashed">
+                  <Skeleton variant="circle" className="w-24 h-24 md:w-32 md:h-32" />
+                  <Skeleton className="w-20 h-5" />
+                  <Skeleton className="w-16 h-3 opacity-50" />
+                </div>
+              ))}
+            </div>
+          ) : isMobile ? (
+            /* ── MOBILE: grid layout ── */
+            <div className="grid grid-cols-2 gap-4 p-2">
+              {tables.map((table) => {
+                const order = orders[table.id];
+                const isOccupied = !!order;
+                const billRequested = String(order?.status || "").toLowerCase() === "bill_requested";
+                const borderClass = !isOccupied
+                  ? "border-border bg-card hover:border-primary"
+                  : billRequested
+                    ? "border-warning bg-warning/20"
+                    : "border-secondary bg-secondary/20";
+                const amountClass = billRequested ? "text-warning" : "text-secondary";
+                return (
+                  <div
+                    key={table.id}
+                    onClick={() => handleTableClick(table.id)}
+                    className={`flex flex-col items-center justify-center rounded-full border-4 cursor-pointer select-none aspect-square w-full max-w-[140px] mx-auto transition-shadow ${borderClass}`}
+                  >
+                    <span className="text-2xl font-bold text-foreground">
+                      {table.table_number}
+                    </span>
+                    <span className="text-xs text-gray-400">
+                      {table.capacity} pers.
+                    </span>
+                    {isOccupied && (
+                      <span className={`text-xs font-semibold mt-1 ${amountClass}`}>
+                        {formatCOP(Number(order.total_amount))}
+                      </span>
+                    )}
+                    {billRequested && (
+                      <span className="text-[10px] font-bold uppercase text-warning mt-0.5">
+                        Cuenta
+                      </span>
+                    )}
+                  </div>
+                );
+              })}
+              {tables.length === 0 && (
+                <div className="col-span-2 text-center text-gray-400 py-12">
+                  <p className="mb-4">No hay mesas configuradas</p>
+                </div>
+              )}
+            </div>
           ) : (
+            /* ── DESKTOP: free drag canvas ── */
             <div
               ref={containerRef}
               className="relative bg-card border border-border rounded-xl overflow-hidden"
@@ -288,31 +369,39 @@ export default function TablesPage() {
               {tables.map((table) => {
                 const order = orders[table.id];
                 const isOccupied = !!order;
+                const billRequested =
+                  String(order?.status || "").toLowerCase() === "bill_requested";
                 const size = getTableSize(table.capacity);
                 const isDragging = draggingTable === table.id;
+
+                const stateClass = !isOccupied
+                  ? "border-border bg-card hover:border-primary hover:shadow-primary/20"
+                  : billRequested
+                    ? "border-warning bg-warning/20 shadow-warning/30"
+                    : "border-secondary bg-secondary/20 shadow-secondary/30";
+
+                const amountClass = billRequested ? "text-warning" : "text-secondary";
+
+                const glowShadow = !isOccupied
+                  ? isDragging
+                    ? "0 10px 40px rgba(0,0,0,0.3)"
+                    : "0 4px 12px rgba(0,0,0,0.15)"
+                  : billRequested
+                    ? "0 0 20px rgba(245, 158, 11, 0.35)"
+                    : "0 0 20px rgba(236, 72, 153, 0.3)";
 
                 return (
                   <div
                     key={table.id}
                     onMouseDown={(e) => handleMouseDown(e, table.id)}
                     onClick={() => !isDragging && handleTableClick(table.id)}
-                    className={`absolute flex flex-col items-center justify-center rounded-full border-4 transition-shadow select-none ${
-                      isDragging ? "z-50 shadow-2xl scale-105" : "z-10"
-                    } ${
-                      isOccupied
-                        ? "border-secondary bg-secondary/20 shadow-secondary/30"
-                        : "border-border bg-card hover:border-primary hover:shadow-primary/20"
-                    } ${canDrag ? "cursor-grab active:cursor-grabbing" : "cursor-pointer"}`}
+                    className={`absolute flex flex-col items-center justify-center rounded-full border-4 transition-shadow select-none ${isDragging ? "z-50 shadow-2xl scale-105" : "z-10"} ${stateClass} ${canDrag ? "cursor-grab active:cursor-grabbing" : "cursor-pointer"}`}
                     style={{
                       width: `${size}px`,
                       height: `${size}px`,
                       left: `${table.x_position || 50}px`,
                       top: `${table.y_position || 50}px`,
-                      boxShadow: isOccupied
-                        ? "0 0 20px rgba(var(--secondary-rgb), 0.3)"
-                        : isDragging
-                        ? "0 10px 40px rgba(0,0,0,0.3)"
-                        : "0 4px 12px rgba(0,0,0,0.15)",
+                      boxShadow: glowShadow,
                     }}
                   >
                     <span className="text-xl font-bold text-foreground">
@@ -322,8 +411,13 @@ export default function TablesPage() {
                       {table.capacity} pers.
                     </span>
                     {isOccupied && (
-                      <span className="text-xs font-semibold text-secondary mt-1">
-                        ${Number(order.total_amount).toFixed(0)}
+                      <span className={`text-xs font-semibold mt-1 ${amountClass}`}>
+                        {formatCOP(Number(order.total_amount))}
+                      </span>
+                    )}
+                    {billRequested && (
+                      <span className="text-[10px] font-bold uppercase text-warning mt-0.5">
+                        Cuenta
                       </span>
                     )}
 
@@ -362,7 +456,7 @@ export default function TablesPage() {
           )}
 
           {/* Legend */}
-          <div className="flex gap-6 mt-4 text-sm text-gray-400">
+          <div className="flex flex-wrap gap-6 mt-4 text-sm text-gray-400">
             <div className="flex items-center gap-2">
               <div className="w-4 h-4 rounded-full border-2 border-border bg-card"></div>
               <span>Disponible</span>
@@ -371,18 +465,27 @@ export default function TablesPage() {
               <div className="w-4 h-4 rounded-full border-2 border-secondary bg-secondary/20"></div>
               <span>Ocupada</span>
             </div>
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-4 rounded-full border-2 border-warning bg-warning/20"></div>
+              <span>Cuenta pedida</span>
+            </div>
           </div>
 
           {selectedTableId && (
             <OrderModal
               tableId={selectedTableId}
+              tableNumber={tables.find(t => t.id === selectedTableId)?.table_number || String(selectedTableId)}
               order={orders[selectedTableId] || null}
               onClose={() => {
                 setShowOrderModal(false);
                 setSelectedTableId(null);
               }}
               onUpdate={handleOrderUpdate}
+              onOrderStatusChange={handleOrderStatusChange}
               open={showOrderModal}
+              availableTables={tables
+                .filter((t) => t.id !== selectedTableId && !orders[t.id])
+                .map((t) => ({ id: t.id, table_number: t.table_number }))}
             />
           )}
         </div>

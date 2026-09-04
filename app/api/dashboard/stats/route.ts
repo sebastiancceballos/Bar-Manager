@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthUser } from "@/lib/auth";
+import { resolveLocationId } from "@/lib/org";
 import { sql } from "@/lib/db";
+import { getLocationTimezone } from "@/lib/location";
 
 export async function GET(request: NextRequest) {
   try {
@@ -12,37 +14,55 @@ export async function GET(request: NextRequest) {
         { status: 401 }
       );
     }
-    
-    // Allow both admin and waiter to see stats
-    // Admins see full stats, waiters see limited view
 
-    // Get orders from today
+    const locId = await resolveLocationId(user.id, user.role);
+    if (!locId) return NextResponse.json({ error: "Sin bar asignado" }, { status: 400 });
+
+    const tz = await getLocationTimezone(locId);
+
+    // Órdenes de hoy (dine_in + self_service) del bar
     const ordersToday = await sql`
-      SELECT * FROM orders 
-      WHERE created_at >= CURRENT_DATE 
-      AND created_at < CURRENT_DATE + INTERVAL '1 day'
+      SELECT o.id FROM orders o
+      LEFT JOIN tables t ON o.table_id = t.id
+      WHERE (o.created_at AT TIME ZONE 'UTC' AT TIME ZONE ${tz}) >= date_trunc('day', NOW() AT TIME ZONE ${tz})
+        AND (o.created_at AT TIME ZONE 'UTC' AT TIME ZONE ${tz}) < date_trunc('day', NOW() AT TIME ZONE ${tz}) + INTERVAL '1 day'
+        AND (
+          t.location_id = ${locId}
+          OR EXISTS (
+            SELECT 1 FROM order_items oi
+            JOIN products p ON oi.product_id = p.id
+            WHERE oi.order_id = o.id AND p.location_id = ${locId}
+          )
+        )
     `;
 
-    // Calculate total revenue from closed orders
     const revenueResult = await sql`
-      SELECT COALESCE(SUM(total_amount), 0) as total 
-      FROM orders 
-      WHERE created_at >= CURRENT_DATE 
-      AND created_at < CURRENT_DATE + INTERVAL '1 day'
-      AND status IN ('closed', 'paid')
+      SELECT COALESCE(SUM(o.total_amount), 0) as total
+      FROM orders o
+      LEFT JOIN tables t ON o.table_id = t.id
+      WHERE (o.created_at AT TIME ZONE 'UTC' AT TIME ZONE ${tz}) >= date_trunc('day', NOW() AT TIME ZONE ${tz})
+        AND (o.created_at AT TIME ZONE 'UTC' AT TIME ZONE ${tz}) < date_trunc('day', NOW() AT TIME ZONE ${tz}) + INTERVAL '1 day'
+        AND o.status IN ('closed', 'paid', 'PAID', 'PREPARING', 'READY', 'COMPLETED')
+        AND (
+          t.location_id = ${locId}
+          OR EXISTS (
+            SELECT 1 FROM order_items oi
+            JOIN products p ON oi.product_id = p.id
+            WHERE oi.order_id = o.id AND p.location_id = ${locId}
+          )
+        )
     `;
     const totalRevenue = parseFloat(revenueResult[0]?.total || 0);
 
-    // Get occupied tables (tables with open orders)
     const occupiedResult = await sql`
-      SELECT COUNT(DISTINCT table_id) as count 
-      FROM orders 
-      WHERE status = 'open'
+      SELECT COUNT(DISTINCT o.table_id) as count
+      FROM orders o
+      JOIN tables t ON o.table_id = t.id
+      WHERE o.status = 'open' AND t.location_id = ${locId}
     `;
     const tablesOccupied = parseInt(occupiedResult[0]?.count || 0);
 
-    // Get total tables
-    const tablesResult = await sql`SELECT COUNT(*) as count FROM tables`;
+    const tablesResult = await sql`SELECT COUNT(*) as count FROM tables WHERE location_id = ${locId}`;
     const totalTables = parseInt(tablesResult[0]?.count || 0);
 
     return NextResponse.json(

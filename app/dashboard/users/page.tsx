@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { useAuth } from "@/app/providers";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { roleLabel, ROLE_DESCRIPTIONS } from "@/lib/roles";
 
 interface User {
   id: number;
@@ -23,7 +24,7 @@ interface Location {
   address: string;
 }
 
-type NewUserRole = "admin" | "waiter";
+type NewUserRole = "admin" | "waiter" | "cashier" | "kitchen";
 
 export default function UsersPage() {
   const { user } = useAuth();
@@ -34,26 +35,37 @@ export default function UsersPage() {
   const [showForm, setShowForm] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
+  const [resettingId, setResettingId] = useState<number | null>(null);
+  const isOwner = user?.role === "owner";
+  const isAdmin = user?.role === "admin";
+  const canAccess = isOwner || isAdmin;
+
   const [formData, setFormData] = useState({
     name: "",
     email: "",
     password: "",
-    role: "admin" as NewUserRole,
+    role: "waiter" as NewUserRole,
     location_id: "",
   });
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
-  const isOwner = user?.role === "owner";
-  const isAdmin = user?.role === "admin";
-  const canAccess = isOwner || isAdmin;
-
   useEffect(() => {
     if (user && !canAccess) {
       router.push("/dashboard/tables");
     }
   }, [user, canAccess, router]);
+
+  // Sync form role with actual user role once user loads
+  useEffect(() => {
+    if (user) {
+      setFormData((prev) => ({
+        ...prev,
+        role: user.role === "owner" ? "admin" : "waiter",
+      }));
+    }
+  }, [user]);
 
   const fetchUsers = async () => {
     try {
@@ -78,10 +90,14 @@ export default function UsersPage() {
       .catch(console.error);
   }, [canAccess]);
 
-  // Owner creates admins; Admin creates waiters
+  // Owner creates admins; Admin creates staff (mesero / cajero / cocina)
   const roleOptions: { value: NewUserRole; label: string }[] = isOwner
-    ? [{ value: "admin", label: "Administrador" }]
-    : [{ value: "waiter", label: "Mesero" }];
+    ? [{ value: "admin", label: "Administrador del negocio" }]
+    : [
+        { value: "waiter", label: "Mesero" },
+        { value: "cashier", label: "Cajero" },
+        { value: "kitchen", label: "Comandas" },
+      ];
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -134,21 +150,46 @@ export default function UsersPage() {
     }
   };
 
+  const handleResetPassword = async (targetId: number) => {
+    const newPassword = window.prompt("Nueva contraseña (mínimo 6 caracteres):");
+    if (!newPassword) return;
+    if (newPassword.length < 6) {
+      setError("La contraseña debe tener al menos 6 caracteres");
+      return;
+    }
+    setResettingId(targetId);
+    setError(null);
+    try {
+      const response = await fetch(`/api/users/${targetId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ newPassword }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Error al restablecer contraseña");
+      setSuccess(data.message);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Error desconocido");
+    } finally {
+      setResettingId(null);
+    }
+  };
+
   const canDeleteUser = (target: User) => {
     if (target.id === user?.id) return false;
-    if (isOwner && (target.role === "admin" || target.role === "waiter")) return true;
-    if (isAdmin && target.role === "waiter") return true;
+    if (isOwner && ["admin", "waiter", "cashier", "kitchen"].includes(target.role)) return true;
+    if (isAdmin && ["waiter", "cashier", "kitchen"].includes(target.role)) return true;
     return false;
   };
 
   // Group users by location for owner view
   const groupedByLocation = isOwner
     ? users.reduce<Record<string, User[]>>((acc, u) => {
-        const key = u.location_name || "Sin bar asignado";
-        if (!acc[key]) acc[key] = [];
-        acc[key].push(u);
-        return acc;
-      }, {})
+      const key = u.location_name || "Sin bar asignado";
+      if (!acc[key]) acc[key] = [];
+      acc[key].push(u);
+      return acc;
+    }, {})
     : null;
 
   if (!canAccess) {
@@ -164,8 +205,16 @@ export default function UsersPage() {
       owner: "bg-purple-500/20 text-purple-400 border border-purple-500/30",
       admin: "bg-blue-500/20 text-blue-400 border border-blue-500/30",
       waiter: "bg-green-500/20 text-green-400 border border-green-500/30",
+      cashier: "bg-amber-500/20 text-amber-400 border border-amber-500/30",
+      kitchen: "bg-orange-500/20 text-orange-400 border border-orange-500/30",
     };
-    const labels: Record<string, string> = { owner: "Owner", admin: "Admin", waiter: "Mesero" };
+    const labels: Record<string, string> = {
+      owner: "Superadmin",
+      admin: "Administrador del negocio",
+      waiter: "Mesero",
+      cashier: "Cajero",
+      kitchen: "Comandas",
+    };
     return (
       <span className={`px-2 py-1 rounded text-xs font-medium ${styles[role] || ""}`}>
         {labels[role] || role}
@@ -182,35 +231,46 @@ export default function UsersPage() {
         {new Date(u.created_at).toLocaleDateString("es-ES")}
       </td>
       <td className="py-3 px-4">
-        {canDeleteUser(u) && (
-          <>
-            {confirmDeleteId === u.id ? (
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-gray-400">Confirmar?</span>
+        <div className="flex items-center gap-2">
+          {(u.id === user?.id || canDeleteUser(u)) && (
+            <button
+              onClick={() => handleResetPassword(u.id)}
+              disabled={resettingId === u.id}
+              className="px-3 py-1 rounded text-xs bg-primary/10 text-primary border border-primary/20 hover:bg-primary/30 transition-colors"
+            >
+              {resettingId === u.id ? "..." : "Restablecer clave"}
+            </button>
+          )}
+          {canDeleteUser(u) && (
+            <>
+              {confirmDeleteId === u.id ? (
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-gray-400">Confirmar?</span>
+                  <button
+                    onClick={() => handleDelete(u.id)}
+                    disabled={deletingId === u.id}
+                    className="px-2 py-1 rounded text-xs bg-red-500/20 text-red-400 border border-red-500/30 hover:bg-red-500/40 transition-colors"
+                  >
+                    {deletingId === u.id ? "Eliminando..." : "Si, eliminar"}
+                  </button>
+                  <button
+                    onClick={() => setConfirmDeleteId(null)}
+                    className="px-2 py-1 rounded text-xs bg-card text-gray-400 border border-border hover:bg-border transition-colors"
+                  >
+                    Cancelar
+                  </button>
+                </div>
+              ) : (
                 <button
-                  onClick={() => handleDelete(u.id)}
-                  disabled={deletingId === u.id}
-                  className="px-2 py-1 rounded text-xs bg-red-500/20 text-red-400 border border-red-500/30 hover:bg-red-500/40 transition-colors"
+                  onClick={() => setConfirmDeleteId(u.id)}
+                  className="px-3 py-1 rounded text-xs bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/30 transition-colors"
                 >
-                  {deletingId === u.id ? "Eliminando..." : "Si, eliminar"}
+                  Eliminar
                 </button>
-                <button
-                  onClick={() => setConfirmDeleteId(null)}
-                  className="px-2 py-1 rounded text-xs bg-card text-gray-400 border border-border hover:bg-border transition-colors"
-                >
-                  Cancelar
-                </button>
-              </div>
-            ) : (
-              <button
-                onClick={() => setConfirmDeleteId(u.id)}
-                className="px-3 py-1 rounded text-xs bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/30 transition-colors"
-              >
-                Eliminar
-              </button>
-            )}
-          </>
-        )}
+              )}
+            </>
+          )}
+        </div>
       </td>
     </tr>
   );
@@ -230,15 +290,15 @@ export default function UsersPage() {
               <h1 className="text-4xl font-bold text-foreground">Gestionar Usuarios</h1>
               <p className="text-gray-400 mt-2">
                 {isOwner
-                  ? "Como owner puedes crear y eliminar administradores de cada bar"
-                  : "Como admin puedes crear y eliminar meseros de tu bar"}
+                  ? "Como Superadmin puedes crear administradores de cada negocio (bar)"
+                  : "Como administrador del negocio puedes crear meseros, cajeros y personal de comandas de tu bar"}
               </p>
             </div>
             <button
               onClick={() => { setShowForm(!showForm); setError(null); setSuccess(null); }}
               className="btn btn-primary"
             >
-              {showForm ? "Cancelar" : isOwner ? "Nuevo Administrador" : "Nuevo Mesero"}
+              {showForm ? "Cancelar" : isOwner ? "Nuevo administrador del negocio" : "Nuevo usuario"}
             </button>
           </div>
 
@@ -258,7 +318,7 @@ export default function UsersPage() {
           {showForm && (
             <div className="card mb-8">
               <h2 className="text-xl font-semibold mb-6">
-                {isOwner ? "Crear Nuevo Administrador" : "Crear Nuevo Mesero"}
+                {isOwner ? "Crear administrador del negocio" : "Crear usuario del bar"}
               </h2>
               <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
@@ -324,7 +384,7 @@ export default function UsersPage() {
                 )}
                 <div className="md:col-span-2">
                   <button type="submit" disabled={submitting} className="btn btn-primary w-full">
-                    {submitting ? "Creando..." : `Crear ${isOwner ? "Administrador" : "Mesero"}`}
+                    {submitting ? "Creando..." : `Crear ${isOwner ? "administrador" : "usuario"}`}
                   </button>
                 </div>
               </form>

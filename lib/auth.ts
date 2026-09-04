@@ -1,25 +1,34 @@
 import jwt from "jsonwebtoken";
 import { cookies } from "next/headers";
 
-const JWT_SECRET = process.env.JWT_SECRET || "change-me-in-production";
-const TOKEN_EXPIRY = "7d";
+function getJwtSecret(): string {
+  const secret = process.env.JWT_SECRET;
+  if (!secret) {
+    throw new Error(
+      "JWT_SECRET no está configurado. Añádelo en las variables de entorno del servidor (Vercel → Settings → Environment Variables) y vuelve a desplegar."
+    );
+  }
+  return secret;
+}
 
-export type UserRole = "owner" | "admin" | "waiter";
+export type UserRole = "owner" | "admin" | "waiter" | "cashier" | "kitchen";
 
 export interface JWTPayload {
   id: number;
   email: string;
-  role: UserRole;
+  role: UserRole | string;
+  /** Si true, el usuario debe cambiar contraseña antes de usar el resto del sistema */
+  mustChangePassword?: boolean;
 }
 
 export async function signToken(payload: JWTPayload): Promise<string> {
-  return jwt.sign(payload, JWT_SECRET, { expiresIn: TOKEN_EXPIRY });
+  return jwt.sign(payload, getJwtSecret(), { expiresIn: "7d" });
 }
 
 export function verifyToken(token: string): JWTPayload | null {
   try {
-    return jwt.verify(token, JWT_SECRET) as JWTPayload;
-  } catch (error) {
+    return jwt.verify(token, getJwtSecret()) as JWTPayload;
+  } catch {
     return null;
   }
 }
@@ -30,8 +39,8 @@ export async function setAuthCookie(token: string): Promise<void> {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
-    maxAge: 7 * 24 * 60 * 60, // 7 days
     path: "/",
+    maxAge: 60 * 60 * 24 * 7,
   });
 }
 

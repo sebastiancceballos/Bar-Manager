@@ -1,6 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthUser } from "@/lib/auth";
+import { assertOwnsOrder } from "@/lib/tenant";
 import { sql } from "@/lib/db";
+import { toErrorResponse } from "@/lib/errors";
+import {
+  attachOrderItems,
+  transferOrderToTable,
+  closeOrderWithPayment,
+  setOrderManualStatus,
+} from "@/lib/services/orders";
 
 export async function PUT(
   request: NextRequest,
@@ -8,100 +16,103 @@ export async function PUT(
 ) {
   try {
     const user = await getAuthUser();
-
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const { id } = await params;
-    const { status } = await request.json();
+    const orderId = parseInt(id, 10);
+    const body = await request.json();
+
+    const orderGuard = await assertOwnsOrder(orderId, user);
+    if (orderGuard.error) return orderGuard.error;
+
+    const {
+      status,
+      newTableId,
+      paymentMethod,
+      tipAmount,
+      discountAmount,
+      discountReason,
+      authorizerEmail,
+      authorizerPassword,
+      amountReceived,
+    } = body;
+
+    // Transferir a otra mesa
+    if (newTableId !== undefined) {
+      const existing = await sql`SELECT * FROM orders WHERE id = ${orderId}`;
+      const current = existing[0];
+      if (!current) {
+        return NextResponse.json({ error: "Order not found" }, { status: 404 });
+      }
+      const result = await transferOrderToTable({
+        orderId,
+        newTableId: parseInt(String(newTableId), 10),
+        user,
+        current,
+      });
+      if ("errorResponse" in result && result.errorResponse) {
+        return result.errorResponse;
+      }
+      return NextResponse.json({ order: (result as { order: unknown }).order }, { status: 200 });
+    }
 
     if (!status) {
-      return NextResponse.json(
-        { error: "Status is required" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Status is required" }, { status: 400 });
     }
 
-    let orders;
-    if (status === "closed") {
-      orders = await sql`
-        UPDATE orders 
-        SET status = ${status}, closed_at = NOW(), updated_at = NOW(), modified_by = ${user.id}
-        WHERE id = ${parseInt(id)}
-        RETURNING *
-      `;
-    } else {
-      orders = await sql`
-        UPDATE orders 
-        SET status = ${status}, updated_at = NOW(), modified_by = ${user.id}
-        WHERE id = ${parseInt(id)}
-        RETURNING *
-      `;
+    // Cobrar / cerrar
+    if (status === "closed" || status === "paid") {
+      const result = await closeOrderWithPayment({
+        orderId,
+        user,
+        status,
+        paymentMethod,
+        tipAmount,
+        discountAmount,
+        discountReason,
+        authorizerEmail,
+        authorizerPassword,
+        amountReceived,
+        locationId: orderGuard.locationId ?? null,
+      });
+      return NextResponse.json(result, { status: 200 });
     }
 
-    const order = orders[0];
-
-    // Get items
-    const items = await sql`
-      SELECT oi.*, p.name as product_name, p.category
-      FROM order_items oi
-      JOIN products p ON oi.product_id = p.id
-      WHERE oi.order_id = ${parseInt(id)}
-    `;
-    order.items = items.map(item => ({
-      ...item,
-      product: { name: item.product_name, price: item.price, category: item.category }
-    }));
-
+    // Estado manual (cuenta pedida, etc.)
+    const order = await setOrderManualStatus({ orderId, user, status });
     return NextResponse.json({ order }, { status: 200 });
   } catch (error) {
-    console.error("Update order error:", error);
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 }
-    );
+    return toErrorResponse(error);
   }
 }
 
 export async function GET(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const user = await getAuthUser();
-
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const { id } = await params;
+    const orderId = parseInt(id, 10);
 
-    const orders = await sql`SELECT * FROM orders WHERE id = ${parseInt(id)}`;
-    const order = orders[0];
+    const orderGuard = await assertOwnsOrder(orderId, user);
+    if (orderGuard.error) return orderGuard.error;
 
+    const orders = await sql`SELECT * FROM orders WHERE id = ${orderId}`;
+    let order = orders[0];
     if (!order) {
       return NextResponse.json({ error: "Order not found" }, { status: 404 });
     }
 
-    // Get items
-    const items = await sql`
-      SELECT oi.*, p.name as product_name, p.category
-      FROM order_items oi
-      JOIN products p ON oi.product_id = p.id
-      WHERE oi.order_id = ${parseInt(id)}
-    `;
-    order.items = items.map(item => ({
-      ...item,
-      product: { name: item.product_name, price: item.price, category: item.category }
-    }));
-
+    order = await attachOrderItems(order);
     return NextResponse.json({ order }, { status: 200 });
   } catch (error) {
-    console.error("Get order error:", error);
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 }
-    );
+    return toErrorResponse(error);
   }
 }

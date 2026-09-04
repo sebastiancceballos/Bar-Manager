@@ -3,6 +3,25 @@
 import { useEffect, useState } from "react";
 import { downloadInvoice } from "./InvoicePDF";
 
+const formatCOP = (value: number) =>
+  new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", minimumFractionDigits: 0 }).format(value);
+
+/**
+ * `date` llega como "YYYY-MM-DD" (sin hora). JS interpreta un string así
+ * como medianoche UTC, pero toLocaleDateString() lo muestra en la zona
+ * horaria local del navegador — para Bogotá (UTC-5) eso resta 5 horas y
+ * hace que aparezca el día ANTERIOR. Por eso el título decía "17/7" para
+ * órdenes que en realidad son del 18/7. Esto arma la fecha localmente,
+ * sin pasar por ninguna conversión de zona horaria.
+ */
+function formatDateOnly(dateStr: string): string {
+  const match = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (!match) return new Date(dateStr).toLocaleDateString("es-ES");
+  const [, year, month, day] = match;
+  return new Date(parseInt(year), parseInt(month) - 1, parseInt(day)).toLocaleDateString("es-ES");
+}
+
+
 interface OrderItem {
   id: number;
   product_name: string;
@@ -18,10 +37,19 @@ interface Order {
   modifier_name?: string;
   modifier_email?: string;
   total_amount: number;
+  subtotal_amount?: number | null;
+  tax_amount?: number;
+  tip_amount?: number;
+  discount_amount?: number;
+  payment_method?: string | null;
   status: string;
   created_at: string;
   updated_at: string;
   location_name: string;
+  order_type?: string;
+  ticket_number?: string | null;
+  client_name?: string | null;
+  customer_notes?: string | null;
   items: OrderItem[];
 }
 
@@ -66,7 +94,7 @@ export function DailyOrdersModal({ date, isOpen, onClose }: DailyOrdersModalProp
         <div className="sticky top-0 bg-background border-b border-border p-6 flex justify-between items-center">
           <div>
             <h2 className="text-2xl font-bold text-foreground">
-              Órdenes del {new Date(date).toLocaleDateString("es-ES")}
+              Órdenes del {formatDateOnly(date)}
             </h2>
             <p className="text-gray-400 text-sm mt-1">Total de órdenes: {orders.length}</p>
           </div>
@@ -94,7 +122,9 @@ export function DailyOrdersModal({ date, isOpen, onClose }: DailyOrdersModalProp
                   <div className="flex justify-between items-start mb-3">
                     <div>
                       <p className="font-semibold text-foreground">
-                        Factura #{order.id} - Mesa {order.table_number}
+                        {order.order_type === "self_service"
+                          ? `Autoservicio ${order.ticket_number || "#" + order.id}`
+                          : `Factura #${order.id} - Mesa ${order.table_number}`}
                       </p>
                       <p className="text-sm text-gray-400">
                         {new Date(order.created_at).toLocaleString("es-ES")}
@@ -102,7 +132,7 @@ export function DailyOrdersModal({ date, isOpen, onClose }: DailyOrdersModalProp
                     </div>
                     <div className="text-right">
                       <p className="text-2xl font-bold text-success">
-                        ${Number(order.total_amount).toFixed(2)}
+                        {formatCOP(Number(order.total_amount))}
                       </p>
                       <p className="text-xs text-gray-400 capitalize">{order.status}</p>
                     </div>
@@ -128,7 +158,7 @@ export function DailyOrdersModal({ date, isOpen, onClose }: DailyOrdersModalProp
                       {order.items.map((item) => (
                         <div key={item.id} className="flex justify-between">
                           <span>{item.product_name} x{item.quantity}</span>
-                          <span>${(Number(item.price) * item.quantity).toFixed(2)}</span>
+                          <span>{formatCOP(Number(item.price) * item.quantity)}</span>
                         </div>
                       ))}
                     </div>
@@ -177,8 +207,14 @@ export function DailyOrdersModal({ date, isOpen, onClose }: DailyOrdersModalProp
                   <p className="text-foreground font-semibold">{selectedOrder.location_name}</p>
                 </div>
                 <div>
-                  <p className="text-gray-400 text-sm">Mesa</p>
-                  <p className="text-foreground font-semibold">{selectedOrder.table_number}</p>
+                  <p className="text-gray-400 text-sm">
+                    {selectedOrder.order_type === "self_service" ? "Tipo / Ficho" : "Mesa"}
+                  </p>
+                  <p className="text-foreground font-semibold">
+                    {selectedOrder.order_type === "self_service"
+                      ? `Autoservicio ${selectedOrder.ticket_number || ""}`
+                      : selectedOrder.table_number}
+                  </p>
                 </div>
                 <div>
                   <p className="text-gray-400 text-sm">Fecha</p>
@@ -196,9 +232,16 @@ export function DailyOrdersModal({ date, isOpen, onClose }: DailyOrdersModalProp
 
               {/* Mesero Info */}
               <div className="bg-card p-4 rounded border border-border">
-                <p className="text-foreground font-semibold mb-2">Mesero Responsable</p>
-                <p className="text-gray-300">{selectedOrder.waiter_name}</p>
-                <p className="text-gray-400 text-sm">{selectedOrder.waiter_email}</p>
+                <p className="text-foreground font-semibold mb-2">
+                  {selectedOrder.order_type === "self_service" ? "Cliente" : "Mesero Responsable"}
+                </p>
+                <p className="text-gray-300">{selectedOrder.waiter_name || "—"}</p>
+                {selectedOrder.order_type !== "self_service" && (
+                  <p className="text-gray-400 text-sm">{selectedOrder.waiter_email}</p>
+                )}
+                {selectedOrder.order_type === "self_service" && selectedOrder.customer_notes && (
+                  <p className="text-gray-400 text-sm mt-2">Notas: {selectedOrder.customer_notes}</p>
+                )}
               </div>
 
               {/* Modificador Info */}
@@ -230,9 +273,9 @@ export function DailyOrdersModal({ date, isOpen, onClose }: DailyOrdersModalProp
                     >
                       <div className="text-foreground">{item.product_name}</div>
                       <div className="text-center text-gray-400">{item.quantity}</div>
-                      <div className="text-right text-gray-400">${Number(item.price).toFixed(2)}</div>
+                      <div className="text-right text-gray-400">{formatCOP(Number(item.price))}</div>
                       <div className="text-right text-foreground font-semibold">
-                        ${(Number(item.price) * item.quantity).toFixed(2)}
+                        {formatCOP(Number(item.price) * item.quantity)}
                       </div>
                     </div>
                   ))}
@@ -244,7 +287,7 @@ export function DailyOrdersModal({ date, isOpen, onClose }: DailyOrdersModalProp
                 <div className="text-right">
                   <p className="text-gray-400 text-sm mb-2">Total</p>
                   <p className="text-3xl font-bold text-success">
-                    ${Number(selectedOrder.total_amount).toFixed(2)}
+                    {formatCOP(Number(selectedOrder.total_amount))}
                   </p>
                 </div>
               </div>

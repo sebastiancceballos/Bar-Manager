@@ -13,10 +13,29 @@ html {
 }
 
 body {
-  background-color: rgb(15, 23, 42);
-  color: rgb(241, 245, 249);
-  font-family: system-ui, -apple-system, sans-serif;
+  background-color: #0F172A;
+  color: #F1F5F9;
   line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Skeletons */
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: .5;
+  }
+}
+
+.animate-pulse {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.skeleton {
+  @apply bg-slate-800 rounded animate-pulse;
 }
 
 /* Utilities */
@@ -44,19 +63,23 @@ body {
 
 /* Buttons */
 .btn {
-  @apply px-4 py-2 rounded-lg font-medium transition-smooth focus:outline-none focus:ring-2 focus:ring-offset-2;
+  @apply px-5 py-2.5 rounded-xl font-semibold transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 active:scale-95;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
 }
 
 .btn-primary {
-  @apply btn bg-primary text-white hover:bg-opacity-90;
+  @apply btn bg-primary text-white hover:bg-opacity-90 shadow-lg shadow-primary/20;
 }
 
 .btn-secondary {
-  @apply btn bg-secondary text-white hover:bg-opacity-90;
+  @apply btn bg-secondary text-white hover:bg-opacity-90 shadow-lg shadow-secondary/20;
 }
 
 .btn-outline {
-  @apply btn border border-border text-foreground hover:bg-card;
+  @apply btn border-2 border-border text-foreground hover:bg-card hover:border-primary/50;
 }
 
 .btn-ghost {
@@ -64,7 +87,7 @@ body {
 }
 
 .btn-sm {
-  @apply px-3 py-1 text-sm;
+  @apply px-4 py-2 text-sm;
 }
 
 .btn-lg {

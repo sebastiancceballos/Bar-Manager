@@ -10,7 +10,7 @@ import { sql } from "@/lib/db";
  * 
  * Permissions:
  * - "owner" can create "admin" users
- * - "admin" can create "waiter" users
+ * - "admin" can create "waiter" | "cashier" | "kitchen" users
  * - No one can create users with a higher role than their own
  * 
  * Request body example:
@@ -29,18 +29,22 @@ import { sql } from "@/lib/db";
  * - 500: Internal server error
  */
 
-// Role hierarchy: owner > admin > waiter
+// Role hierarchy: owner > admin > staff (waiter/cashier/kitchen)
 const ROLE_HIERARCHY: Record<UserRole, number> = {
   owner: 3,
   admin: 2,
   waiter: 1,
+  cashier: 1,
+  kitchen: 1,
 };
 
 // What roles can each role create
 const ALLOWED_CREATIONS: Record<UserRole, UserRole[]> = {
   owner: ["admin"],
-  admin: ["waiter"],
+  admin: ["waiter", "cashier", "kitchen"],
   waiter: [],
+  cashier: [],
+  kitchen: [],
 };
 
 export async function POST(request: NextRequest) {
@@ -76,30 +80,38 @@ export async function POST(request: NextRequest) {
     }
 
     // Validate role is valid
-    const validRoles: UserRole[] = ["admin", "waiter"];
-    if (!validRoles.includes(role)) {
+    const validRoles: UserRole[] = ["admin", "waiter", "cashier", "kitchen"];
+    if (!validRoles.includes(role as UserRole)) {
       return NextResponse.json(
         { error: `Rol inválido. Roles permitidos: ${validRoles.join(", ")}` },
         { status: 400 }
       );
     }
 
+    // Cast role to UserRole after validation
+    const typedRole = role as UserRole;
+
     // 3. Check permissions based on role hierarchy
     const creatorRole = currentUser.role as UserRole;
     const allowedRoles = ALLOWED_CREATIONS[creatorRole] || [];
 
-    if (!allowedRoles.includes(role)) {
-      // Provide specific error message based on the violation
-      if (ROLE_HIERARCHY[role] >= ROLE_HIERARCHY[creatorRole]) {
-        return NextResponse.json(
-          { error: "No puedes crear un usuario con un rol igual o superior al tuyo." },
-          { status: 403 }
-        );
+    if (!allowedRoles.includes(typedRole)) {
+      if (ROLE_HIERARCHY[typedRole] >= ROLE_HIERARCHY[creatorRole]) {
+        return NextResponse.json({ error: "No puedes crear un usuario con un rol igual o superior al tuyo." }, { status: 403 });
       }
-      return NextResponse.json(
-        { error: `Tu rol (${creatorRole}) no tiene permiso para crear usuarios con rol ${role}.` },
-        { status: 403 }
-      );
+      return NextResponse.json({ error: `Tu rol (${creatorRole}) no tiene permiso para crear usuarios con rol ${typedRole}.` }, { status: 403 });
+    }
+
+    // 3.1 Validate location_id scope
+    if (location_id) {
+      if (creatorRole === "admin") {
+        const creatorLocRow = await sql`SELECT location_id FROM users WHERE id = ${currentUser.id} LIMIT 1`;
+        const creatorLocId = creatorLocRow[0]?.location_id;
+        if (parseInt(location_id) !== creatorLocId) {
+          return NextResponse.json({ error: "No tienes permiso para asignar usuarios a este bar." }, { status: 403 });
+        }
+      }
+      // Note: Owner can assign to any location, so no check needed for owner role.
     }
 
     // 4. Check if email already exists
@@ -118,10 +130,21 @@ export async function POST(request: NextRequest) {
     const passwordHash = await bcrypt.hash(password, saltRounds);
 
     // 6. Create user in database
+    const locIdNum = location_id ? parseInt(String(location_id), 10) : null;
+    let orgIdForUser: number | null = null;
+    if (locIdNum) {
+      try {
+        const locOrg = await sql`SELECT organization_id FROM locations WHERE id = ${locIdNum} LIMIT 1`;
+        orgIdForUser = locOrg[0]?.organization_id ?? null;
+      } catch {
+        orgIdForUser = null;
+      }
+    }
+
     const result = await sql`
-      INSERT INTO users (name, email, password_hash, role, location_id)
-      VALUES (${name}, ${email}, ${passwordHash}, ${role}, ${location_id || null})
-      RETURNING id, name, email, role, location_id, created_at
+      INSERT INTO users (name, email, password_hash, role, location_id, organization_id)
+      VALUES (${name}, ${email}, ${passwordHash}, ${role}, ${locIdNum}, ${orgIdForUser})
+      RETURNING id, name, email, role, location_id, organization_id, created_at
     `;
 
     const newUser = Array.isArray(result) ? result[0] : result;
