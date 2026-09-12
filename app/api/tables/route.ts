@@ -3,25 +3,41 @@ import { getAuthUser } from "@/lib/auth";
 import { toErrorResponse } from "@/lib/errors";
 import { resolveLocationId } from "@/lib/org";
 import { sql } from "@/lib/db";
+import {
+  normalizeTableNumber,
+  compareTableNumbers,
+} from "@/lib/table-number";
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     const user = await getAuthUser();
-
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const locationId = await resolveLocationId(user.id, user.role);
-    if (!locationId) return NextResponse.json({ error: "Sin bar asignado" }, { status: 400 });
+    if (!locationId) {
+      return NextResponse.json({ error: "Sin bar asignado" }, { status: 400 });
+    }
 
-    const tables = await sql`
+    const rows = await sql`
       SELECT * FROM tables
       WHERE location_id = ${locationId}
-      ORDER BY table_number ASC
     `;
 
-    return NextResponse.json({ tables }, { status: 200 });
+    const tables = [...rows].sort((a: any, b: any) =>
+      compareTableNumbers(String(a.table_number), String(b.table_number))
+    );
+
+    // Siguiente número libre (máx numérico + 1)
+    let maxNum = 0;
+    for (const t of tables as any[]) {
+      const n = String(t.table_number);
+      if (/^\d+$/.test(n)) maxNum = Math.max(maxNum, parseInt(n, 10));
+    }
+    const nextNumber = maxNum + 1;
+
+    return NextResponse.json({ tables, nextNumber }, { status: 200 });
   } catch (error) {
     return toErrorResponse(error);
   }
@@ -30,34 +46,61 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const user = await getAuthUser();
-
     if (!user || user.role !== "admin") {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 403 }
-      );
+      return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
     }
 
-    const { table_number, capacity, x_position, y_position } = await request.json();
+    const body = await request.json();
+    const table_number = normalizeTableNumber(body.table_number);
+    const capacity = Math.min(20, Math.max(1, Number(body.capacity) || 4));
+    const x_position = Number(body.x_position) || 0;
+    const y_position = Number(body.y_position) || 0;
 
-    if (table_number === undefined) {
+    if (!table_number) {
       return NextResponse.json(
-        { error: "Table number is required" },
+        { error: "El número de mesa es obligatorio" },
         { status: 400 }
       );
     }
 
-    const locationId2 = await resolveLocationId(user.id, user.role);
-    if (!locationId2) return NextResponse.json({ error: "Sin bar asignado" }, { status: 400 });
+    const locationId = await resolveLocationId(user.id, user.role);
+    if (!locationId) {
+      return NextResponse.json({ error: "Sin bar asignado" }, { status: 400 });
+    }
+
+    const existing = await sql`
+      SELECT id FROM tables
+      WHERE location_id = ${locationId}
+        AND lower(trim(table_number)) = lower(${table_number})
+      LIMIT 1
+    `;
+    if (existing[0]) {
+      return NextResponse.json(
+        { error: `Ya existe la mesa ${table_number} en este bar` },
+        { status: 409 }
+      );
+    }
 
     const tables = await sql`
       INSERT INTO tables (location_id, table_number, capacity, x_position, y_position)
-      VALUES (${locationId2}, ${table_number.toString()}, ${capacity || 4}, ${x_position || 0}, ${y_position || 0})
+      VALUES (
+        ${locationId},
+        ${table_number},
+        ${capacity},
+        ${x_position},
+        ${y_position}
+      )
       RETURNING *
     `;
 
     return NextResponse.json({ table: tables[0] }, { status: 201 });
-  } catch (error) {
+  } catch (error: any) {
+    if (error?.code === "23505") {
+      return NextResponse.json(
+        { error: "Ya existe una mesa con ese número en este bar" },
+        { status: 409 }
+      );
+    }
     return toErrorResponse(error);
   }
 }
