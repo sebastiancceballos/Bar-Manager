@@ -203,7 +203,10 @@ export default function ComandasPage() {
 
   useEffect(() => {
     fetchOrders();
-    const poll = setInterval(fetchOrders, 4000);
+    const poll = setInterval(() => {
+      if (typeof document !== "undefined" && document.visibilityState === "hidden") return;
+      fetchOrders();
+    }, 12000);
     const tick = setInterval(() => setTick((t) => t + 1), 30000);
     return () => {
       clearInterval(poll);

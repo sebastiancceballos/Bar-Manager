@@ -48,14 +48,7 @@ export default function TablesPage() {
   const [draggingTable, setDraggingTable] = useState<number | null>(null);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const [showAddForm, setShowAddForm] = useState(false);
-  const [showBulkForm, setShowBulkForm] = useState(false);
   const [newTable, setNewTable] = useState({ table_number: "", capacity: 4 });
-  const [bulkFrom, setBulkFrom] = useState("");
-  const [bulkTo, setBulkTo] = useState("");
-  const [bulkCapacity, setBulkCapacity] = useState(4);
-  const [formError, setFormError] = useState<string | null>(null);
-  const [formBusy, setFormBusy] = useState(false);
-  const [nextNumber, setNextNumber] = useState<number | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [isMobile, setIsMobile] = useState(false);
   const { user } = useAuth();
@@ -79,8 +72,7 @@ export default function TablesPage() {
 
       if (tablesRes.ok) {
         const data = await tablesRes.json();
-        setTables(data.tables || []);
-        if (typeof data.nextNumber === "number") setNextNumber(data.nextNumber);
+        setTables(data.tables);
       }
 
       if (ordersRes.ok) {
@@ -103,7 +95,11 @@ export default function TablesPage() {
 
   useEffect(() => {
     fetchData();
-    const interval = setInterval(fetchData, 5000);
+    // Polling suave + pausa en pestaña oculta (mitiga rate/DDoS)
+    const interval = setInterval(() => {
+      if (typeof document !== "undefined" && document.visibilityState === "hidden") return;
+      fetchData();
+    }, 12000);
     return () => clearInterval(interval);
   }, [fetchData]);
 
@@ -197,30 +193,9 @@ export default function TablesPage() {
     });
   };
 
-  const openAddForm = () => {
-    setFormError(null);
-    setShowBulkForm(false);
-    setNewTable({
-      table_number: nextNumber != null ? String(nextNumber) : "",
-      capacity: 4,
-    });
-    setShowAddForm(true);
-  };
-
-  const openBulkForm = () => {
-    setFormError(null);
-    setShowAddForm(false);
-    const start = nextNumber != null ? nextNumber : 1;
-    setBulkFrom(String(start));
-    setBulkTo(String(start + 9));
-    setBulkCapacity(4);
-    setShowBulkForm(true);
-  };
-
   const handleAddTable = async (e: React.FormEvent) => {
     e.preventDefault();
-    setFormError(null);
-    setFormBusy(true);
+
     try {
       const res = await fetch("/api/tables", {
         method: "POST",
@@ -231,47 +206,14 @@ export default function TablesPage() {
           y_position: Math.random() * 300 + 50,
         }),
       });
-      const data = await res.json().catch(() => ({}));
+
       if (res.ok) {
         setShowAddForm(false);
         setNewTable({ table_number: "", capacity: 4 });
         fetchData();
-      } else {
-        setFormError(data.error || "No se pudo crear la mesa");
       }
     } catch (error) {
       console.error("Failed to add table:", error);
-      setFormError("Error de conexión");
-    } finally {
-      setFormBusy(false);
-    }
-  };
-
-  const handleBulkAdd = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setFormError(null);
-    setFormBusy(true);
-    try {
-      const res = await fetch("/api/tables/bulk", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          from: parseInt(bulkFrom, 10),
-          to: parseInt(bulkTo, 10),
-          capacity: bulkCapacity,
-        }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (res.ok) {
-        setShowBulkForm(false);
-        fetchData();
-      } else {
-        setFormError(data.error || "No se pudieron crear las mesas");
-      }
-    } catch {
-      setFormError("Error de conexión");
-    } finally {
-      setFormBusy(false);
     }
   };
 
@@ -308,39 +250,26 @@ export default function TablesPage() {
               )}
             </div>
             {isAdmin && (
-              <div className="flex flex-wrap gap-2">
-                <button type="button" onClick={openAddForm} className="btn-primary">
-                  + Nueva mesa
-                </button>
-                <button type="button" onClick={openBulkForm} className="btn-secondary">
-                  Agregar varias
-                </button>
-              </div>
+              <button
+                onClick={() => setShowAddForm(true)}
+                className="btn-primary"
+              >
+                + Nueva Mesa
+              </button>
             )}
           </div>
 
-          {formError && (
-            <div className="mb-4 text-sm text-error bg-error/10 border border-error/30 rounded px-3 py-2">
-              {formError}
-            </div>
-          )}
-
           {showAddForm && isAdmin && (
             <div className="card mb-6">
-              <h2 className="text-lg font-semibold mb-1">Agregar mesa</h2>
-              <p className="text-xs text-gray-400 mb-4">
-                El número no se puede repetir en este bar.
-                {nextNumber != null ? ` Siguiente sugerido: ${nextNumber}.` : ""}
-              </p>
-              <form onSubmit={handleAddTable} className="flex flex-wrap gap-4 items-end">
+              <h2 className="text-lg font-semibold mb-4">Agregar Mesa</h2>
+              <form onSubmit={handleAddTable} className="flex gap-4 items-end">
                 <div>
-                  <label className="block text-sm mb-1">Número</label>
+                  <label className="block text-sm mb-1">Numero</label>
                   <input
                     type="text"
-                    inputMode="numeric"
                     value={newTable.table_number}
                     onChange={(e) => setNewTable({ ...newTable, table_number: e.target.value })}
-                    className="input w-28"
+                    className="input w-24"
                     placeholder="1"
                     required
                   />
@@ -353,90 +282,21 @@ export default function TablesPage() {
                     onChange={(e) => setNewTable({ ...newTable, capacity: parseInt(e.target.value) || 0 })}
                     className="input w-24"
                     min="1"
-                    max="20"
+                    max="12"
                     required
                   />
                 </div>
-                <button type="submit" className="btn-primary" disabled={formBusy}>
-                  {formBusy ? "Guardando…" : "Agregar"}
+                <button type="submit" className="btn-primary">
+                  Agregar
                 </button>
                 <button
                   type="button"
-                  onClick={() => { setShowAddForm(false); setFormError(null); }}
+                  onClick={() => setShowAddForm(false)}
                   className="btn-secondary"
                 >
                   Cancelar
                 </button>
               </form>
-            </div>
-          )}
-
-          {showBulkForm && isAdmin && (
-            <div className="card mb-6">
-              <h2 className="text-lg font-semibold mb-1">Agregar varias mesas</h2>
-              <p className="text-xs text-gray-400 mb-4">
-                Crea un rango continuo (ej. 21 a 30). Si alguna ya existe, no se crea ninguna.
-              </p>
-              <form onSubmit={handleBulkAdd} className="flex flex-wrap gap-4 items-end">
-                <div>
-                  <label className="block text-sm mb-1">Desde</label>
-                  <input
-                    type="number"
-                    min={1}
-                    value={bulkFrom}
-                    onChange={(e) => setBulkFrom(e.target.value)}
-                    className="input w-28"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm mb-1">Hasta</label>
-                  <input
-                    type="number"
-                    min={1}
-                    value={bulkTo}
-                    onChange={(e) => setBulkTo(e.target.value)}
-                    className="input w-28"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm mb-1">Capacidad</label>
-                  <input
-                    type="number"
-                    value={bulkCapacity || ""}
-                    onChange={(e) => setBulkCapacity(parseInt(e.target.value) || 4)}
-                    className="input w-24"
-                    min="1"
-                    max="20"
-                    required
-                  />
-                </div>
-                <button type="submit" className="btn-primary" disabled={formBusy}>
-                  {formBusy
-                    ? "Creando…"
-                    : `Crear ${
-                        Number(bulkTo) >= Number(bulkFrom) && Number(bulkFrom) > 0
-                          ? Number(bulkTo) - Number(bulkFrom) + 1
-                          : "…"
-                      } mesas`}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => { setShowBulkForm(false); setFormError(null); }}
-                  className="btn-secondary"
-                >
-                  Cancelar
-                </button>
-              </form>
-              {Number(bulkFrom) > 0 && Number(bulkTo) >= Number(bulkFrom) && (
-                <p className="text-sm text-gray-400 mt-3">
-                  Se crearán las mesas <strong className="text-foreground">{bulkFrom}</strong>
-                  {" "}a{" "}
-                  <strong className="text-foreground">{bulkTo}</strong>
-                  {" "}({Number(bulkTo) - Number(bulkFrom) + 1} en total).
-                </p>
-              )}
             </div>
           )}
 

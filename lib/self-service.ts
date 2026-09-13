@@ -59,11 +59,11 @@ const TRANSITIONS: Record<SelfServiceStatus, Partial<Record<SelfServiceStatus, U
 export function canTransition(
   from: string,
   to: SelfServiceStatus,
-  role: UserRole
+  role: UserRole | string
 ): boolean {
   const allowedRoles = TRANSITIONS[from as SelfServiceStatus]?.[to];
   if (!allowedRoles) return false;
-  return allowedRoles.includes(role);
+  return allowedRoles.includes(role as UserRole);
 }
 
 /**

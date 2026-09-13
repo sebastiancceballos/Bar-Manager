@@ -123,7 +123,7 @@ export default function OwnerPanel() {
                 <p className="text-3xl font-bold text-secondary">{totals.ordersToday}</p>
               </div>
               <div className="card text-center col-span-2 md:col-span-1">
-                <p className="text-gray-400 text-xs mb-1">Ingresos hoy</p>
+                <p className="text-gray-400 text-xs mb-1">Ingresos hoy (todos los bares)</p>
                 <p className="text-2xl font-bold text-green-400">{formatCOP(totals.revenueToday)}</p>
               </div>
               <div className="card text-center col-span-2 md:col-span-1">

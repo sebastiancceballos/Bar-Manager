@@ -40,7 +40,7 @@ export async function reportOrgSummary(locId: number, range: string) {
     FROM locations l
     LEFT JOIN orders o ON (
       o.status IN ('closed', 'paid', 'PAID', 'PREPARING', 'READY', 'COMPLETED')
-      AND o.created_at >= ${cutoffIso}::timestamptz
+      AND COALESCE(o.closed_at, o.created_at) >= ${cutoffIso}::timestamptz
       AND (
         EXISTS (SELECT 1 FROM tables t WHERE t.id = o.table_id AND t.location_id = l.id)
         OR EXISTS (
@@ -81,7 +81,7 @@ export async function reportByWaiter(locId: number, range: string) {
     FROM orders o
     LEFT JOIN tables t ON o.table_id = t.id
     LEFT JOIN users u ON o.waiter_id = u.id
-    WHERE o.created_at >= ${cutoffIso}::timestamptz
+    WHERE COALESCE(o.closed_at, o.created_at) >= ${cutoffIso}::timestamptz
       AND o.status IN ('closed', 'paid', 'PAID', 'PREPARING', 'READY', 'COMPLETED')
       AND (
         t.location_id = ${locId}
@@ -119,7 +119,7 @@ export async function reportTopProducts(locId: number, range: string) {
     JOIN products p ON oi.product_id = p.id
     JOIN orders o ON oi.order_id = o.id
     LEFT JOIN tables t ON o.table_id = t.id
-    WHERE o.created_at >= ${cutoffIso}::timestamptz
+    WHERE COALESCE(o.closed_at, o.created_at) >= ${cutoffIso}::timestamptz
       AND o.status IN ('closed', 'paid', 'PAID', 'PREPARING', 'READY', 'COMPLETED')
       AND p.location_id = ${locId}
     GROUP BY p.id, p.name, p.category
@@ -147,7 +147,7 @@ export async function reportByPaymentMethod(locId: number, range: string) {
       COALESCE(SUM(o.total_amount), 0) as total
     FROM orders o
     LEFT JOIN tables t ON o.table_id = t.id
-    WHERE o.created_at >= ${cutoffIso}::timestamptz
+    WHERE COALESCE(o.closed_at, o.created_at) >= ${cutoffIso}::timestamptz
       AND o.status IN ('closed', 'paid', 'PAID', 'PREPARING', 'READY', 'COMPLETED')
       AND (
         t.location_id = ${locId}
@@ -180,7 +180,7 @@ export async function reportByOrderType(locId: number, range: string) {
       COALESCE(SUM(o.total_amount), 0) as total
     FROM orders o
     LEFT JOIN tables t ON o.table_id = t.id
-    WHERE o.created_at >= ${cutoffIso}::timestamptz
+    WHERE COALESCE(o.closed_at, o.created_at) >= ${cutoffIso}::timestamptz
       AND o.status IN ('closed', 'paid', 'PAID', 'PREPARING', 'READY', 'COMPLETED')
       AND (
         t.location_id = ${locId}
@@ -208,12 +208,12 @@ export async function reportTimeseries(locId: number, range: string) {
   const reports = await sql`
     WITH localized AS (
       SELECT
-        (o.created_at AT TIME ZONE 'UTC' AT TIME ZONE ${tz})::date as day,
+        (COALESCE(o.closed_at, o.created_at) AT TIME ZONE 'UTC' AT TIME ZONE ${tz})::date as day,
         o.total_amount,
         o.id
       FROM orders o
       LEFT JOIN tables t ON o.table_id = t.id
-      WHERE o.created_at >= ${cutoffIso}::timestamptz
+      WHERE COALESCE(o.closed_at, o.created_at) >= ${cutoffIso}::timestamptz
         AND o.status IN ('closed', 'paid', 'PAID', 'PREPARING', 'READY', 'COMPLETED')
         AND (
           t.location_id = ${locId}

@@ -29,7 +29,7 @@ interface Order {
   total_amount: number;
   status?: string;
   created_at?: string;
-  payment_method?: string;
+  payment_method?: string | null;
   items: OrderItem[];
 }
 
