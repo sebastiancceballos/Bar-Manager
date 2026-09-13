@@ -235,7 +235,10 @@ export default function TrackingPage({
     }
 
     poll();
-    const interval = setInterval(poll, 4000);
+    const interval = setInterval(() => {
+      if (typeof document !== "undefined" && document.visibilityState === "hidden") return;
+      poll();
+    }, 10000);
     return () => {
       cancelled = true;
       clearInterval(interval);

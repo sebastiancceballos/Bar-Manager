@@ -5,7 +5,6 @@ import { sql } from "@/lib/db";
 import { logAudit } from "@/lib/audit";
 import { canTransition, SELF_SERVICE_STATUSES, SelfServiceStatus } from "@/lib/self-service";
 import { canCharge, canUseComandas } from "@/lib/permissions";
-import type { UserRole } from "@/lib/auth";
 import { notifyOrder } from "@/lib/push";
 
 
@@ -122,7 +121,7 @@ export async function PATCH(
       return NextResponse.json({ error: "Pedido no encontrado" }, { status: 404 });
     }
 
-    if (!canTransition(order.status, newStatus as SelfServiceStatus, user.role as UserRole)) {
+    if (!canTransition(order.status, newStatus as SelfServiceStatus, user.role)) {
       return NextResponse.json(
         {
           error: `Tu rol (${user.role}) no puede pasar el pedido de ${order.status} a ${newStatus}`,

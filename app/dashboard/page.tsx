@@ -128,7 +128,10 @@ export default function DashboardPage() {
   useEffect(() => {
     if (!user || !isAdminOrOwner) return;
     fetchStats();
-    const interval = setInterval(fetchStats, 10000);
+    const interval = setInterval(() => {
+      if (typeof document !== "undefined" && document.visibilityState === "hidden") return;
+      fetchStats();
+    }, 30000);
     return () => clearInterval(interval);
   }, [user, isAdminOrOwner, fetchStats]);
 

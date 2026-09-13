@@ -28,8 +28,6 @@ interface Order {
   table_id: number;
   total_amount: number;
   status?: string;
-  created_at?: string;
-  payment_method?: string;
   items: OrderItem[];
 }
 

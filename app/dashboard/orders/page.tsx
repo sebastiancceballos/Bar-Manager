@@ -67,7 +67,10 @@ function OrdersDashboardContent() {
 
   useEffect(() => {
     load();
-    const interval = setInterval(load, 5000);
+    const interval = setInterval(() => {
+      if (typeof document !== "undefined" && document.visibilityState === "hidden") return;
+      load();
+    }, 12000);
     return () => clearInterval(interval);
   }, [load]);
 
