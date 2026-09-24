@@ -357,7 +357,7 @@ export default function ComandasPage() {
                   <button
                     key={f.key}
                     onClick={() => setFilter(f.key)}
-                    className={`px-3 py-1.5 rounded-md text-sm font-medium transition-smooth ${
+                    className={`min-h-[40px] px-3 py-1.5 rounded-md text-sm font-medium transition-smooth whitespace-nowrap ${
                       filter === f.key
                         ? "bg-primary text-white"
                         : "text-gray-400 hover:text-foreground"

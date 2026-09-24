@@ -395,7 +395,7 @@ export default function ReportsPage() {
                 Ingresos por Día
               </h3>
               <div className="overflow-x-auto">
-                <table className="w-full text-left text-sm">
+                <table className="w-full min-w-[560px] text-left text-sm">
                   <thead>
                     <tr className="border-b border-border">
                       <th className="pb-3 px-4 font-semibold">Fecha</th>

@@ -50,9 +50,9 @@ export default function AuditoriaPage() {
             <div className="space-y-2">
               {entries.map((e) => (
                 <div key={e.id} className="card-sm flex justify-between items-start gap-4">
-                  <div>
+                  <div className="min-w-0">
                     <p className="font-medium">{ACTION_LABELS[e.action] || e.action}</p>
-                    <p className="text-xs text-gray-500 mt-1">{e.details}</p>
+                    <p className="text-xs text-gray-500 mt-1 break-words">{e.details}</p>
                   </div>
                   <div className="text-right shrink-0">
                     <p className="text-sm text-gray-400">{e.user_name || "Sistema"}</p>

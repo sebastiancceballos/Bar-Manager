@@ -280,8 +280,8 @@ export default function ProductsPage() {
 
         {/* Modal de Nuevo/Editar Producto */}
         {showForm && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-            <div className="bg-card border border-border w-full max-w-lg rounded-2xl p-6 shadow-2xl">
+          <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm">
+            <div className="bg-card border border-border w-full max-w-lg rounded-t-2xl sm:rounded-2xl p-6 shadow-2xl max-h-[92dvh] overflow-y-auto safe-area-pb">
               <div className="flex justify-between items-center mb-6">
                 <h2 className="text-2xl font-bold">
                   {editingId ? "Editar Producto" : "Nuevo Producto"}
@@ -292,7 +292,7 @@ export default function ProductsPage() {
                     setEditingId(null);
                     setEditingProduct(null);
                   }}
-                  className="text-gray-400 hover:text-white text-2xl"
+                  className="min-w-[44px] min-h-[44px] flex items-center justify-center text-gray-400 hover:text-white text-2xl -mr-2"
                 >
                   &times;
                 </button>
@@ -375,8 +375,8 @@ export default function ProductsPage() {
 
         {/* Modal de Ajuste de Stock */}
         {showStockModal && selectedProduct && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-            <div className="bg-card border border-border w-full max-w-md rounded-2xl p-6 shadow-2xl">
+          <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm">
+            <div className="bg-card border border-border w-full max-w-md rounded-t-2xl sm:rounded-2xl p-6 shadow-2xl max-h-[92dvh] overflow-y-auto safe-area-pb">
               <h2 className="text-2xl font-bold mb-4">Ajustar Inventario</h2>
               <p className="text-gray-400 mb-6">Producto: <span className="text-foreground font-semibold">{selectedProduct.name}</span></p>
               
@@ -418,15 +418,15 @@ export default function ProductsPage() {
 
         {/* Modal de Historial (Trazabilidad) */}
         {showHistory && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-            <div className="bg-card border border-border w-full max-w-2xl rounded-2xl p-6 shadow-2xl max-h-[80vh] flex flex-col">
+          <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm">
+            <div className="bg-card border border-border w-full max-w-2xl rounded-t-2xl sm:rounded-2xl p-6 shadow-2xl max-h-[92dvh] sm:max-h-[80vh] flex flex-col safe-area-pb">
               <div className="flex justify-between items-center mb-6">
                 <h2 className="text-2xl font-bold">Trazabilidad de Stock</h2>
-                <button onClick={() => setShowHistory(false)} className="text-gray-400 hover:text-white text-2xl">&times;</button>
+                <button onClick={() => setShowHistory(false)} className="min-w-[44px] min-h-[44px] flex items-center justify-center text-gray-400 hover:text-white text-2xl -mr-2">&times;</button>
               </div>
               
-              <div className="overflow-y-auto flex-1">
-                <table className="w-full text-left">
+              <div className="overflow-y-auto overflow-x-auto flex-1">
+                <table className="w-full text-left min-w-[420px]">
                   <thead className="border-b border-border">
                     <tr className="text-gray-400 text-sm">
                       <th className="py-2">Fecha</th>

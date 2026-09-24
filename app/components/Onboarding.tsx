@@ -9,7 +9,15 @@ const ReactJoyride = (Joyride as any) || Joyride;
 
 export const Onboarding: React.FC = () => {
   const [run, setRun] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
   const { user } = useAuth();
+
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 768);
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
+  }, []);
 
   useEffect(() => {
     // Solo escuchar el evento para inicio manual
@@ -26,25 +34,38 @@ export const Onboarding: React.FC = () => {
     };
   }, []);
 
-  const steps: Step[] = [
-    {
-      target: "body",
-      content: "¡Bienvenido a Bar Manager! Vamos a darte un pequeño tour por las funciones principales.",
-      placement: "center",
-    },
-    {
-      target: ".nav-tables",
-      content: "Aquí puedes gestionar la posición y el orden de tus mesas, ademas ver el estado de las órdenes en tiempo real.",
-    },
-    {
-      target: ".nav-products",
-      content: "Desde aquí puedes administrar tu inventario y carta de productos.",
-    },
-    {
-      target: ".nav-reports",
-      content: "Revisa tus ventas y el rendimiento de tu negocio con reportes detallados.",
-    },
-  ];
+  // En mobile los enlaces .nav-tables/.nav-products/.nav-reports viven dentro
+  // del menú hamburguesa (colapsado con display:none hasta que se abre), así
+  // que Joyride no puede ubicarlos para el spotlight. En vez de un tour roto,
+  // mostramos solo el mensaje de bienvenida con una nota para abrir el menú.
+  const steps: Step[] = isMobile
+    ? [
+        {
+          target: "body",
+          content:
+            "¡Bienvenido a Bar Manager! Toca el ícono ☰ arriba a la derecha para ver Mesas, Productos y Reportes en el menú.",
+          placement: "center",
+        },
+      ]
+    : [
+        {
+          target: "body",
+          content: "¡Bienvenido a Bar Manager! Vamos a darte un pequeño tour por las funciones principales.",
+          placement: "center",
+        },
+        {
+          target: ".nav-tables",
+          content: "Aquí puedes gestionar la posición y el orden de tus mesas, ademas ver el estado de las órdenes en tiempo real.",
+        },
+        {
+          target: ".nav-products",
+          content: "Desde aquí puedes administrar tu inventario y carta de productos.",
+        },
+        {
+          target: ".nav-reports",
+          content: "Revisa tus ventas y el rendimiento de tu negocio con reportes detallados.",
+        },
+      ];
 
   const handleJoyrideCallback = (data: any) => {
     const { status } = data;

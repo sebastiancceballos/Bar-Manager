@@ -496,13 +496,13 @@ export function OrderModal({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-card border border-border rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-        <div className="sticky top-0 bg-card border-b border-border px-6 py-4 flex items-center justify-between">
+    <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
+      <div className="bg-card border border-border rounded-t-2xl sm:rounded-lg max-w-2xl w-full max-h-[92dvh] sm:max-h-[90vh] overflow-y-auto">
+        <div className="sticky top-0 bg-card border-b border-border px-4 sm:px-6 py-4 flex items-center justify-between">
           <h2 className="text-2xl font-bold text-foreground">Mesa {tableNumber}</h2>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-foreground transition-smooth"
+            className="min-w-[44px] min-h-[44px] flex items-center justify-center text-gray-400 hover:text-foreground transition-smooth -mr-2"
           >
             ✕
           </button>
@@ -539,7 +539,7 @@ export function OrderModal({
                           onClick={() => handleDecrementItem(item.id)}
                           disabled={updating}
                           title="Restar 1 unidad"
-                          className="btn btn-sm px-3 py-1 bg-warning/10 text-warning hover:bg-warning/20 disabled:opacity-50"
+                          className="min-w-[44px] min-h-[44px] rounded-lg bg-warning/10 text-warning hover:bg-warning/20 disabled:opacity-50 flex items-center justify-center font-semibold"
                         >
                           −
                         </button>
@@ -547,7 +547,7 @@ export function OrderModal({
                           onClick={() => handleRemoveItem(item.id)}
                           disabled={updating}
                           title="Eliminar todo"
-                          className="btn btn-sm px-3 py-1 bg-error/10 text-error hover:bg-error/20 disabled:opacity-50"
+                          className="min-w-[44px] min-h-[44px] rounded-lg bg-error/10 text-error hover:bg-error/20 disabled:opacity-50 flex items-center justify-center font-semibold"
                         >
                           ✕
                         </button>
@@ -763,7 +763,7 @@ export function OrderModal({
           <div className="bg-card border border-border rounded-t-2xl sm:rounded-lg max-w-md w-full max-h-[92dvh] flex flex-col shadow-xl">
             <div className="flex justify-between items-center p-4 pb-2 border-b border-border shrink-0">
               <h3 className="text-xl font-bold">Cobrar Mesa {tableNumber}</h3>
-              <button type="button" onClick={() => setShowPayment(false)} className="text-gray-400 hover:text-foreground text-2xl leading-none px-2">&times;</button>
+              <button type="button" onClick={() => setShowPayment(false)} className="min-w-[44px] min-h-[44px] flex items-center justify-center text-gray-400 hover:text-foreground text-2xl leading-none -mr-2">&times;</button>
             </div>
 
             <div className="overflow-y-auto flex-1 p-4 space-y-4 overscroll-contain">
@@ -987,7 +987,7 @@ export function OrderModal({
           <div className="bg-card border border-border rounded-t-2xl sm:rounded-lg max-w-md w-full max-h-[92dvh] flex flex-col">
             <div className="flex justify-between items-center p-4 border-b border-border">
               <h3 className="text-lg font-bold">Dividir cuenta — Mesa {tableNumber}</h3>
-              <button type="button" className="text-2xl text-gray-400" onClick={() => setShowSplit(false)}>&times;</button>
+              <button type="button" className="min-w-[44px] min-h-[44px] flex items-center justify-center text-2xl text-gray-400 -mr-2" onClick={() => setShowSplit(false)}>&times;</button>
             </div>
             <div className="overflow-y-auto flex-1 p-4 space-y-4">
               {splitError && (
@@ -1062,11 +1062,11 @@ export function OrderModal({
 
       {/* Modal de Transferencia de Mesa */}
       {showTransfer && order && (
-        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[110] p-4">
-          <div className="bg-card border border-border rounded-lg max-w-sm w-full p-6 space-y-4">
+        <div className="fixed inset-0 bg-black/70 flex items-end sm:items-center justify-center z-[110] p-0 sm:p-4">
+          <div className="bg-card border border-border rounded-t-2xl sm:rounded-lg max-w-sm w-full p-6 space-y-4 safe-area-pb">
             <div className="flex justify-between items-center">
               <h3 className="text-xl font-bold">Transferir Mesa {tableNumber}</h3>
-              <button onClick={() => setShowTransfer(false)} className="text-gray-400 hover:text-foreground text-2xl">&times;</button>
+              <button onClick={() => setShowTransfer(false)} className="min-w-[44px] min-h-[44px] flex items-center justify-center text-gray-400 hover:text-foreground text-2xl -mr-2">&times;</button>
             </div>
 
             {transferError && (

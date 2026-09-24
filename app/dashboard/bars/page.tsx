@@ -128,8 +128,8 @@ export default function BarsManagementPage() {
       <Navigation />
       <div className="min-h-screen bg-background">
         <div className="max-w-4xl mx-auto px-4 py-12">
-          <div className="flex justify-between items-center mb-8">
-            <h1 className="text-4xl font-bold text-foreground">Gestionar Bares</h1>
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-8">
+            <h1 className="text-3xl sm:text-4xl font-bold text-foreground">Gestionar Bares</h1>
             <button onClick={openNewForm} className="btn-primary">
               + Nuevo Bar
             </button>
@@ -203,25 +203,25 @@ export default function BarsManagementPage() {
               {locations.map((location) => (
                 <div
                   key={location.id}
-                  className="card flex items-center justify-between"
+                  className="card flex flex-col sm:flex-row sm:items-center justify-between gap-3"
                 >
-                  <div>
-                    <h3 className="text-lg font-semibold text-foreground">
+                  <div className="min-w-0">
+                    <h3 className="text-lg font-semibold text-foreground break-words">
                       {location.name}
                     </h3>
-                    <p className="text-sm text-gray-400">{location.address}</p>
+                    <p className="text-sm text-gray-400 break-words">{location.address}</p>
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 shrink-0">
                     <button
                       onClick={() => handleEdit(location)}
-                      className="px-3 py-2 text-sm bg-primary/10 text-primary rounded hover:bg-primary/20 transition-smooth"
+                      className="min-h-[44px] px-3 py-2 text-sm bg-primary/10 text-primary rounded hover:bg-primary/20 transition-smooth"
                     >
                       Editar
                     </button>
                     <button
                       onClick={() => handleDelete(location.id)}
                       disabled={deleting === location.id}
-                      className="px-3 py-2 text-sm bg-red-500/10 text-red-500 rounded hover:bg-red-500/20 transition-smooth disabled:opacity-50"
+                      className="min-h-[44px] px-3 py-2 text-sm bg-red-500/10 text-red-500 rounded hover:bg-red-500/20 transition-smooth disabled:opacity-50"
                     >
                       {deleting === location.id ? "Eliminando..." : "Eliminar"}
                     </button>
