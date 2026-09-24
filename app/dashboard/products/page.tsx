@@ -92,7 +92,7 @@ export default function ProductsPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("¿Estás seguro de que deseas eliminar este producto?")) return;
+    if (!confirm(t("confirmDeleteProduct"))) return;
 
     try {
       const response = await fetch(`/api/products/${id}`, {
@@ -104,10 +104,10 @@ export default function ProductsPage() {
         await fetchProducts();
         setError(null);
       } else {
-        setError(data.error || "Error al eliminar el producto");
+        setError(data.error || t("errorDeleteProduct"));
       }
     } catch (err) {
-      setError("Error de conexión al eliminar el producto");
+      setError(t("errorDeleteProductNetwork"));
     }
   };
 
@@ -409,7 +409,7 @@ export default function ProductsPage() {
                 </div>
                 <div className="flex gap-3 pt-4">
                   <button type="submit" disabled={adjusting} className="btn btn-primary flex-1">
-                    {adjusting ? "Guardando..." : t("confirm")}
+                    {adjusting ? t("saving") : t("confirm")}
                   </button>
                   <button type="button" onClick={() => setShowStockModal(false)} className="btn btn-secondary flex-1">
                     Cancelar
@@ -425,7 +425,7 @@ export default function ProductsPage() {
           <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm">
             <div className="bg-card border border-border w-full max-w-2xl rounded-t-2xl sm:rounded-2xl p-6 shadow-2xl max-h-[92dvh] sm:max-h-[80vh] flex flex-col safe-area-pb">
               <div className="flex justify-between items-center mb-6">
-                <h2 className="text-2xl font-bold">Trazabilidad de Stock</h2>
+                <h2 className="text-2xl font-bold">{t("stockTrace")}</h2>
                 <button onClick={() => setShowHistory(false)} className="min-w-[44px] min-h-[44px] flex items-center justify-center text-gray-400 hover:text-white text-2xl -mr-2">&times;</button>
               </div>
               

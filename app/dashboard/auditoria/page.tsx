@@ -27,6 +27,15 @@ const ACTION_LABELS: Record<string, string> = {
 
 export default function AuditoriaPage() {
   const { t } = useI18n();
+  const actionLabel = (action: string) => {
+    const map: Record<string, string> = {
+      order_closed: t("actionOrderClosed"),
+      "order.closed": t("actionOrderClosed"),
+      cash_session_closed: t("actionCashClosed"),
+      self_service_order_created: t("actionSelfServiceCreated"),
+    };
+    return map[action] || action.replace(/_/g, " ");
+  };
 
   const [entries, setEntries] = useState<AuditEntry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -43,13 +52,13 @@ export default function AuditoriaPage() {
       <Navigation />
       <div className="min-h-screen bg-background">
         <div className="max-w-4xl mx-auto px-4 py-8">
-          <h1 className="text-3xl font-bold text-foreground mb-1">{t("auditLog")}</h1>
-          <p className="text-sm text-gray-400 mb-6">Registro de acciones sensibles (cobros, descuentos, caja, usuarios)</p>
+          <h1 className="text-3xl font-bold text-foreground mb-1">Bitácora de Auditoría</h1>
+          <p className="text-sm text-gray-400 mb-6">{t("auditSubtitle")}</p>
 
           {loading ? (
             <div className="card animate-pulse h-40" />
           ) : entries.length === 0 ? (
-            <div className="card text-center text-gray-400 py-12">{t("noData")}</div>
+            <div className="card text-center text-gray-400 py-12">Sin registros todavía</div>
           ) : (
             <div className="space-y-2">
               {entries.map((e) => (

@@ -249,7 +249,7 @@ export default function TablesPage() {
               <h1 className="text-3xl font-bold text-foreground">{t("tables")}</h1>
               {isAdmin && (
                 <p className="text-sm text-gray-400 mt-1">
-                  Arrastra las mesas para reorganizar el layout
+                  {t("dragTablesHint")}
                 </p>
               )}
             </div>

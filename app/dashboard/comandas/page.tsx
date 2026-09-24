@@ -338,7 +338,7 @@ export default function ComandasPage() {
             <div>
               <h1 className="text-3xl font-bold text-foreground">{t("comandas")}</h1>
               <p className="text-sm text-gray-400 mt-1">
-                Mesas y autoservicio en un solo panel · actualización en vivo
+                {t("comandasSubtitle")}
               </p>
             </div>
 

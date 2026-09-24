@@ -44,6 +44,12 @@ const TABS: { key: string; label: string }[] = [
 
 function OrdersDashboardContent() {
   const { t } = useI18n();
+  const STATUS_TABS = [
+    { key: "", label: t("allActive") },
+    { key: "PENDING_PAYMENT", label: t("toCharge") },
+    { key: "PREPARING", label: t("orderPreparing") },
+    { key: "READY", label: t("readyPlural") },
+  ];
   const { user } = useAuth();
   const [orders, setOrders] = useState<SelfServiceOrder[]>([]);
   const [tab, setTab] = useState("");
@@ -283,12 +289,14 @@ function OrdersDashboardContent() {
 }
 
 function StatusBadge({ status }: { status: string }) {
+  const { t } = useI18n();
+
   const map: Record<string, { label: string; className: string }> = {
-    PENDING_PAYMENT: { label: "Por cobrar", className: "bg-warning/20 text-warning" },
+    PENDING_PAYMENT: { label: t("toCharge"), className: "bg-warning/20 text-warning" },
     PAID: { label: "Pagado", className: "bg-primary/20 text-primary" },
-    PREPARING: { label: "En preparación", className: "bg-secondary/20 text-secondary" },
-    READY: { label: "Listo", className: "bg-success/20 text-success" },
-    COMPLETED: { label: "Entregado", className: "bg-foreground/10 text-foreground/60" },
+    PREPARING: { label: t("orderPreparing"), className: "bg-secondary/20 text-secondary" },
+    READY: { label: t("ready"), className: "bg-success/20 text-success" },
+    COMPLETED: { label: t("delivered"), className: "bg-foreground/10 text-foreground/60" },
     CANCELLED: { label: "Cancelado", className: "bg-error/20 text-error" },
   };
   const info = map[status] || { label: status, className: "bg-foreground/10" };

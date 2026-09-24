@@ -23,7 +23,6 @@ function formatDuration(start: string, end?: string | null) {
 
 export default function TurnoPage() {
   const { t } = useI18n();
-
   const [open, setOpen] = useState<Shift | null>(null);
   const [history, setHistory] = useState<Shift[]>([]);
   const [loading, setLoading] = useState(true);
@@ -65,7 +64,7 @@ export default function TurnoPage() {
       <div className="min-h-screen bg-background">
         <div className="max-w-lg mx-auto px-4 py-8 space-y-6">
           <div>
-            <h1 className="text-3xl font-bold text-foreground">Mi Turno</h1>
+            <h1 className="text-3xl font-bold text-foreground">{t("shiftTitle")}</h1>
             <p className="text-sm text-gray-400 mt-1">{t("clockIn")}</p>
           </div>
 
@@ -75,7 +74,7 @@ export default function TurnoPage() {
             <div className="card text-center space-y-4">
               {open ? (
                 <>
-                  <span className="text-xs font-bold uppercase px-2 py-1 rounded-full bg-success/10 text-success">{t("clockedIn")}</span>
+                  <span className="text-xs font-bold uppercase px-2 py-1 rounded-full bg-success/10 text-success">Turno activo</span>
                   <p className="text-4xl font-bold text-foreground">{formatDuration(open.clock_in)}</p>
                   <p className="text-sm text-gray-400">
                     Entrada: {new Date(open.clock_in).toLocaleTimeString("es-CO")}
@@ -83,8 +82,8 @@ export default function TurnoPage() {
                 </>
               ) : (
                 <>
-                  <span className="text-xs font-bold uppercase px-2 py-1 rounded-full bg-gray-700/30 text-gray-400">{t("clockedOut")}</span>
-                  <p className="text-gray-400">{t("clockIn")}</p>
+                  <span className="text-xs font-bold uppercase px-2 py-1 rounded-full bg-gray-700/30 text-gray-400">Sin turno activo</span>
+                  <p className="text-gray-400">No has marcado entrada hoy</p>
                 </>
               )}
               <button
@@ -99,7 +98,7 @@ export default function TurnoPage() {
 
           {history.length > 0 && (
             <div>
-              <h2 className="text-lg font-semibold mb-3">{t("shiftHistory")}</h2>
+              <h2 className="text-lg font-semibold mb-3">Últimos turnos</h2>
               <div className="space-y-2">
                 {history.map((s) => (
                   <div key={s.id} className="card-sm flex justify-between text-sm">
