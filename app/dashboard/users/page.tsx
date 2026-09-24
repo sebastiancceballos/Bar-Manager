@@ -409,7 +409,7 @@ export default function UsersPage() {
                     <span className="text-sm text-gray-400">({locationUsers.length} usuario{locationUsers.length !== 1 ? "s" : ""})</span>
                   </div>
                   <div className="overflow-x-auto">
-                    <table className="w-full">
+                    <table className="w-full min-w-[640px]">
                       <thead>
                         <tr className="border-b border-border text-sm text-gray-400">
                           <th className="text-left py-2 px-4 font-medium">Nombre</th>
@@ -432,7 +432,7 @@ export default function UsersPage() {
             <div className="card">
               <h2 className="text-xl font-semibold mb-4">Meseros de tu bar</h2>
               <div className="overflow-x-auto">
-                <table className="w-full">
+                <table className="w-full min-w-[640px]">
                   <thead>
                     <tr className="border-b border-border text-sm text-gray-400">
                       <th className="text-left py-2 px-4 font-medium">Nombre</th>

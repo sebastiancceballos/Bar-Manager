@@ -331,9 +331,9 @@ export default function ReservasPage() {
           ) : (
             <div className="space-y-3">
               {reservations.map((r) => (
-                <div key={r.id} className="card-sm flex justify-between items-center gap-4">
-                  <div>
-                    <p className="font-semibold">{r.customer_name} · {r.party_size} personas</p>
+                <div key={r.id} className="card-sm flex flex-col sm:flex-row justify-between sm:items-center gap-4">
+                  <div className="min-w-0">
+                    <p className="font-semibold break-words">{r.customer_name} · {r.party_size} personas</p>
                     <p className="text-sm text-gray-400">
                       {formatReservationTime(r.reservation_time)}
                       {r.table_number ? ` · Mesa ${r.table_number}` : ""}
@@ -341,15 +341,15 @@ export default function ReservasPage() {
                     </p>
                     {r.notes && <p className="text-xs text-gray-500 mt-1">{r.notes}</p>}
                   </div>
-                  <div className="flex flex-col items-end gap-2">
-                    <span className={`text-xs font-bold uppercase px-2 py-1 rounded-full ${STATUS_STYLES[r.status]}`}>
+                  <div className="flex flex-col sm:items-end gap-2">
+                    <span className={`self-start sm:self-auto text-xs font-bold uppercase px-2 py-1 rounded-full ${STATUS_STYLES[r.status]}`}>
                       {STATUS_LABELS[r.status]}
                     </span>
                     {r.status === "confirmada" && (
-                      <div className="flex gap-1">
-                        <button onClick={() => handleStatusChange(r.id, "completada")} className="btn btn-sm btn-outline text-[10px]">Llegó</button>
-                        <button onClick={() => handleStatusChange(r.id, "no_show")} className="btn btn-sm btn-outline text-[10px]">No llegó</button>
-                        <button onClick={() => handleStatusChange(r.id, "cancelada")} className="btn btn-sm bg-error/10 text-error text-[10px]">Cancelar</button>
+                      <div className="flex flex-wrap gap-1.5">
+                        <button onClick={() => handleStatusChange(r.id, "completada")} className="btn btn-sm btn-outline text-xs">Llegó</button>
+                        <button onClick={() => handleStatusChange(r.id, "no_show")} className="btn btn-sm btn-outline text-xs">No llegó</button>
+                        <button onClick={() => handleStatusChange(r.id, "cancelada")} className="btn btn-sm bg-error/10 text-error text-xs">Cancelar</button>
                       </div>
                     )}
                   </div>

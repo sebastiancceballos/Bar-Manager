@@ -88,26 +88,26 @@ export function DailyOrdersModal({ date, isOpen, onClose }: DailyOrdersModalProp
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-background border border-border rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
+      <div className="bg-background border border-border rounded-t-2xl sm:rounded-lg max-w-4xl w-full max-h-[92dvh] sm:max-h-[90vh] overflow-y-auto">
         {/* Header */}
-        <div className="sticky top-0 bg-background border-b border-border p-6 flex justify-between items-center">
+        <div className="sticky top-0 bg-background border-b border-border p-4 sm:p-6 flex justify-between items-center">
           <div>
-            <h2 className="text-2xl font-bold text-foreground">
+            <h2 className="text-xl sm:text-2xl font-bold text-foreground">
               Órdenes del {formatDateOnly(date)}
             </h2>
             <p className="text-gray-400 text-sm mt-1">Total de órdenes: {orders.length}</p>
           </div>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-foreground text-2xl font-bold"
+            className="min-w-[44px] min-h-[44px] flex items-center justify-center text-gray-400 hover:text-foreground text-2xl font-bold -mr-2"
           >
             ×
           </button>
         </div>
 
         {/* Content */}
-        <div className="p-6">
+        <div className="p-4 sm:p-6">
           {loading ? (
             <div className="text-center text-gray-400">Cargando órdenes...</div>
           ) : orders.length === 0 ? (
@@ -167,13 +167,13 @@ export function DailyOrdersModal({ date, isOpen, onClose }: DailyOrdersModalProp
                   <div className="flex gap-2">
                     <button
                       onClick={() => setSelectedOrder(order)}
-                      className="flex-1 bg-primary text-white py-2 rounded text-sm hover:bg-primary/90 transition-colors"
+                      className="flex-1 min-h-[44px] bg-primary text-white rounded text-sm hover:bg-primary/90 transition-colors"
                     >
                       Ver Detalles
                     </button>
                     <button
                       onClick={() => downloadInvoice(order)}
-                      className="flex-1 bg-card border border-border text-foreground py-2 rounded text-sm hover:border-primary transition-colors"
+                      className="flex-1 min-h-[44px] bg-card border border-border text-foreground rounded text-sm hover:border-primary transition-colors"
                     >
                       Descargar PDF
                     </button>
@@ -187,13 +187,13 @@ export function DailyOrdersModal({ date, isOpen, onClose }: DailyOrdersModalProp
 
       {/* Order Details Modal */}
       {selectedOrder && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4">
-          <div className="bg-background border border-border rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="sticky top-0 bg-background border-b border-border p-6 flex justify-between items-center">
-              <h3 className="text-xl font-bold text-foreground">Detalles de Factura #{selectedOrder.id}</h3>
+        <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-[60] p-0 sm:p-4">
+          <div className="bg-background border border-border rounded-t-2xl sm:rounded-lg max-w-2xl w-full max-h-[92dvh] sm:max-h-[90vh] overflow-y-auto">
+            <div className="sticky top-0 bg-background border-b border-border p-4 sm:p-6 flex justify-between items-center">
+              <h3 className="text-lg sm:text-xl font-bold text-foreground">Detalles de Factura #{selectedOrder.id}</h3>
               <button
                 onClick={() => setSelectedOrder(null)}
-                className="text-gray-400 hover:text-foreground text-2xl font-bold"
+                className="min-w-[44px] min-h-[44px] flex items-center justify-center text-gray-400 hover:text-foreground text-2xl font-bold -mr-2"
               >
                 ×
               </button>
@@ -260,20 +260,20 @@ export function DailyOrdersModal({ date, isOpen, onClose }: DailyOrdersModalProp
               <div>
                 <p className="text-foreground font-semibold mb-3">Productos</p>
                 <div className="bg-card rounded border border-border overflow-hidden">
-                  <div className="grid grid-cols-4 gap-2 bg-card/50 p-3 border-b border-border font-semibold text-sm text-gray-300">
+                  <div className="grid grid-cols-[minmax(0,2fr)_auto_auto] sm:grid-cols-[minmax(0,2fr)_auto_auto_auto] gap-2 bg-card/50 p-3 border-b border-border font-semibold text-xs sm:text-sm text-gray-300">
                     <div>Producto</div>
-                    <div className="text-center">Cantidad</div>
-                    <div className="text-right">Precio</div>
+                    <div className="text-center">Cant.</div>
+                    <div className="hidden sm:block text-right">Precio</div>
                     <div className="text-right">Subtotal</div>
                   </div>
                   {selectedOrder.items.map((item) => (
                     <div
                       key={item.id}
-                      className="grid grid-cols-4 gap-2 p-3 border-b border-border/50 text-sm"
+                      className="grid grid-cols-[minmax(0,2fr)_auto_auto] sm:grid-cols-[minmax(0,2fr)_auto_auto_auto] gap-2 p-3 border-b border-border/50 text-xs sm:text-sm"
                     >
-                      <div className="text-foreground">{item.product_name}</div>
+                      <div className="text-foreground break-words">{item.product_name}</div>
                       <div className="text-center text-gray-400">{item.quantity}</div>
-                      <div className="text-right text-gray-400">{formatCOP(Number(item.price))}</div>
+                      <div className="hidden sm:block text-right text-gray-400">{formatCOP(Number(item.price))}</div>
                       <div className="text-right text-foreground font-semibold">
                         {formatCOP(Number(item.price) * item.quantity)}
                       </div>
@@ -293,16 +293,16 @@ export function DailyOrdersModal({ date, isOpen, onClose }: DailyOrdersModalProp
               </div>
 
               {/* Actions */}
-              <div className="flex gap-3 pt-4 border-t border-border">
+              <div className="flex gap-3 pt-4 border-t border-border safe-area-pb">
                 <button
                   onClick={() => downloadInvoice(selectedOrder)}
-                  className="flex-1 bg-success text-white py-2 rounded font-semibold hover:bg-success/90 transition-colors"
+                  className="flex-1 min-h-[44px] bg-success text-white rounded font-semibold hover:bg-success/90 transition-colors"
                 >
                   Descargar PDF
                 </button>
                 <button
                   onClick={() => setSelectedOrder(null)}
-                  className="flex-1 bg-card border border-border text-foreground py-2 rounded font-semibold hover:border-primary transition-colors"
+                  className="flex-1 min-h-[44px] bg-card border border-border text-foreground rounded font-semibold hover:border-primary transition-colors"
                 >
                   Cerrar
                 </button>

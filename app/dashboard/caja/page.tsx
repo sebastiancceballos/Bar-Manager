@@ -195,7 +195,7 @@ export default function CajaPage() {
                 {history.map((h) => (
                   <div
                     key={h.id}
-                    className="card-sm flex justify-between items-center"
+                    className="card-sm flex flex-col sm:flex-row justify-between sm:items-center gap-2"
                   >
                     <div>
                       <p className="text-sm text-gray-400">
@@ -206,7 +206,7 @@ export default function CajaPage() {
                         Notas: {h.notes || "—"}
                       </p>
                     </div>
-                    <div className="text-right">
+                    <div className="text-left sm:text-right">
                       <p
                         className={`font-bold ${
                           Number(h.difference) === 0
