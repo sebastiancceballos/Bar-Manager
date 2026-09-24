@@ -40,6 +40,7 @@ const formatCOP = (value: number) =>
   new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", minimumFractionDigits: 0 }).format(value);
 
 function SelfServiceLinkCard() {
+  const { t } = useI18n();
   const [url, setUrl] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
@@ -59,7 +60,7 @@ function SelfServiceLinkCard() {
   return (
     <div className="card border-border p-6">
       <h2 className="text-xs font-bold uppercase tracking-widest text-foreground/60 mb-3">
-        Autoservicio para clientes
+        {t("selfServiceClients")}
       </h2>
       <p className="text-sm text-foreground/70 mb-3">
         {t("selfServiceClientsHelp")}
@@ -142,7 +143,7 @@ export default function DashboardPage() {
   if (user?.role === "waiter") {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-foreground">Redirigiendo...</div>
+        <div className="text-foreground">{t("loading")}</div>
       </div>
     );
   }
