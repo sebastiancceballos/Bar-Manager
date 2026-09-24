@@ -3,6 +3,8 @@
 import { useAuth } from "@/app/providers";
 import { roleLabel } from "@/lib/roles";
 import { LocationSwitcher } from "@/app/components/LocationSwitcher";
+import { LanguageToggle } from "@/app/components/LanguageToggle";
+import { useI18n } from "@/app/i18n-provider";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -39,6 +41,7 @@ type NavLink = {
 
 export function Navigation() {
   const { user, logout } = useAuth();
+  const { t } = useI18n();
   const router = useRouter();
   const pathname = usePathname();
   const [barName, setBarName] = useState<string | null>(null);
@@ -72,116 +75,116 @@ export function Navigation() {
   const navLinks: NavLink[] = [
     ...(isOwner
       ? [
-          { href: "/dashboard/owner", label: "Panel", icon: LayoutDashboard },
+          { href: "/dashboard/owner", label: t("panel"), icon: LayoutDashboard },
           {
             href: "/dashboard/organizations",
-            label: "Organizaciones",
+            label: t("organizations"),
             icon: Building2,
           },
-          { href: "/dashboard/bars", label: "Bares", icon: Beer },
-          { href: "/dashboard/users", label: "Usuarios", icon: Users },
+          { href: "/dashboard/bars", label: t("bars"), icon: Beer },
+          { href: "/dashboard/users", label: t("users"), icon: Users },
         ]
       : []),
     ...(isAdmin
       ? [
-          { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+          { href: "/dashboard", label: t("dashboard"), icon: LayoutDashboard },
           {
             href: "/dashboard/products",
-            label: "Productos",
+            label: t("products"),
             icon: Package,
             className: "nav-products",
           },
           {
             href: "/dashboard/tables",
-            label: "Mesas",
+            label: t("tables"),
             icon: TableProperties,
             className: "nav-tables",
           },
           {
             href: "/dashboard/comandas",
-            label: "Comandas",
+            label: t("comandas"),
             icon: ClipboardList,
             className: "nav-comandas",
           },
-          { href: "/dashboard/caja", label: "Caja", icon: Wallet },
+          { href: "/dashboard/caja", label: t("cash"), icon: Wallet },
           {
             href: "/dashboard/orders",
-            label: "Pedidos autoservicio",
+            label: t("selfServiceOrders"),
             icon: Receipt,
           },
           {
             href: "/dashboard/reservas",
-            label: "Reservas",
+            label: t("reservations"),
             icon: CalendarClock,
           },
           {
             href: "/dashboard/reports",
-            label: "Reportes",
+            label: t("reports"),
             icon: BarChart3,
             className: "nav-reports",
           },
           {
             href: "/dashboard/auditoria",
-            label: "Auditoría",
+            label: t("audit"),
             icon: ShieldCheck,
           },
-          { href: "/dashboard/turno", label: "Mi Turno", icon: Clock },
+          { href: "/dashboard/turno", label: t("myShift"), icon: Clock },
         ]
       : []),
     ...(isCashier
       ? [
           {
             href: "/dashboard/tables",
-            label: "Mesas",
+            label: t("tables"),
             icon: TableProperties,
           },
           {
             href: "/dashboard/comandas",
-            label: "Comandas",
+            label: t("comandas"),
             icon: ClipboardList,
           },
           {
             href: "/dashboard/orders",
-            label: "Pedidos",
+            label: t("orders"),
             icon: Receipt,
           },
-          { href: "/dashboard/caja", label: "Caja", icon: Wallet },
+          { href: "/dashboard/caja", label: t("cash"), icon: Wallet },
           {
             href: "/dashboard/historial",
-            label: "Historial",
+            label: t("history"),
             icon: History,
           },
-          { href: "/dashboard/turno", label: "Mi Turno", icon: Clock },
+          { href: "/dashboard/turno", label: t("myShift"), icon: Clock },
         ]
       : []),
     ...(isKitchen
       ? [
           {
             href: "/dashboard/comandas",
-            label: "Comandas",
+            label: t("comandas"),
             icon: ClipboardList,
           },
-          { href: "/dashboard/turno", label: "Mi Turno", icon: Clock },
+          { href: "/dashboard/turno", label: t("myShift"), icon: Clock },
         ]
       : []),
     ...(!isAdmin && !isOwner && !isCashier && !isKitchen
       ? [
           {
             href: "/dashboard/tables",
-            label: "Mesas",
+            label: t("tables"),
             icon: TableProperties,
           },
           {
             href: "/dashboard/comandas",
-            label: "Comandas",
+            label: t("comandas"),
             icon: ClipboardList,
           },
           {
             href: "/dashboard/reservas",
-            label: "Reservas",
+            label: t("reservations"),
             icon: CalendarClock,
           },
-          { href: "/dashboard/turno", label: "Mi Turno", icon: Clock },
+          { href: "/dashboard/turno", label: t("myShift"), icon: Clock },
         ]
       : []),
   ];
@@ -189,29 +192,29 @@ export function Navigation() {
   /** Accesos rápidos en barra inferior (móvil) */
   const bottomLinks: NavLink[] = isCashier
     ? [
-        { href: "/dashboard/tables", label: "Mesas", icon: TableProperties },
+        { href: "/dashboard/tables", label: t("tables"), icon: TableProperties },
         {
           href: "/dashboard/comandas",
-          label: "Comandas",
+          label: t("comandas"),
           icon: ClipboardList,
         },
-        { href: "/dashboard/orders", label: "Pedidos", icon: Receipt },
-        { href: "/dashboard/caja", label: "Caja", icon: Wallet },
+        { href: "/dashboard/orders", label: t("orders"), icon: Receipt },
+        { href: "/dashboard/caja", label: t("cash"), icon: Wallet },
         {
           href: "/dashboard/historial",
-          label: "Historial",
+          label: t("history"),
           icon: History,
         },
       ]
     : isWaiter
       ? [
-          { href: "/dashboard/tables", label: "Mesas", icon: TableProperties },
+          { href: "/dashboard/tables", label: t("tables"), icon: TableProperties },
           {
             href: "/dashboard/comandas",
-            label: "Comandas",
+            label: t("comandas"),
             icon: ClipboardList,
           },
-          { href: "/dashboard/turno", label: "Turno", icon: Clock },
+          { href: "/dashboard/turno", label: t("myShift"), icon: Clock },
         ]
       : [];
 
@@ -263,6 +266,7 @@ export function Navigation() {
               <div className="ml-2">
                 <LocationSwitcher />
               </div>
+              <LanguageToggle className="ml-1" />
               <button
                 onClick={handleLogout}
                 className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-sm font-medium text-error hover:bg-error/10"
@@ -336,6 +340,9 @@ export function Navigation() {
                 </div>
                 <div className="mt-3 px-5">
                   <LocationSwitcher />
+                </div>
+                <div className="mt-3 px-5">
+                  <LanguageToggle />
                 </div>
                 <div className="mt-3 px-2">
                   <button

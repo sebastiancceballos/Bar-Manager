@@ -1,12 +1,15 @@
 "use client";
 
 import { useAuth } from "@/app/providers";
+import { useI18n } from "@/app/i18n-provider";
+import { LanguageToggle } from "@/app/components/LanguageToggle";
 import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
 
 export default function LoginPage() {
   const router = useRouter();
   const { login, isLoading, error } = useAuth();
+  const { t, locale } = useI18n();
   const [formError, setFormError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
 
@@ -19,32 +22,40 @@ export default function LoginPage() {
     const password = formData.get("password") as string;
 
     if (!email || !password) {
-      setFormError("Email and password are required");
+      setFormError(t("requiredFields"));
       return;
     }
 
     try {
       await login(email, password);
       router.push("/dashboard");
-    } catch (err) {
-      setFormError(error || "Login failed");
+    } catch {
+      setFormError(error || t("loginFailed"));
     }
   };
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center px-4">
-      <div className="card w-full max-w-md">
-        <div className="mb-8">
+      <div className="card w-full max-w-md relative">
+        <div className="absolute top-4 right-4">
+          <LanguageToggle />
+        </div>
+
+        <div className="mb-8 pr-16">
           <h1 className="text-3xl font-bold text-foreground mb-2">
-            Bar Manager
+            {t("appName")}
           </h1>
-          <p className="text-gray-400">Sistema de gestión </p>
+          <p className="text-gray-400">
+            {locale === "en"
+              ? "Bar & restaurant management"
+              : "Sistema de gestión"}
+          </p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
           <div>
             <label htmlFor="email" className="block text-sm font-medium mb-2">
-              Correo Electrónico
+              {t("email")}
             </label>
             <input
               id="email"
@@ -58,94 +69,37 @@ export default function LoginPage() {
 
           <div>
             <label htmlFor="password" className="block text-sm font-medium mb-2">
-              Contraseña
+              {t("password")}
             </label>
             <div className="relative">
               <input
                 id="password"
                 name="password"
                 type={showPassword ? "text" : "password"}
-                className="input pr-12"
+                className="input pr-16"
                 placeholder="••••••••"
                 required
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-foreground transition-colors"
-                aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400 hover:text-foreground transition-colors"
+                aria-label={showPassword ? t("hidePassword") : t("showPassword")}
               >
-                {showPassword ? (
-                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
-                    <line x1="1" y1="1" x2="23" y2="23" />
-                  </svg>
-                ) : (
-                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-                    <circle cx="12" cy="12" r="3" />
-                  </svg>
-                )}
+                {showPassword ? t("hidePassword") : t("showPassword")}
               </button>
             </div>
           </div>
 
           {(formError || error) && (
-            <div className="bg-error/10 border border-error text-error px-4 py-3 rounded-lg text-sm">
+            <div className="text-sm text-error bg-error/10 border border-error/20 rounded-lg px-3 py-2">
               {formError || error}
             </div>
           )}
 
-          <button
-            type="submit"
-            disabled={isLoading}
-            className="btn-primary w-full disabled:opacity-50"
-          >
-            {isLoading ? "Iniciando sesión..." : "Iniciar Sesión"}
+          <button type="submit" className="btn-primary w-full" disabled={isLoading}>
+            {isLoading ? t("loggingIn") : t("login")}
           </button>
-
-          <div className="pt-8 border-t border-border/50">
-            <p className="text-sm font-medium text-gray-400 mb-4 text-center">Credenciales Demo</p>
-            <div className="grid grid-cols-1 gap-3">
-              <button
-                type="button"
-                onClick={() => {
-                  const emailInput = document.getElementById('email') as HTMLInputElement;
-                  const passwordInput = document.getElementById('password') as HTMLInputElement;
-                  if (emailInput && passwordInput) {
-                    emailInput.value = 'demo@barmanager.com';
-                    passwordInput.value = 'demo**';
-                  }
-                }}
-                className="flex items-center justify-between p-3 rounded-xl bg-primary/5 border border-primary/10 hover:bg-primary/10 transition-colors text-left group"
-              >
-                <div>
-                  <p className="text-xs font-bold text-primary uppercase tracking-wider mb-1">Administrador</p>
-                  <p className="text-sm text-foreground">demo@barmanager.com</p>
-                </div>
-                <span className="text-xs text-primary/40 group-hover:text-primary transition-colors italic">Auto-completar</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  const emailInput = document.getElementById('email') as HTMLInputElement;
-                  const passwordInput = document.getElementById('password') as HTMLInputElement;
-                  if (emailInput && passwordInput) {
-                    emailInput.value = 'MeseroDemo@barmanager.com';
-                    passwordInput.value = 'DEMO--';
-                  }
-                }}
-                className="flex items-center justify-between p-3 rounded-xl bg-secondary/5 border border-secondary/10 hover:bg-secondary/10 transition-colors text-left group"
-              >
-                <div>
-                  <p className="text-xs font-bold text-secondary uppercase tracking-wider mb-1">Mesero</p>
-                  <p className="text-sm text-foreground">MeseroDemo@barmanager.com</p>
-                </div>
-                <span className="text-xs text-secondary/40 group-hover:text-secondary transition-colors italic">Auto-completar</span>
-              </button>
-            </div>
-          </div>
         </form>
       </div>
     </div>
