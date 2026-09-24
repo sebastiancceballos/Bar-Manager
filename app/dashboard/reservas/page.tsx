@@ -201,7 +201,7 @@ export default function ReservasPage() {
               <p className="text-sm text-gray-400 mt-1">{t("reservations")}</p>
             </div>
             <button onClick={() => setShowForm(!showForm)} className="btn btn-primary">
-              {showForm ? t("cancel") : "Nueva Reserva"}
+              {showForm ? t("cancel") : t("newReservation")}
             </button>
           </div>
 
@@ -292,7 +292,7 @@ export default function ReservasPage() {
                 </div>
 
                 <div className="md:col-span-2">
-                  <label className="block text-sm font-medium mb-2">Mesa (opcional)</label>
+                  <label className="block text-sm font-medium mb-2">{t("tableOptional")}</label>
                   <select
                     className="input w-full"
                     value={tableId}

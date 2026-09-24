@@ -193,7 +193,7 @@ export default function ProductsPage() {
                 }}
                 className="btn btn-primary"
               >
-                {showForm ? t("cancel") : "Nuevo Producto"}
+                {showForm ? t("cancel") : t("newProduct")}
               </button>
             </div>
 
@@ -288,7 +288,7 @@ export default function ProductsPage() {
             <div className="bg-card border border-border w-full max-w-lg rounded-t-2xl sm:rounded-2xl p-6 shadow-2xl max-h-[92dvh] overflow-y-auto safe-area-pb">
               <div className="flex justify-between items-center mb-6">
                 <h2 className="text-2xl font-bold">
-                  {editingId ? "Editar Producto" : "Nuevo Producto"}
+                  {editingId ? t("editProduct") : t("newProduct")}
                 </h2>
                 <button
                   onClick={() => {

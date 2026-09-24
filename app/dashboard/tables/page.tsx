@@ -258,7 +258,7 @@ export default function TablesPage() {
                 onClick={() => setShowAddForm(true)}
                 className="btn-primary"
               >
-                + Nueva Mesa
+                + {t("newTable")}
               </button>
             )}
           </div>
@@ -454,7 +454,7 @@ export default function TablesPage() {
                         onClick={() => setShowAddForm(true)}
                         className="btn-primary"
                       >
-                        Agregar primera mesa
+                        {t("addFirstTable")}
                       </button>
                     )}
                   </div>

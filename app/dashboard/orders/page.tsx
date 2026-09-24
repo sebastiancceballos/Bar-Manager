@@ -118,7 +118,7 @@ function OrdersDashboardContent() {
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Buscar por número de ficho (ej. 0042)"
+              placeholder={t("searchTicketPlaceholder")}
               className="w-full bg-card border border-border rounded-lg pl-9 pr-3 py-3 text-base"
             />
           </div>
@@ -147,7 +147,7 @@ function OrdersDashboardContent() {
             <Loader2 className="w-8 h-8 animate-spin text-primary" />
           </div>
         ) : orders.length === 0 ? (
-          <p className="text-foreground/60 text-center py-10">No hay pedidos en esta vista.</p>
+          <p className="text-foreground/60 text-center py-10">{t("noOrdersInView")}</p>
         ) : (
           <div className="flex flex-col gap-3">
             {orders.map((order) => (

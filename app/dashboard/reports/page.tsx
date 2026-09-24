@@ -243,10 +243,10 @@ export default function ReportsPage() {
             <h1 className="text-4xl font-bold text-foreground">{t("reports")}</h1>
                         <div className="flex flex-wrap gap-2">
               {[
-                { id: "day", label: t("today") },
-                { id: "week", label: "Semana" },
-                { id: "month", label: "Mes" },
-                { id: "year", label: "Año" },
+                { id: "day", label: t("day") },
+                { id: "week", label: t("week") },
+                { id: "month", label: t("month") },
+                { id: "year", label: t("year") },
               ].map((opt) => (
                 <button
                   key={opt.id}
@@ -267,7 +267,7 @@ export default function ReportsPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
             <div className="card p-4 border border-border">
               <p className="text-xs text-gray-400 mb-1">
-                {dateRange === "day" ? "Ventas de hoy" : "Ventas del periodo"}
+                {dateRange === "day" ? t("salesToday") : t("salesPeriod")}
               </p>
               <p className="text-2xl font-bold text-primary">{formatCOP(totalPeriod)}</p>
               <p className="text-xs text-gray-500 mt-1">{ordersPeriod} pedidos</p>
@@ -321,7 +321,7 @@ export default function ReportsPage() {
                 disabled={exporting}
                 className="btn btn-primary flex items-center gap-2 disabled:opacity-50"
               >
-                {exporting ? "Generando..." : "⬇ Descargar Excel"}
+                {exporting ? t("generating") : `⬇ ${t("downloadExcel")}`}
               </button>
             </div>
           </div>
@@ -329,7 +329,7 @@ export default function ReportsPage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
             <div className="card">
               <h3 className="text-gray-400 text-sm font-medium mb-2">
-                Ingresos Totales
+                {t("totalRevenue")}
               </h3>
               <p className="text-3xl font-bold text-success">
                 {formatCOP(totalRevenue)}
@@ -338,7 +338,7 @@ export default function ReportsPage() {
 
             <div className="card">
               <h3 className="text-gray-400 text-sm font-medium mb-2">
-                Total de Órdenes
+                {t("totalOrders")}
               </h3>
               <p className="text-3xl font-bold text-primary">
                 {totalOrders}
@@ -347,7 +347,7 @@ export default function ReportsPage() {
 
             <div className="card">
               <h3 className="text-gray-400 text-sm font-medium mb-2">
-                Promedio por Orden
+                {t("avgOrder")}
               </h3>
               <p className="text-3xl font-bold text-secondary">
                 {formatCOP(averagePerOrder)}
@@ -396,7 +396,7 @@ export default function ReportsPage() {
           ) : (
             <div className="card">
               <h3 className="text-xl font-semibold mb-6">
-                Ingresos por Día
+                {t("revenueByDay")}
               </h3>
               <div className="overflow-x-auto">
                 <table className="w-full min-w-[560px] text-left text-sm">
@@ -436,7 +436,7 @@ export default function ReportsPage() {
 
                 {reports.length === 0 && (
                   <div className="py-8 text-center text-gray-400">
-                    No hay datos disponibles
+                    {t("noDataAvailable")}
                   </div>
                 )}
               </div>
@@ -445,7 +445,7 @@ export default function ReportsPage() {
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-8">
             <div className="card">
-              <h3 className="text-lg font-semibold mb-4">Ventas por Mesero</h3>
+              <h3 className="text-lg font-semibold mb-4">{t("salesByWaiter")}</h3>
               {byWaiter.length === 0 ? (
                 <p className="text-gray-400 text-sm">{t("noData")}</p>
               ) : (
@@ -464,7 +464,7 @@ export default function ReportsPage() {
             </div>
 
             <div className="card">
-              <h3 className="text-lg font-semibold mb-4">Productos Más Vendidos</h3>
+              <h3 className="text-lg font-semibold mb-4">{t("topProductsTitle")}</h3>
               {topProducts.length === 0 ? (
                 <p className="text-gray-400 text-sm">{t("noData")}</p>
               ) : (
@@ -483,7 +483,7 @@ export default function ReportsPage() {
             </div>
 
             <div className="card">
-              <h3 className="text-lg font-semibold mb-4">Por Método de Pago</h3>
+              <h3 className="text-lg font-semibold mb-4">{t("byPaymentMethodTitle")}</h3>
               {byPaymentMethod.length === 0 ? (
                 <p className="text-gray-400 text-sm">{t("noData")}</p>
               ) : (

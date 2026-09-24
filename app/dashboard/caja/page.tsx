@@ -135,7 +135,7 @@ export default function CajaPage() {
               </p>
               <div className="space-y-3 border-t border-border pt-4">
                 <label className="block text-sm font-medium">
-                  Monto contado al cerrar
+                  {t("countedOnClose")}
                 </label>
                 <input
                   type="text"
@@ -167,10 +167,10 @@ export default function CajaPage() {
           ) : (
             <div className="card space-y-4">
               <span className="text-xs font-bold uppercase px-2 py-1 rounded-full bg-warning/10 text-warning">
-                Sin turno abierto
+                {t("noShiftOpen")}
               </span>
               <label className="block text-sm font-medium">
-                Monto inicial en caja
+                {t("openingAmount")}
               </label>
               <input
                 type="text"
@@ -224,8 +224,8 @@ export default function CajaPage() {
                         {formatCOP(Number(h.difference || 0))}
                       </p>
                       <p className="text-xs text-gray-500">
-                        Contado {formatCOP(Number(h.closing_amount || 0))} /
-                        Esperado {formatCOP(Number(h.expected_amount || 0))}
+                        {t("counted")} {formatCOP(Number(h.closing_amount || 0))} /
+                        {t("expected")} {formatCOP(Number(h.expected_amount || 0))}
                       </p>
                     </div>
                   </div>

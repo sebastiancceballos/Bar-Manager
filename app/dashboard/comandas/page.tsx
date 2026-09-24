@@ -323,10 +323,10 @@ export default function ComandasPage() {
   ).length;
 
   const FILTERS: { key: FilterTab; label: string }[] = [
-    { key: "activas", label: "Activas" },
+    { key: "activas", label: t("filterActive") },
     { key: "mesas", label: t("tables") },
-    { key: "autoservicio", label: "Autoservicio" },
-    { key: "todas", label: "Todas" },
+    { key: "autoservicio", label: t("filterSelfService") },
+    { key: "todas", label: t("filterAll") },
   ];
 
   return (
@@ -383,7 +383,7 @@ export default function ComandasPage() {
           ) : visibleOrders.length === 0 ? (
             <div className="text-center py-20 text-gray-400">
               <p className="text-lg">{t("noOrders")}</p>
-              <p className="text-sm mt-2">Los pedidos de mesa y fichos pagados aparecerán aquí</p>
+              <p className="text-sm mt-2">{t("ordersWillAppear")}</p>
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">

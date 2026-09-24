@@ -161,7 +161,7 @@ export default function HistorialPage() {
             <input
               type="search"
               className="input w-full"
-              placeholder="Buscar mesa, ficho o #pedido…"
+              placeholder={t("searchHistoryPlaceholder")}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
