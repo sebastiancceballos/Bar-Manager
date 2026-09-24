@@ -13,6 +13,13 @@ export default function LoginPage() {
   const [formError, setFormError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
 
+  const fillDemo = (email: string, password: string) => {
+    const emailInput = document.getElementById("email") as HTMLInputElement | null;
+    const passwordInput = document.getElementById("password") as HTMLInputElement | null;
+    if (emailInput) emailInput.value = email;
+    if (passwordInput) passwordInput.value = password;
+  };
+
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setFormError(null);
@@ -34,6 +41,8 @@ export default function LoginPage() {
     }
   };
 
+  const isEn = locale === "en";
+
   return (
     <div className="min-h-screen bg-background flex items-center justify-center px-4">
       <div className="card w-full max-w-md relative">
@@ -46,9 +55,7 @@ export default function LoginPage() {
             {t("appName")}
           </h1>
           <p className="text-gray-400">
-            {locale === "en"
-              ? "Bar & restaurant management"
-              : "Sistema de gestión"}
+            {isEn ? "Bar & restaurant management" : "Sistema de gestión"}
           </p>
         </div>
 
@@ -100,6 +107,45 @@ export default function LoginPage() {
           <button type="submit" className="btn-primary w-full" disabled={isLoading}>
             {isLoading ? t("loggingIn") : t("login")}
           </button>
+
+          <div className="pt-8 border-t border-border/50">
+            <p className="text-sm font-medium text-gray-400 mb-4 text-center">
+              {isEn ? "Demo credentials" : "Credenciales demo"}
+            </p>
+            <div className="grid grid-cols-1 gap-3">
+              <button
+                type="button"
+                onClick={() => fillDemo("demo@barmanager.com", "demo**")}
+                className="flex items-center justify-between p-3 rounded-xl bg-primary/5 border border-primary/10 hover:bg-primary/10 transition-colors text-left group"
+              >
+                <div>
+                  <p className="text-xs font-bold text-primary uppercase tracking-wider mb-1">
+                    {isEn ? "Administrator" : "Administrador"}
+                  </p>
+                  <p className="text-sm text-foreground">demo@barmanager.com</p>
+                </div>
+                <span className="text-xs text-primary/40 group-hover:text-primary transition-colors italic">
+                  {isEn ? "Autofill" : "Auto-completar"}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => fillDemo("MeseroDemo@barmanager.com", "DEMO--")}
+                className="flex items-center justify-between p-3 rounded-xl bg-secondary/5 border border-secondary/10 hover:bg-secondary/10 transition-colors text-left group"
+              >
+                <div>
+                  <p className="text-xs font-bold text-secondary uppercase tracking-wider mb-1">
+                    {isEn ? "Waiter" : "Mesero"}
+                  </p>
+                  <p className="text-sm text-foreground">MeseroDemo@barmanager.com</p>
+                </div>
+                <span className="text-xs text-secondary/40 group-hover:text-secondary transition-colors italic">
+                  {isEn ? "Autofill" : "Auto-completar"}
+                </span>
+              </button>
+            </div>
+          </div>
         </form>
       </div>
     </div>
