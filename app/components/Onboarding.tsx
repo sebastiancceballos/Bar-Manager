@@ -13,6 +13,7 @@ export const Onboarding: React.FC = () => {
   const [run, setRun] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const { user } = useAuth();
+  const { t, locale } = useI18n();
 
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth < 768);
@@ -44,28 +45,42 @@ export const Onboarding: React.FC = () => {
     ? [
         {
           target: "body",
-          content:
-            "¡Bienvenido a Bar Manager! Toca el ícono ☰ arriba a la derecha para ver Mesas, Productos y Reportes en el menú.",
+          content: t(
+            "tourWelcomeMobile",
+            "¡Bienvenido a Bar Manager! Toca el ícono ☰ arriba a la derecha para ver Mesas, Productos y Reportes en el menú."
+          ),
           placement: "center",
         },
       ]
     : [
         {
           target: "body",
-          content: "¡Bienvenido a Bar Manager! Vamos a darte un pequeño tour por las funciones principales.",
+          content: t(
+            "tourWelcome",
+            "¡Bienvenido a Bar Manager! Vamos a darte un pequeño tour por las funciones principales."
+          ),
           placement: "center",
         },
         {
           target: ".nav-tables",
-          content: "Aquí puedes gestionar la posición y el orden de tus mesas, ademas ver el estado de las órdenes en tiempo real.",
+          content: t(
+            "tourTables",
+            "Aquí puedes gestionar la posición y el orden de tus mesas, ademas ver el estado de las órdenes en tiempo real."
+          ),
         },
         {
           target: ".nav-products",
-          content: "Desde aquí puedes administrar tu inventario y carta de productos.",
+          content: t(
+            "tourProducts",
+            "Desde aquí puedes administrar tu inventario y carta de productos."
+          ),
         },
         {
           target: ".nav-reports",
-          content: "Revisa tus ventas y el rendimiento de tu negocio con reportes detallados.",
+          content: t(
+            "tourReports",
+            "Revisa tus ventas y el rendimiento de tu negocio con reportes detallados."
+          ),
         },
       ];
 
@@ -111,11 +126,11 @@ export const Onboarding: React.FC = () => {
         },
       }}
       locale={{
-        back: "Atrás",
+        back: t("back", "Atrás"),
         close: t("close"),
-        last: "Finalizar",
-        next: "Siguiente",
-        skip: "Saltar tour",
+        last: t("finish", "Finalizar"),
+        next: t("next", "Siguiente"),
+        skip: t("skipTour", "Saltar tour"),
       }}
     />
   );
