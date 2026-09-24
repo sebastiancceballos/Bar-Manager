@@ -53,8 +53,8 @@ const STATUS_FLOW: Record<
 > = {
   pendiente: { next: "preparando", label: "Pendiente", actionLabel: "Empezar" },
   preparando: { next: "listo", label: "Preparando", actionLabel: "Marcar listo" },
-  listo: { next: "entregado", label: t("ready"), actionLabel: "Entregar" },
-  entregado: { next: null, label: t("delivered"), actionLabel: "" },
+  listo: { next: "entregado", label: "Listo", actionLabel: "Entregar" },
+  entregado: { next: null, label: "Entregado", actionLabel: "" },
 };
 
 const STATUS_STYLES: Record<ItemStatus, string> = {
@@ -65,8 +65,8 @@ const STATUS_STYLES: Record<ItemStatus, string> = {
 };
 
 const SS_STATUS_LABEL: Record<string, string> = {
-  PAID: t("orderPaid"),
-  PREPARING: t("orderPreparing"),
+  PAID: "Pagado",
+  PREPARING: "En preparación",
   READY: "Listo — esperando entrega",
 };
 
@@ -97,7 +97,7 @@ function mapDineIn(raw: any): UnifiedOrder {
       status: (item.status || "pendiente") as ItemStatus,
       notes: item.notes,
       product: item.product || {
-        name: item.product_name || t("product"),
+        name: item.product_name || "Producto",
         price: Number(item.price),
         category: item.category,
       },
@@ -127,7 +127,7 @@ function mapSelfService(raw: any): UnifiedOrder {
       status: itemStatusFromOrder,
       notes: item.notes,
       product: {
-        name: item.name || item.product_name || t("product"),
+        name: item.name || item.product_name || "Producto",
         price: Number(item.price) || 0,
       },
     })),

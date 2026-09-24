@@ -38,11 +38,12 @@ const ALLOWED_ROLES = ["owner", "admin", "cashier"];
 const TABS: { key: string; label: string }[] = [
   { key: "", label: "Todos (activos)" },
   { key: "PENDING_PAYMENT", label: "Por cobrar" },
-  { key: "PREPARING", label: t("orderPreparing") },
+  { key: "PREPARING", label: "En preparación" },
   { key: "READY", label: "Listos" },
 ];
 
 function OrdersDashboardContent() {
+  const { t } = useI18n();
   const { user } = useAuth();
   const [orders, setOrders] = useState<SelfServiceOrder[]>([]);
   const [tab, setTab] = useState("");
@@ -284,10 +285,10 @@ function OrdersDashboardContent() {
 function StatusBadge({ status }: { status: string }) {
   const map: Record<string, { label: string; className: string }> = {
     PENDING_PAYMENT: { label: "Por cobrar", className: "bg-warning/20 text-warning" },
-    PAID: { label: t("paid"), className: "bg-primary/20 text-primary" },
-    PREPARING: { label: t("orderPreparing"), className: "bg-secondary/20 text-secondary" },
-    READY: { label: t("ready"), className: "bg-success/20 text-success" },
-    COMPLETED: { label: t("delivered"), className: "bg-foreground/10 text-foreground/60" },
+    PAID: { label: "Pagado", className: "bg-primary/20 text-primary" },
+    PREPARING: { label: "En preparación", className: "bg-secondary/20 text-secondary" },
+    READY: { label: "Listo", className: "bg-success/20 text-success" },
+    COMPLETED: { label: "Entregado", className: "bg-foreground/10 text-foreground/60" },
     CANCELLED: { label: "Cancelado", className: "bg-error/20 text-error" },
   };
   const info = map[status] || { label: status, className: "bg-foreground/10" };

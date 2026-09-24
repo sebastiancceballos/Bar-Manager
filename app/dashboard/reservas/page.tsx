@@ -27,7 +27,7 @@ const STATUS_LABELS: Record<string, string> = {
   confirmada: "Confirmada",
   cancelada: "Cancelada",
   completada: "Completada",
-  no_show: t("pending"),
+  no_show: "No show",
 };
 
 const STATUS_STYLES: Record<string, string> = {

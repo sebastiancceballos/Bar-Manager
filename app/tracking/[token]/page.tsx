@@ -47,11 +47,11 @@ interface TrackingData {
  * línea de tiempo t("paid") queda marcado como hecho.
  */
 const STEPS: { status: Status; label: string; icon: typeof CheckCircle2 }[] = [
-  { status: "PENDING_PAYMENT", label: t("orderReceived"), icon: CheckCircle2 },
-  { status: "PAID", label: t("paid"), icon: CreditCard },
-  { status: "PREPARING", label: t("orderPreparing"), icon: ChefHat },
-  { status: "READY", label: t("orderReady"), icon: PartyPopper },
-  { status: "COMPLETED", label: t("delivered"), icon: PackageCheck },
+  { status: "PENDING_PAYMENT", label: "Pedido recibido", icon: CheckCircle2 },
+  { status: "PAID", label: "Pagado", icon: CreditCard },
+  { status: "PREPARING", label: "En preparación", icon: ChefHat },
+  { status: "READY", label: "Listo para recoger", icon: PartyPopper },
+  { status: "COMPLETED", label: "Entregado", icon: PackageCheck },
 ];
 
 function stepIndex(status: Status): number {

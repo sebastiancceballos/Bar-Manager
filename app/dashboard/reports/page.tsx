@@ -55,9 +55,9 @@ interface PaymentMethodReport {
 
 const PAYMENT_LABELS: Record<string, string> = {
   autoservicio: "Autoservicio",
-  efectivo: t("cashPayment"),
-  tarjeta: t("card"),
-  transferencia: t("transfer"),
+  efectivo: "Efectivo",
+  tarjeta: "Tarjeta",
+  transferencia: "Transferencia",
   otro: "Otro",
   sin_registrar: "Sin registrar",
 };
