@@ -1,5 +1,7 @@
 "use client";
 
+import { useI18n } from "@/app/i18n-provider";
+
 import { ProtectedLayout, AdminOnly } from "@/app/components/ProtectedLayout";
 import { Navigation } from "@/app/components/Navigation";
 import { useEffect, useState, FormEvent } from "react";
@@ -23,6 +25,8 @@ interface StockMovement {
 }
 
 export default function ProductsPage() {
+  const { t } = useI18n();
+
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -179,7 +183,7 @@ export default function ProductsPage() {
         <div className="min-h-screen bg-background">
           <div className="max-w-7xl mx-auto px-4 py-12">
             <div className="flex items-center justify-between mb-8">
-              <h1 className="text-4xl font-bold text-foreground">Productos</h1>
+              <h1 className="text-4xl font-bold text-foreground">{t("products")}</h1>
               <button
                 onClick={() => {
                   setEditingId(null);
@@ -189,7 +193,7 @@ export default function ProductsPage() {
                 }}
                 className="btn btn-primary"
               >
-                {showForm ? "Cancelar" : "Nuevo Producto"}
+                {showForm ? t("cancel") : "Nuevo Producto"}
               </button>
             </div>
 
@@ -200,7 +204,7 @@ export default function ProductsPage() {
             )}
 
             {loading ? (
-              <div className="text-gray-400">Cargando productos...</div>
+              <div className="text-gray-400">{t("loadingProducts")}</div>
             ) : (
               <div className="space-y-8">
                 {Object.entries(groupedProducts).map(([category, items]) => (
@@ -256,7 +260,7 @@ export default function ProductsPage() {
                             </button>
                             <button
                               onClick={() => handleDelete(product.id)}
-                              title="Eliminar producto"
+                              title={t("deleteProduct")}
                               className="btn btn-sm px-2 bg-error/10 text-error hover:bg-error/20"
                             >
                               🗑️
@@ -270,7 +274,7 @@ export default function ProductsPage() {
 
                 {products.length === 0 && (
                   <div className="text-center py-12">
-                    <p className="text-gray-400">No hay productos aún</p>
+                    <p className="text-gray-400">{t("noProducts")}</p>
                   </div>
                 )}
               </div>
@@ -306,7 +310,7 @@ export default function ProductsPage() {
 
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium mb-2">Nombre</label>
+                  <label className="block text-sm font-medium mb-2">{t("name")}</label>
                   <input
                     name="name"
                     type="text"
@@ -319,7 +323,7 @@ export default function ProductsPage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium mb-2">Categoría</label>
+                  <label className="block text-sm font-medium mb-2">{t("category")}</label>
                   <input
                     name="category"
                     type="text"
@@ -338,7 +342,7 @@ export default function ProductsPage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium mb-2">Precio</label>
+                  <label className="block text-sm font-medium mb-2">{t("price")}</label>
                   <input
                     name="price"
                     type="number"
@@ -377,7 +381,7 @@ export default function ProductsPage() {
         {showStockModal && selectedProduct && (
           <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm">
             <div className="bg-card border border-border w-full max-w-md rounded-t-2xl sm:rounded-2xl p-6 shadow-2xl max-h-[92dvh] overflow-y-auto safe-area-pb">
-              <h2 className="text-2xl font-bold mb-4">Ajustar Inventario</h2>
+              <h2 className="text-2xl font-bold mb-4">{t("adjustInventory")}</h2>
               <p className="text-gray-400 mb-6">Producto: <span className="text-foreground font-semibold">{selectedProduct.name}</span></p>
               
               {modalError && (
@@ -390,13 +394,13 @@ export default function ProductsPage() {
                 <div>
                   <label className="block text-sm font-medium mb-1">Tipo de Movimiento</label>
                   <select name="type" className="input w-full" required>
-                    <option value="entry">Entrada (Compra/Reposición)</option>
+                    <option value="entry">{t("stockIn")}</option>
                     <option value="exit">Salida (Ajuste manual)</option>
-                    <option value="waste">Merma/Daño</option>
+                    <option value="waste">{t("stockOut")}</option>
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">Cantidad</label>
+                  <label className="block text-sm font-medium mb-1">{t("quantity")}</label>
                   <input name="quantity" type="number" min="1" className="input w-full" placeholder="10" required />
                 </div>
                 <div>
@@ -405,7 +409,7 @@ export default function ProductsPage() {
                 </div>
                 <div className="flex gap-3 pt-4">
                   <button type="submit" disabled={adjusting} className="btn btn-primary flex-1">
-                    {adjusting ? "Guardando..." : "Confirmar"}
+                    {adjusting ? "Guardando..." : t("confirm")}
                   </button>
                   <button type="button" onClick={() => setShowStockModal(false)} className="btn btn-secondary flex-1">
                     Cancelar
@@ -429,7 +433,7 @@ export default function ProductsPage() {
                 <table className="w-full text-left min-w-[420px]">
                   <thead className="border-b border-border">
                     <tr className="text-gray-400 text-sm">
-                      <th className="py-2">Fecha</th>
+                      <th className="py-2">{t("date")}</th>
                       <th className="py-2">Tipo</th>
                       <th className="py-2">Cant.</th>
                       <th className="py-2">Motivo</th>
@@ -453,7 +457,7 @@ export default function ProductsPage() {
                       </tr>
                     ))}
                     {movements.length === 0 && (
-                      <tr><td colSpan={4} className="py-8 text-center text-gray-500">Sin movimientos registrados</td></tr>
+                      <tr><td colSpan={4} className="py-8 text-center text-gray-500">{t("noData")}</td></tr>
                     )}
                   </tbody>
                 </table>

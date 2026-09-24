@@ -1,5 +1,7 @@
 "use client";
 
+import { useI18n } from "@/app/i18n-provider";
+
 import { ProtectedLayout } from "@/app/components/ProtectedLayout";
 import { Navigation } from "@/app/components/Navigation";
 import { useAuth } from "@/app/providers";
@@ -15,6 +17,8 @@ type Org = {
 };
 
 export default function OrganizationsPage() {
+  const { t } = useI18n();
+
   const { user } = useAuth();
   const router = useRouter();
   const [orgs, setOrgs] = useState<Org[]>([]);
@@ -201,7 +205,7 @@ export default function OrganizationsPage() {
       <div className="min-h-screen bg-background">
         <div className="max-w-4xl mx-auto px-4 py-10 space-y-8">
           <div>
-            <h1 className="text-3xl font-bold text-foreground">Organizaciones</h1>
+            <h1 className="text-3xl font-bold text-foreground">{t("organizations")}</h1>
             <p className="text-gray-400 mt-1 text-sm">
               Alta de cliente: organización → sucursales → administrador del negocio. CRUD:
               renombrar, suspender, eliminar (si no tiene sucursales).
@@ -283,7 +287,7 @@ export default function OrganizationsPage() {
                 <input
                   className="input w-full"
                   type="email"
-                  placeholder="Email"
+                  placeholder={t("email")}
                   value={adminForm.email}
                   onChange={(e) => setAdminForm({ ...adminForm, email: e.target.value })}
                   required
@@ -303,7 +307,7 @@ export default function OrganizationsPage() {
                   onChange={(e) => setAdminForm({ ...adminForm, locationId: e.target.value })}
                   required
                 >
-                  <option value="">Sucursal</option>
+                  <option value="">{t("bars")}</option>
                   {locations.map((l) => (
                     <option key={l.id} value={l.id}>
                       {l.name}
@@ -325,7 +329,7 @@ export default function OrganizationsPage() {
           <div className="card">
             <h2 className="font-semibold text-lg mb-4">Listado y gestión</h2>
             {loading ? (
-              <p className="text-gray-400">Cargando...</p>
+              <p className="text-gray-400">{t("loading")}</p>
             ) : orgs.length === 0 ? (
               <p className="text-gray-400 text-sm">
                 No hay organizaciones. Usa el asistente o el SQL de migración en Neon.

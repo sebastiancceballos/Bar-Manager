@@ -1,5 +1,7 @@
 "use client";
 
+import { useI18n } from "@/app/i18n-provider";
+
 import { useEffect, useRef, useState, use as usePromise } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -42,14 +44,14 @@ interface TrackingData {
  * Pedido recibido → Pagado → En preparación → Listo para recoger → Entregado
  *
  * Nota: al cobrar, el sistema avanza a PREPARING (cocina), pero en la
- * línea de tiempo "Pagado" queda marcado como hecho.
+ * línea de tiempo t("paid") queda marcado como hecho.
  */
 const STEPS: { status: Status; label: string; icon: typeof CheckCircle2 }[] = [
-  { status: "PENDING_PAYMENT", label: "Pedido recibido", icon: CheckCircle2 },
-  { status: "PAID", label: "Pagado", icon: CreditCard },
-  { status: "PREPARING", label: "En preparación", icon: ChefHat },
-  { status: "READY", label: "Listo para recoger", icon: PartyPopper },
-  { status: "COMPLETED", label: "Entregado", icon: PackageCheck },
+  { status: "PENDING_PAYMENT", label: t("orderReceived"), icon: CheckCircle2 },
+  { status: "PAID", label: t("paid"), icon: CreditCard },
+  { status: "PREPARING", label: t("orderPreparing"), icon: ChefHat },
+  { status: "READY", label: t("orderReady"), icon: PartyPopper },
+  { status: "COMPLETED", label: t("delivered"), icon: PackageCheck },
 ];
 
 function stepIndex(status: Status): number {
@@ -172,6 +174,8 @@ export default function TrackingPage({
 }: {
   params: Promise<{ token: string }>;
 }) {
+  const { t } = useI18n();
+
   const { token } = usePromise(params);
   const [data, setData] = useState<TrackingData | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -200,7 +204,7 @@ export default function TrackingPage({
       try {
         const res = await fetch(`/api/tracking/${token}`, { cache: "no-store" });
         const json = await res.json();
-        if (!res.ok) throw new Error(json.error || "Pedido no encontrado");
+        if (!res.ok) throw new Error(json.error || t("orderNotFound"));
         if (cancelled) return;
 
         if (
@@ -258,7 +262,7 @@ export default function TrackingPage({
     return (
       <div className="min-h-screen bg-background flex flex-col items-center justify-center gap-3 text-foreground">
         <Loader2 className="w-10 h-10 text-primary animate-spin" />
-        <p>Buscando tu pedido…</p>
+        <p>{t("loadingOrder")}</p>
       </div>
     );
   }
@@ -347,7 +351,7 @@ export default function TrackingPage({
         {isCancelled ? (
           <div className="flex flex-col items-center gap-2 text-error">
             <XCircle className="w-12 h-12" />
-            <p className="font-semibold">Este pedido fue cancelado.</p>
+            <p className="font-semibold">{t("orderWasCancelled")}</p>
           </div>
         ) : (
           <>
@@ -429,7 +433,7 @@ export default function TrackingPage({
             </div>
           ))}
           <div className="flex justify-between font-bold pt-2 mt-2 border-t border-border/50">
-            <span>Total</span>
+            <span>{t("total")}</span>
             <span>{formatCOP(data.total)}</span>
           </div>
         </div>

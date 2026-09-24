@@ -1,5 +1,7 @@
 "use client";
 
+import { useI18n } from "@/app/i18n-provider";
+
 import { ProtectedLayout } from "@/app/components/ProtectedLayout";
 import { Navigation } from "@/app/components/Navigation";
 import { useEffect, useState } from "react";
@@ -27,6 +29,8 @@ interface Location {
 type NewUserRole = "admin" | "waiter" | "cashier" | "kitchen";
 
 export default function UsersPage() {
+  const { t } = useI18n();
+
   const { user } = useAuth();
   const router = useRouter();
   const [users, setUsers] = useState<User[]>([]);
@@ -96,7 +100,7 @@ export default function UsersPage() {
     : [
         { value: "waiter", label: "Mesero" },
         { value: "cashier", label: "Cajero" },
-        { value: "kitchen", label: "Comandas" },
+        { value: "kitchen", label: t("comandas") },
       ];
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -213,7 +217,7 @@ export default function UsersPage() {
       admin: "Administrador del negocio",
       waiter: "Mesero",
       cashier: "Cajero",
-      kitchen: "Comandas",
+      kitchen: t("comandas"),
     };
     return (
       <span className={`px-2 py-1 rounded text-xs font-medium ${styles[role] || ""}`}>
@@ -287,7 +291,7 @@ export default function UsersPage() {
               <Link href="/dashboard" className="text-primary hover:underline text-sm mb-2 inline-block">
                 &larr; Volver al Dashboard
               </Link>
-              <h1 className="text-4xl font-bold text-foreground">Gestionar Usuarios</h1>
+              <h1 className="text-4xl font-bold text-foreground">{t("manageUsers")}</h1>
               <p className="text-gray-400 mt-2">
                 {isOwner
                   ? "Como Superadmin puedes crear administradores de cada negocio (bar)"
@@ -298,7 +302,7 @@ export default function UsersPage() {
               onClick={() => { setShowForm(!showForm); setError(null); setSuccess(null); }}
               className="btn btn-primary"
             >
-              {showForm ? "Cancelar" : isOwner ? "Nuevo administrador del negocio" : "Nuevo usuario"}
+              {showForm ? t("cancel") : isOwner ? "Nuevo administrador del negocio" : "Nuevo usuario"}
             </button>
           </div>
 
@@ -322,7 +326,7 @@ export default function UsersPage() {
               </h2>
               <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium mb-2">Nombre completo</label>
+                  <label className="block text-sm font-medium mb-2">{t("name")}</label>
                   <input
                     type="text"
                     value={formData.name}
@@ -333,7 +337,7 @@ export default function UsersPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-2">Email</label>
+                  <label className="block text-sm font-medium mb-2">{t("email")}</label>
                   <input
                     type="email"
                     value={formData.email}
@@ -344,7 +348,7 @@ export default function UsersPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-2">Contraseña</label>
+                  <label className="block text-sm font-medium mb-2">{t("password")}</label>
                   <input
                     type="password"
                     value={formData.password}
@@ -356,13 +360,13 @@ export default function UsersPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-2">Bar asignado</label>
+                  <label className="block text-sm font-medium mb-2">{t("assignedBar")}</label>
                   <select
                     value={formData.location_id}
                     onChange={(e) => setFormData({ ...formData, location_id: e.target.value })}
                     className="input w-full"
                   >
-                    <option value="">Sin asignar</option>
+                    <option value="">{t("none")}</option>
                     {locations.map((loc) => (
                       <option key={loc.id} value={loc.id}>{loc.name}</option>
                     ))}
@@ -393,12 +397,12 @@ export default function UsersPage() {
 
           {/* Users List */}
           {loading ? (
-            <div className="text-gray-400 py-12 text-center">Cargando usuarios...</div>
+            <div className="text-gray-400 py-12 text-center">{t("loadingUsers")}</div>
           ) : isOwner && groupedByLocation ? (
             // Owner view: grouped by bar
             Object.keys(groupedByLocation).length === 0 ? (
               <div className="card text-center py-12">
-                <p className="text-gray-400">No hay usuarios registrados aun</p>
+                <p className="text-gray-400">{t("noData")}</p>
               </div>
             ) : (
               Object.entries(groupedByLocation).map(([locationName, locationUsers]) => (
@@ -412,11 +416,11 @@ export default function UsersPage() {
                     <table className="w-full min-w-[640px]">
                       <thead>
                         <tr className="border-b border-border text-sm text-gray-400">
-                          <th className="text-left py-2 px-4 font-medium">Nombre</th>
-                          <th className="text-left py-2 px-4 font-medium">Email</th>
+                          <th className="text-left py-2 px-4 font-medium">{t("name")}</th>
+                          <th className="text-left py-2 px-4 font-medium">{t("email")}</th>
                           <th className="text-left py-2 px-4 font-medium">Rol</th>
-                          <th className="text-left py-2 px-4 font-medium">Creado</th>
-                          <th className="text-left py-2 px-4 font-medium">Acciones</th>
+                          <th className="text-left py-2 px-4 font-medium">{t("date")}</th>
+                          <th className="text-left py-2 px-4 font-medium">{t("actions")}</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -435,11 +439,11 @@ export default function UsersPage() {
                 <table className="w-full min-w-[640px]">
                   <thead>
                     <tr className="border-b border-border text-sm text-gray-400">
-                      <th className="text-left py-2 px-4 font-medium">Nombre</th>
-                      <th className="text-left py-2 px-4 font-medium">Email</th>
+                      <th className="text-left py-2 px-4 font-medium">{t("name")}</th>
+                      <th className="text-left py-2 px-4 font-medium">{t("email")}</th>
                       <th className="text-left py-2 px-4 font-medium">Rol</th>
-                      <th className="text-left py-2 px-4 font-medium">Creado</th>
-                      <th className="text-left py-2 px-4 font-medium">Acciones</th>
+                      <th className="text-left py-2 px-4 font-medium">{t("date")}</th>
+                      <th className="text-left py-2 px-4 font-medium">{t("actions")}</th>
                     </tr>
                   </thead>
                   <tbody>

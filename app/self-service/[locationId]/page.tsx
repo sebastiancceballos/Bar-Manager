@@ -1,5 +1,7 @@
 "use client";
 
+import { useI18n } from "@/app/i18n-provider";
+
 import { useEffect, useMemo, useState, use as usePromise } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
@@ -39,6 +41,8 @@ export default function SelfServicePage({
 }: {
   params: Promise<{ locationId: string }>;
 }) {
+  const { t } = useI18n();
+
   const { locationId } = usePromise(params);
   const router = useRouter();
 
@@ -174,7 +178,7 @@ export default function SelfServicePage({
     return (
       <div className="min-h-screen bg-background flex flex-col items-center justify-center gap-3 text-foreground">
         <Loader2 className="w-10 h-10 text-primary animate-spin" />
-        <p>Cargando menú…</p>
+        <p>{t("loadingMenu")}</p>
       </div>
     );
   }
@@ -366,7 +370,7 @@ export default function SelfServicePage({
               {/* Footer fijo: total + confirmar siempre visibles */}
               <div className="p-4 border-t border-border shrink-0 bg-card">
                 <div className="flex justify-between text-sm mb-3">
-                  <span className="text-foreground/70">Total</span>
+                  <span className="text-foreground/70">{t("total")}</span>
                   <span className="font-bold">{formatCOP(cartTotal)}</span>
                 </div>
                 <button

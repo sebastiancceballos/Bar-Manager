@@ -1,5 +1,7 @@
 "use client";
 
+import { useI18n } from "@/app/i18n-provider";
+
 import { useEffect, useState, useCallback } from "react";
 import { useAuth } from "@/app/providers";
 import { ProtectedLayout } from "@/app/components/ProtectedLayout";
@@ -36,7 +38,7 @@ const ALLOWED_ROLES = ["owner", "admin", "cashier"];
 const TABS: { key: string; label: string }[] = [
   { key: "", label: "Todos (activos)" },
   { key: "PENDING_PAYMENT", label: "Por cobrar" },
-  { key: "PREPARING", label: "En preparación" },
+  { key: "PREPARING", label: t("orderPreparing") },
   { key: "READY", label: "Listos" },
 ];
 
@@ -107,7 +109,7 @@ function OrdersDashboardContent() {
     <div className="min-h-screen bg-background text-foreground pb-20 md:pb-8">
       <Navigation />
       <main className="max-w-5xl mx-auto px-4 py-6">
-        <h1 className="text-2xl font-bold mb-4">Caja · Pedidos de autoservicio</h1>
+        <h1 className="text-2xl font-bold mb-4">{t("selfServiceCash")}</h1>
 
         <div className="flex flex-col sm:flex-row gap-3 mb-4">
           <div className="relative flex-1">
@@ -176,21 +178,21 @@ function OrdersDashboardContent() {
                       target="_blank"
                       rel="noreferrer"
                       className="min-w-[44px] min-h-[44px] flex items-center justify-center bg-background border border-border rounded-lg"
-                      title="Imprimir ticket"
+                      title={t("printTicket")}
                     >
                       <Printer className="w-4 h-4" />
                     </a>
                     {order.status === "PENDING_PAYMENT" && (
                       <div className="flex flex-col gap-2 w-full sm:w-auto">
-                        <label className="text-xs text-gray-400">Medio de pago</label>
+                        <label className="text-xs text-gray-400">{t("paymentMethod")}</label>
                         <select
                           className="input py-1.5 text-sm"
                           value={payMethod}
                           onChange={(e) => setPayMethod(e.target.value as typeof payMethod)}
                         >
-                          <option value="efectivo">Efectivo</option>
-                          <option value="tarjeta">Tarjeta</option>
-                          <option value="transferencia">Transferencia</option>
+                          <option value="efectivo">{t("cashPayment")}</option>
+                          <option value="tarjeta">{t("card")}</option>
+                          <option value="transferencia">{t("transfer")}</option>
                           <option value="otro">Otro</option>
                         </select>
                         <div className="flex gap-2">
@@ -205,7 +207,7 @@ function OrdersDashboardContent() {
                           disabled={busyId === order.id}
                           onClick={() => setCancelTarget(order)}
                           className="min-w-[44px] min-h-[44px] flex items-center justify-center bg-background border border-border text-error rounded-lg disabled:opacity-50"
-                          title="Cancelar pedido"
+                          title={t("cancelOrder")}
                         >
                           <Ban className="w-4 h-4" />
                         </button>
@@ -282,10 +284,10 @@ function OrdersDashboardContent() {
 function StatusBadge({ status }: { status: string }) {
   const map: Record<string, { label: string; className: string }> = {
     PENDING_PAYMENT: { label: "Por cobrar", className: "bg-warning/20 text-warning" },
-    PAID: { label: "Pagado", className: "bg-primary/20 text-primary" },
-    PREPARING: { label: "En preparación", className: "bg-secondary/20 text-secondary" },
-    READY: { label: "Listo", className: "bg-success/20 text-success" },
-    COMPLETED: { label: "Entregado", className: "bg-foreground/10 text-foreground/60" },
+    PAID: { label: t("paid"), className: "bg-primary/20 text-primary" },
+    PREPARING: { label: t("orderPreparing"), className: "bg-secondary/20 text-secondary" },
+    READY: { label: t("ready"), className: "bg-success/20 text-success" },
+    COMPLETED: { label: t("delivered"), className: "bg-foreground/10 text-foreground/60" },
     CANCELLED: { label: "Cancelado", className: "bg-error/20 text-error" },
   };
   const info = map[status] || { label: status, className: "bg-foreground/10" };
@@ -293,6 +295,8 @@ function StatusBadge({ status }: { status: string }) {
 }
 
 export default function OrdersDashboardPage() {
+  const { t } = useI18n();
+
   return (
     <ProtectedLayout>
       <OrdersDashboardContent />

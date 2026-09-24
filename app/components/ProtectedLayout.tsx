@@ -1,10 +1,14 @@
 "use client";
 
+import { useI18n } from "@/app/i18n-provider";
+
 import { useAuth } from "@/app/providers";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 
 export function ProtectedLayout({ children }: { children: React.ReactNode }) {
+  const { t } = useI18n();
+
   const router = useRouter();
   const { user, isLoading } = useAuth();
 
@@ -17,7 +21,7 @@ export function ProtectedLayout({ children }: { children: React.ReactNode }) {
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-foreground">Cargando...</div>
+        <div className="text-foreground">{t("loading")}</div>
       </div>
     );
   }
@@ -36,7 +40,7 @@ export function AdminOnly({ children }: { children: React.ReactNode }) {
   if (user?.role !== "admin") {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-error">No tienes permiso para acceder aquí</div>
+        <div className="text-error">{t("noPermission")}</div>
       </div>
     );
   }

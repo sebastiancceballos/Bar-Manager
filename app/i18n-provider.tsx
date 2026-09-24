@@ -13,7 +13,6 @@ import {
   LOCALE_STORAGE_KEY,
   Locale,
   LOCALES,
-  MessageKey,
   translate,
 } from "@/lib/i18n";
 
@@ -21,7 +20,7 @@ type I18nContextValue = {
   locale: Locale;
   setLocale: (locale: Locale) => void;
   toggleLocale: () => void;
-  t: (key: MessageKey) => string;
+  t: (key: string, fallback?: string) => string;
 };
 
 const I18nContext = createContext<I18nContextValue | undefined>(undefined);
@@ -39,13 +38,11 @@ function readStoredLocale(): Locale {
 
 export function I18nProvider({ children }: { children: React.ReactNode }) {
   const [locale, setLocaleState] = useState<Locale>(DEFAULT_LOCALE);
-  const [ready, setReady] = useState(false);
 
   useEffect(() => {
     const stored = readStoredLocale();
     setLocaleState(stored);
     document.documentElement.lang = stored;
-    setReady(true);
   }, []);
 
   const setLocale = useCallback((next: Locale) => {
@@ -64,7 +61,7 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
   }, [locale, setLocale]);
 
   const t = useCallback(
-    (key: MessageKey) => translate(locale, key),
+    (key: string, fallback?: string) => translate(locale, key, fallback),
     [locale]
   );
 
@@ -72,13 +69,6 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
     () => ({ locale, setLocale, toggleLocale, t }),
     [locale, setLocale, toggleLocale, t]
   );
-
-  // Evita flash de idioma incorrecto en hidratación de textos críticos
-  if (!ready) {
-    return (
-      <I18nContext.Provider value={value}>{children}</I18nContext.Provider>
-    );
-  }
 
   return (
     <I18nContext.Provider value={value}>{children}</I18nContext.Provider>

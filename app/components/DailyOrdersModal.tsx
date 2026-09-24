@@ -1,5 +1,7 @@
 "use client";
 
+import { useI18n } from "@/app/i18n-provider";
+
 import { useEffect, useState } from "react";
 import { downloadInvoice } from "./InvoicePDF";
 
@@ -60,6 +62,8 @@ interface DailyOrdersModalProps {
 }
 
 export function DailyOrdersModal({ date, isOpen, onClose }: DailyOrdersModalProps) {
+  const { t } = useI18n();
+
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
@@ -109,9 +113,9 @@ export function DailyOrdersModal({ date, isOpen, onClose }: DailyOrdersModalProp
         {/* Content */}
         <div className="p-4 sm:p-6">
           {loading ? (
-            <div className="text-center text-gray-400">Cargando órdenes...</div>
+            <div className="text-center text-gray-400">{t("loading")}</div>
           ) : orders.length === 0 ? (
-            <div className="text-center text-gray-400">No hay órdenes para este día</div>
+            <div className="text-center text-gray-400">{t("noOrders")}</div>
           ) : (
             <div className="space-y-4">
               {orders.map((order) => (
@@ -145,7 +149,7 @@ export function DailyOrdersModal({ date, isOpen, onClose }: DailyOrdersModalProp
                     </div>
                     {order.modifier_name && order.modifier_name !== order.waiter_name && (
                       <div>
-                        <p className="text-gray-400">Última modificación</p>
+                        <p className="text-gray-400">{t("actions")}</p>
                         <p className="text-foreground">{order.modifier_name}</p>
                       </div>
                     )}
@@ -208,7 +212,7 @@ export function DailyOrdersModal({ date, isOpen, onClose }: DailyOrdersModalProp
                 </div>
                 <div>
                   <p className="text-gray-400 text-sm">
-                    {selectedOrder.order_type === "self_service" ? "Tipo / Ficho" : "Mesa"}
+                    {selectedOrder.order_type === "self_service" ? "Tipo / Ficho" : t("table")}
                   </p>
                   <p className="text-foreground font-semibold">
                     {selectedOrder.order_type === "self_service"
@@ -217,13 +221,13 @@ export function DailyOrdersModal({ date, isOpen, onClose }: DailyOrdersModalProp
                   </p>
                 </div>
                 <div>
-                  <p className="text-gray-400 text-sm">Fecha</p>
+                  <p className="text-gray-400 text-sm">{t("date")}</p>
                   <p className="text-foreground font-semibold">
                     {new Date(selectedOrder.created_at).toLocaleDateString("es-ES")}
                   </p>
                 </div>
                 <div>
-                  <p className="text-gray-400 text-sm">Hora</p>
+                  <p className="text-gray-400 text-sm">{t("time")}</p>
                   <p className="text-foreground font-semibold">
                     {new Date(selectedOrder.created_at).toLocaleTimeString("es-ES")}
                   </p>
@@ -258,13 +262,13 @@ export function DailyOrdersModal({ date, isOpen, onClose }: DailyOrdersModalProp
 
               {/* Items */}
               <div>
-                <p className="text-foreground font-semibold mb-3">Productos</p>
+                <p className="text-foreground font-semibold mb-3">{t("products")}</p>
                 <div className="bg-card rounded border border-border overflow-hidden">
                   <div className="grid grid-cols-[minmax(0,2fr)_auto_auto] sm:grid-cols-[minmax(0,2fr)_auto_auto_auto] gap-2 bg-card/50 p-3 border-b border-border font-semibold text-xs sm:text-sm text-gray-300">
-                    <div>Producto</div>
+                    <div>{t("product")}</div>
                     <div className="text-center">Cant.</div>
-                    <div className="hidden sm:block text-right">Precio</div>
-                    <div className="text-right">Subtotal</div>
+                    <div className="hidden sm:block text-right">{t("price")}</div>
+                    <div className="text-right">{t("subtotal")}</div>
                   </div>
                   {selectedOrder.items.map((item) => (
                     <div
@@ -285,7 +289,7 @@ export function DailyOrdersModal({ date, isOpen, onClose }: DailyOrdersModalProp
               {/* Total */}
               <div className="flex justify-end">
                 <div className="text-right">
-                  <p className="text-gray-400 text-sm mb-2">Total</p>
+                  <p className="text-gray-400 text-sm mb-2">{t("total")}</p>
                   <p className="text-3xl font-bold text-success">
                     {formatCOP(Number(selectedOrder.total_amount))}
                   </p>

@@ -1,5 +1,7 @@
 "use client";
 
+import { useI18n } from "@/app/i18n-provider";
+
 import { useEffect, useState } from "react";
 import { useAuth } from "@/app/providers";
 
@@ -10,6 +12,8 @@ type Loc = { id: number; name: string };
  * Visible si el usuario tiene más de un local accesible (admin multi-sucursal o superadmin).
  */
 export function LocationSwitcher() {
+  const { t } = useI18n();
+
   const { user, refreshUser } = useAuth();
   const [locations, setLocations] = useState<Loc[]>([]);
   const [activeId, setActiveId] = useState<number | null>(null);

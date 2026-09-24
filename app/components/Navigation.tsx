@@ -270,7 +270,7 @@ export function Navigation() {
               <button
                 onClick={handleLogout}
                 className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-sm font-medium text-error hover:bg-error/10"
-                title="Cerrar sesión"
+                title={t("logout")}
               >
                 <LogOut className="w-4 h-4" />
               </button>

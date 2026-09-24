@@ -1,5 +1,7 @@
 "use client";
 
+import { useI18n } from "@/app/i18n-provider";
+
 import { ProtectedLayout } from "@/app/components/ProtectedLayout";
 import { Navigation } from "@/app/components/Navigation";
 import { useEffect, useState } from "react";
@@ -25,7 +27,7 @@ const STATUS_LABELS: Record<string, string> = {
   confirmada: "Confirmada",
   cancelada: "Cancelada",
   completada: "Completada",
-  no_show: "No llegó",
+  no_show: t("pending"),
 };
 
 const STATUS_STYLES: Record<string, string> = {
@@ -69,6 +71,8 @@ function getTodayDate(): string {
 }
 
 export default function ReservasPage() {
+  const { t } = useI18n();
+
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [tables, setTables] = useState<TableOption[]>([]);
   const [loading, setLoading] = useState(true);
@@ -193,11 +197,11 @@ export default function ReservasPage() {
         <div className="max-w-3xl mx-auto px-4 py-8 space-y-6">
           <div className="flex justify-between items-center">
             <div>
-              <h1 className="text-3xl font-bold text-foreground">Reservas</h1>
-              <p className="text-sm text-gray-400 mt-1">Próximas reservas de mesa</p>
+              <h1 className="text-3xl font-bold text-foreground">{t("reservations")}</h1>
+              <p className="text-sm text-gray-400 mt-1">{t("reservations")}</p>
             </div>
             <button onClick={() => setShowForm(!showForm)} className="btn btn-primary">
-              {showForm ? "Cancelar" : "Nueva Reserva"}
+              {showForm ? t("cancel") : "Nueva Reserva"}
             </button>
           </div>
 
@@ -211,7 +215,7 @@ export default function ReservasPage() {
             <form onSubmit={handleCreate} className="card space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium mb-2">Nombre del cliente</label>
+                  <label className="block text-sm font-medium mb-2">{t("guestName")}</label>
                   <input
                     className="input w-full"
                     required
@@ -234,7 +238,7 @@ export default function ReservasPage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium mb-2">Número de personas</label>
+                  <label className="block text-sm font-medium mb-2">{t("partySize")}</label>
                   <input
                     type="number"
                     min="1"
@@ -251,7 +255,7 @@ export default function ReservasPage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium mb-2">Fecha</label>
+                  <label className="block text-sm font-medium mb-2">{t("date")}</label>
                   <input
                     type="date"
                     required
@@ -270,7 +274,7 @@ export default function ReservasPage() {
                     value={reservationHour}
                     onChange={(e) => setReservationHour(e.target.value)}
                   >
-                    <option value="">Selecciona una hora</option>
+                    <option value="">{t("time")}</option>
                     {getTimeSlots().map((slot) => {
                       const h = parseInt(slot.split(":")[0]);
                       const period = h < 12 ? "a.m." : "p.m.";
@@ -294,7 +298,7 @@ export default function ReservasPage() {
                     value={tableId}
                     onChange={(e) => setTableId(e.target.value)}
                   >
-                    <option value="">Sin asignar todavía</option>
+                    <option value="">{t("none")}</option>
                     {tables.map((t) => (
                       <option key={t.id} value={t.id}>
                         Mesa {t.table_number} (máx. {t.capacity} personas)
@@ -305,7 +309,7 @@ export default function ReservasPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-2">Notas</label>
+                <label className="block text-sm font-medium mb-2">{t("notes")}</label>
                 <input
                   className="input w-full"
                   placeholder="Ej: mesa junto a la ventana"
@@ -319,7 +323,7 @@ export default function ReservasPage() {
                 disabled={submitting || exceedsCapacity}
                 className="btn btn-primary w-full disabled:opacity-50"
               >
-                {submitting ? "Guardando..." : "Guardar Reserva"}
+                {submitting ? "Guardando..." : t("saveReservation")}
               </button>
             </form>
           )}
@@ -327,7 +331,7 @@ export default function ReservasPage() {
           {loading ? (
             <div className="card animate-pulse h-40" />
           ) : reservations.length === 0 ? (
-            <div className="card text-center text-gray-400 py-12">No hay reservas próximas</div>
+            <div className="card text-center text-gray-400 py-12">{t("noData")}</div>
           ) : (
             <div className="space-y-3">
               {reservations.map((r) => (
@@ -348,8 +352,8 @@ export default function ReservasPage() {
                     {r.status === "confirmada" && (
                       <div className="flex flex-wrap gap-1.5">
                         <button onClick={() => handleStatusChange(r.id, "completada")} className="btn btn-sm btn-outline text-xs">Llegó</button>
-                        <button onClick={() => handleStatusChange(r.id, "no_show")} className="btn btn-sm btn-outline text-xs">No llegó</button>
-                        <button onClick={() => handleStatusChange(r.id, "cancelada")} className="btn btn-sm bg-error/10 text-error text-xs">Cancelar</button>
+                        <button onClick={() => handleStatusChange(r.id, "no_show")} className="btn btn-sm btn-outline text-xs">{t("pending")}</button>
+                        <button onClick={() => handleStatusChange(r.id, "cancelada")} className="btn btn-sm bg-error/10 text-error text-xs">{t("cancel")}</button>
                       </div>
                     )}
                   </div>

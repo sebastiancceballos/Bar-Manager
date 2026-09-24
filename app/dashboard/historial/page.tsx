@@ -1,5 +1,7 @@
 "use client";
 
+import { useI18n } from "@/app/i18n-provider";
+
 import { ProtectedLayout } from "@/app/components/ProtectedLayout";
 import { Navigation } from "@/app/components/Navigation";
 import { useEffect, useState } from "react";
@@ -15,9 +17,9 @@ const formatCOP = (value: number) =>
   }).format(value);
 
 const PAYMENT_LABELS: Record<string, string> = {
-  efectivo: "Efectivo",
-  tarjeta: "Tarjeta",
-  transferencia: "Transferencia",
+  efectivo: t("cashPayment"),
+  tarjeta: t("card"),
+  transferencia: t("transfer"),
   otro: "Otro",
 };
 
@@ -47,6 +49,8 @@ interface TodayTicket {
 }
 
 export default function HistorialPage() {
+  const { t } = useI18n();
+
   const { user, isLoading } = useAuth();
   const router = useRouter();
   const [tickets, setTickets] = useState<TodayTicket[]>([]);
@@ -125,7 +129,7 @@ export default function HistorialPage() {
     return (
       <ProtectedLayout>
         <Navigation />
-        <div className="p-8 text-gray-400">Cargando…</div>
+        <div className="p-8 text-gray-400">{t("loading")}</div>
       </ProtectedLayout>
     );
   }
@@ -136,7 +140,7 @@ export default function HistorialPage() {
       <div className="min-h-screen bg-background">
         <div className="max-w-2xl mx-auto px-4 py-12 space-y-6">
           <div className="flex items-center justify-between gap-3 flex-wrap">
-            <h1 className="text-4xl font-bold text-foreground">Historial</h1>
+            <h1 className="text-4xl font-bold text-foreground">{t("history")}</h1>
             <button
               type="button"
               className="btn btn-outline btn-sm"
@@ -148,10 +152,10 @@ export default function HistorialPage() {
           </div>
 
           <section className="space-y-3">
-            <h2 className="text-xl font-semibold">Pedidos de hoy</h2>
+            <h2 className="text-xl font-semibold">{t("todayOrders")}</h2>
             <p className="text-sm text-gray-400">
               Cobros de hoy de tu local. Usa{" "}
-              <strong className="text-foreground">Imprimir</strong> si falló la
+              <strong className="text-foreground">{t("print")}</strong> si falló la
               impresora o el cliente pide otra copia.
             </p>
             <input
@@ -167,7 +171,7 @@ export default function HistorialPage() {
               </div>
             )}
             {loading && tickets.length === 0 ? (
-              <p className="text-gray-400 text-sm">Cargando pedidos…</p>
+              <p className="text-gray-400 text-sm">{t("loading")}</p>
             ) : filtered.length === 0 ? (
               <p className="text-gray-500 text-sm">
                 No hay cobros de hoy para mostrar.

@@ -1,5 +1,7 @@
 "use client";
 
+import { useI18n } from "@/app/i18n-provider";
+
 import { ProtectedLayout } from "@/app/components/ProtectedLayout";
 import { Navigation } from "@/app/components/Navigation";
 import { useEffect, useState } from "react";
@@ -32,6 +34,8 @@ interface Totals {
 }
 
 export default function OwnerPanel() {
+  const { t } = useI18n();
+
   const { user } = useAuth();
   const router = useRouter();
   const [bars, setBars] = useState<Bar[]>([]);
@@ -98,7 +102,7 @@ export default function OwnerPanel() {
 
           <div className="mb-8">
             <h1 className="text-4xl font-bold text-foreground">Panel Superadmin</h1>
-            <p className="text-gray-400 mt-1">Vista consolidada de todos tus bares</p>
+            <p className="text-gray-400 mt-1">{t("orgSummary")}</p>
           </div>
 
           {error && (
@@ -111,23 +115,23 @@ export default function OwnerPanel() {
           {totals && (
             <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-10">
               <div className="card text-center">
-                <p className="text-gray-400 text-xs mb-1">Bares totales</p>
+                <p className="text-gray-400 text-xs mb-1">{t("totalBars")}</p>
                 <p className="text-3xl font-bold text-primary">{totals.totalBars}</p>
               </div>
               <div className="card text-center">
-                <p className="text-gray-400 text-xs mb-1">Bares activos</p>
+                <p className="text-gray-400 text-xs mb-1">{t("activeBars")}</p>
                 <p className="text-3xl font-bold text-green-400">{totals.activeBars}</p>
               </div>
               <div className="card text-center">
-                <p className="text-gray-400 text-xs mb-1">Órdenes hoy</p>
+                <p className="text-gray-400 text-xs mb-1">{t("ordersToday")}</p>
                 <p className="text-3xl font-bold text-secondary">{totals.ordersToday}</p>
               </div>
               <div className="card text-center col-span-2 md:col-span-1">
-                <p className="text-gray-400 text-xs mb-1">Ingresos hoy (todos los bares)</p>
+                <p className="text-gray-400 text-xs mb-1">{t("revenueTodayAll")}</p>
                 <p className="text-2xl font-bold text-green-400">{formatCOP(totals.revenueToday)}</p>
               </div>
               <div className="card text-center col-span-2 md:col-span-1">
-                <p className="text-gray-400 text-xs mb-1">Ingresos este mes</p>
+                <p className="text-gray-400 text-xs mb-1">{t("revenueMonth")}</p>
                 <p className="text-2xl font-bold text-primary">{formatCOP(totals.revenueMonth)}</p>
               </div>
             </div>
@@ -137,7 +141,7 @@ export default function OwnerPanel() {
           <h2 className="text-xl font-semibold text-foreground mb-4">Bares</h2>
 
           {loading ? (
-            <div className="text-gray-400">Cargando...</div>
+            <div className="text-gray-400">{t("loading")}</div>
           ) : bars.length === 0 ? (
             <div className="card text-center py-12">
               <p className="text-gray-400">No hay bares registrados.</p>
@@ -178,7 +182,7 @@ export default function OwnerPanel() {
                   {/* Stats grid */}
                   <div className="grid grid-cols-3 gap-3 mb-4">
                     <div className="bg-background/50 rounded-lg p-3 text-center">
-                      <p className="text-gray-400 text-xs mb-1">Mesas</p>
+                      <p className="text-gray-400 text-xs mb-1">{t("tables")}</p>
                       <p className="font-bold text-foreground">
                         {bar.occupiedTables}<span className="text-gray-500 font-normal text-xs">/{bar.totalTables}</span>
                       </p>
@@ -190,7 +194,7 @@ export default function OwnerPanel() {
                       <p className="text-gray-500 text-xs">{bar.adminCount} admin · {bar.waiterCount} mes.</p>
                     </div>
                     <div className="bg-background/50 rounded-lg p-3 text-center">
-                      <p className="text-gray-400 text-xs mb-1">Órdenes hoy</p>
+                      <p className="text-gray-400 text-xs mb-1">{t("ordersToday")}</p>
                       <p className="font-bold text-secondary">{bar.ordersToday}</p>
                     </div>
                   </div>
@@ -198,11 +202,11 @@ export default function OwnerPanel() {
                   {/* Revenue */}
                   <div className="grid grid-cols-2 gap-3">
                     <div className="bg-green-500/5 border border-green-500/20 rounded-lg p-3">
-                      <p className="text-gray-400 text-xs mb-1">Ingresos hoy</p>
+                      <p className="text-gray-400 text-xs mb-1">{t("revenueToday")}</p>
                       <p className="font-bold text-green-400 text-sm">{formatCOP(bar.revenueToday)}</p>
                     </div>
                     <div className="bg-primary/5 border border-primary/20 rounded-lg p-3">
-                      <p className="text-gray-400 text-xs mb-1">Ingresos mes</p>
+                      <p className="text-gray-400 text-xs mb-1">{t("revenueMonth")}</p>
                       <p className="font-bold text-primary text-sm">{formatCOP(bar.revenueMonth)}</p>
                     </div>
                   </div>

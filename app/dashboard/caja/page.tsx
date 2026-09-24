@@ -1,5 +1,7 @@
 "use client";
 
+import { useI18n } from "@/app/i18n-provider";
+
 import { ProtectedLayout } from "@/app/components/ProtectedLayout";
 import { Navigation } from "@/app/components/Navigation";
 import { useEffect, useState } from "react";
@@ -26,6 +28,8 @@ interface CashSession {
 }
 
 export default function CajaPage() {
+  const { t } = useI18n();
+
   const [open, setOpen] = useState<CashSession | null>(null);
   const [history, setHistory] = useState<CashSession[]>([]);
   const [loading, setLoading] = useState(true);
@@ -107,7 +111,7 @@ export default function CajaPage() {
       <Navigation />
       <div className="min-h-screen bg-background">
         <div className="max-w-2xl mx-auto px-4 py-12 space-y-8">
-          <h1 className="text-4xl font-bold text-foreground">Caja</h1>
+          <h1 className="text-4xl font-bold text-foreground">{t("cash")}</h1>
 
           {error && (
             <div className="bg-error/10 border border-error text-error text-sm px-3 py-2 rounded">
@@ -116,7 +120,7 @@ export default function CajaPage() {
           )}
 
           {loading ? (
-            <p className="text-gray-400">Cargando…</p>
+            <p className="text-gray-400">{t("loading")}</p>
           ) : open ? (
             <div className="card space-y-4">
               <span className="text-xs font-bold uppercase px-2 py-1 rounded-full bg-success/10 text-success">
@@ -143,7 +147,7 @@ export default function CajaPage() {
                     setClosingAmount(onMoneyKeyInput(e.target.value))
                   }
                 />
-                <label className="block text-sm font-medium">Notas</label>
+                <label className="block text-sm font-medium">{t("notes")}</label>
                 <input
                   type="text"
                   className="input w-full"
@@ -156,7 +160,7 @@ export default function CajaPage() {
                   disabled={submitting || !closingAmount}
                   className="btn btn-primary w-full disabled:opacity-50"
                 >
-                  {submitting ? "Cerrando..." : "Cerrar turno y hacer arqueo"}
+                  {submitting ? "Cerrando..." : t("closeCashSession")}
                 </button>
               </div>
             </div>
@@ -183,14 +187,14 @@ export default function CajaPage() {
                 disabled={submitting}
                 className="btn btn-primary w-full disabled:opacity-50"
               >
-                {submitting ? "Abriendo..." : "Abrir turno de caja"}
+                {submitting ? "Abriendo..." : t("openCashSession")}
               </button>
             </div>
           )}
 
           {history.length > 0 && (
             <div>
-              <h2 className="text-xl font-semibold mb-3">Historial de turnos</h2>
+              <h2 className="text-xl font-semibold mb-3">{t("shiftHistory")}</h2>
               <div className="space-y-3">
                 {history.map((h) => (
                   <div

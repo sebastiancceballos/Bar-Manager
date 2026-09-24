@@ -1,5 +1,7 @@
 "use client";
 
+import { useI18n } from "@/app/i18n-provider";
+
 import { ProtectedLayout } from "@/app/components/ProtectedLayout";
 import { Navigation } from "@/app/components/Navigation";
 import { useEffect, useState } from "react";
@@ -24,6 +26,8 @@ const ACTION_LABELS: Record<string, string> = {
 };
 
 export default function AuditoriaPage() {
+  const { t } = useI18n();
+
   const [entries, setEntries] = useState<AuditEntry[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -39,13 +43,13 @@ export default function AuditoriaPage() {
       <Navigation />
       <div className="min-h-screen bg-background">
         <div className="max-w-4xl mx-auto px-4 py-8">
-          <h1 className="text-3xl font-bold text-foreground mb-1">Bitácora de Auditoría</h1>
+          <h1 className="text-3xl font-bold text-foreground mb-1">{t("auditLog")}</h1>
           <p className="text-sm text-gray-400 mb-6">Registro de acciones sensibles (cobros, descuentos, caja, usuarios)</p>
 
           {loading ? (
             <div className="card animate-pulse h-40" />
           ) : entries.length === 0 ? (
-            <div className="card text-center text-gray-400 py-12">Sin registros todavía</div>
+            <div className="card text-center text-gray-400 py-12">{t("noData")}</div>
           ) : (
             <div className="space-y-2">
               {entries.map((e) => (

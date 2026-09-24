@@ -1,5 +1,7 @@
 "use client";
 
+import { useI18n } from "@/app/i18n-provider";
+
 import { ProtectedLayout } from "@/app/components/ProtectedLayout";
 import { Navigation } from "@/app/components/Navigation";
 import { useEffect, useState, useCallback } from "react";
@@ -80,6 +82,8 @@ function SelfServiceLinkCard() {
 }
 
 export default function DashboardPage() {
+  const { t } = useI18n();
+
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [lowStockProducts, setLowStockProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -178,7 +182,7 @@ export default function DashboardPage() {
                   <div className="space-y-3">
                     {lowStockProducts.length === 0 ? (
                       <div className="py-8 text-center border border-dashed border-border rounded-xl">
-                        <p className="text-gray-500 text-sm italic">Inventario al día ✨</p>
+                        <p className="text-gray-500 text-sm italic">{t("inventoryOk")}</p>
                       </div>
                     ) : (
                       lowStockProducts.map(p => (
@@ -252,7 +256,7 @@ export default function DashboardPage() {
                       <Package size={36} />
                     </div>
                     <div>
-                      <h3 className="text-2xl font-bold text-foreground mb-2">Productos</h3>
+                      <h3 className="text-2xl font-bold text-foreground mb-2">{t("products")}</h3>
                       <p className="text-gray-400 text-sm leading-relaxed">
                         Inventario, precios y categorías del menú
                       </p>
@@ -267,7 +271,7 @@ export default function DashboardPage() {
                       <TableProperties size={36} />
                     </div>
                     <div>
-                      <h3 className="text-2xl font-bold text-foreground mb-2">Mesas</h3>
+                      <h3 className="text-2xl font-bold text-foreground mb-2">{t("tables")}</h3>
                       <p className="text-gray-400 text-sm leading-relaxed">
                         Layout de mesas y ocupación en vivo
                       </p>
@@ -282,7 +286,7 @@ export default function DashboardPage() {
                       <BarChart3 size={36} />
                     </div>
                     <div>
-                      <h3 className="text-2xl font-bold text-foreground mb-2">Reportes</h3>
+                      <h3 className="text-2xl font-bold text-foreground mb-2">{t("reports")}</h3>
                       <p className="text-gray-400 text-sm leading-relaxed">
                         Ventas detalladas y cierres de caja
                       </p>
@@ -297,7 +301,7 @@ export default function DashboardPage() {
                       <Users size={36} />
                     </div>
                     <div>
-                      <h3 className="text-2xl font-bold text-foreground mb-2">Usuarios</h3>
+                      <h3 className="text-2xl font-bold text-foreground mb-2">{t("users")}</h3>
                       <p className="text-gray-400 text-sm leading-relaxed">
                         Gestión de administradores y meseros
                       </p>
@@ -314,8 +318,8 @@ export default function DashboardPage() {
                       <Beer size={24} />
                     </div>
                     <div>
-                      <h3 className="text-lg font-bold text-foreground">Gestionar Bares</h3>
-                      <p className="text-gray-400 text-xs">Administración global del proyecto</p>
+                      <h3 className="text-lg font-bold text-foreground">{t("manageBars")}</h3>
+                      <p className="text-gray-400 text-xs">{t("globalAdmin")}</p>
                     </div>
                   </Link>
                 )}

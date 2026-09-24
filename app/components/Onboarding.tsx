@@ -1,5 +1,7 @@
 "use client";
 
+import { useI18n } from "@/app/i18n-provider";
+
 import React, { useState, useEffect } from "react";
 import { Joyride, Step, STATUS } from "react-joyride";
 import { useAuth } from "@/app/providers";
@@ -110,7 +112,7 @@ export const Onboarding: React.FC = () => {
       }}
       locale={{
         back: "Atrás",
-        close: "Cerrar",
+        close: t("close"),
         last: "Finalizar",
         next: "Siguiente",
         skip: "Saltar tour",

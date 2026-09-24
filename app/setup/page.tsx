@@ -1,8 +1,12 @@
 "use client";
 
+import { useI18n } from "@/app/i18n-provider";
+
 import { useEffect, useState } from "react";
 
 export default function SetupPage() {
+  const { t } = useI18n();
+
   const [status, setStatus] = useState<string>("Fixing passwords...");
   const [result, setResult] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);

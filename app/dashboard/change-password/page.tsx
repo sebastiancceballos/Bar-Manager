@@ -1,9 +1,13 @@
 "use client";
 
+import { useI18n } from "@/app/i18n-provider";
+
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
 export default function ChangePasswordPage() {
+  const { t } = useI18n();
+
   const router = useRouter();
   const [newPassword, setNewPassword] = useState("");
   const [confirm, setConfirm] = useState("");
@@ -52,7 +56,7 @@ export default function ChangePasswordPage() {
           </div>
         )}
         <div>
-          <label className="text-sm">Nueva contraseña</label>
+          <label className="text-sm">{t("newPassword")}</label>
           <input
             type="password"
             className="input w-full mt-1"
@@ -64,7 +68,7 @@ export default function ChangePasswordPage() {
           />
         </div>
         <div>
-          <label className="text-sm">Confirmar</label>
+          <label className="text-sm">{t("confirm")}</label>
           <input
             type="password"
             className="input w-full mt-1"
@@ -76,7 +80,7 @@ export default function ChangePasswordPage() {
           />
         </div>
         <button type="submit" className="btn btn-primary w-full" disabled={loading}>
-          {loading ? "Guardando..." : "Guardar y continuar"}
+          {loading ? "Guardando..." : t("saveChanges")}
         </button>
       </form>
     </div>

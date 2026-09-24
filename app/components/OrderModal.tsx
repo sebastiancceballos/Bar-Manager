@@ -1,5 +1,7 @@
 "use client";
 
+import { useI18n } from "@/app/i18n-provider";
+
 import { useEffect, useState } from "react";
 import { Skeleton } from "./Skeleton";
 import { useAuth } from "@/app/providers";
@@ -62,10 +64,10 @@ const formatCOP = (value: number) =>
   new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", minimumFractionDigits: 0 }).format(value);
 
 const PAYMENT_METHODS = [
-  { value: "efectivo", label: "Efectivo" },
-  { value: "tarjeta", label: "Tarjeta" },
-  { value: "transferencia", label: "Transferencia" },
-  { value: "otro", label: "Otro" },
+  { value: "efectivo", labelKey: "cashPayment" },
+  { value: "tarjeta", labelKey: "card" },
+  { value: "transferencia", labelKey: "transfer" },
+  { value: "otro", labelKey: "other" },
 ];
 
 export function OrderModal({
@@ -78,6 +80,8 @@ export function OrderModal({
   open,
   availableTables = [],
 }: OrderModalProps) {
+  const { t } = useI18n();
+
   const { user } = useAuth();
   const [products, setProducts] = useState<Product[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>("");
@@ -285,7 +289,7 @@ export function OrderModal({
       payment_method: order.payment_method,
       items: (order.items || []).map((it: any) => ({
         id: it.id,
-        product_name: it.product?.name || it.product_name || "Producto",
+        product_name: it.product?.name || it.product_name || t("product"),
         quantity: it.quantity,
         price: it.price,
         notes: it.notes,
@@ -346,7 +350,7 @@ export function OrderModal({
           ...paid,
           items: (paid.items || order.items || []).map((it: any) => ({
             id: it.id,
-            product_name: it.product?.name || it.product_name || it.name || "Producto",
+            product_name: it.product?.name || it.product_name || it.name || t("product"),
             quantity: it.quantity,
             price: it.price,
             notes: it.notes,
@@ -428,7 +432,7 @@ export function OrderModal({
           payment_method: method,
           items: (order.items || []).map((it: any) => ({
             id: it.id,
-            product_name: it.product?.name || it.product_name || "Producto",
+            product_name: it.product?.name || it.product_name || t("product"),
             quantity: it.quantity,
             price: it.price,
             notes: it.notes,
@@ -521,7 +525,7 @@ export function OrderModal({
               <h3 className="text-lg font-semibold mb-4">Orden Actual</h3>
               <div className="space-y-2 mb-4">
                 {order.items.length === 0 ? (
-                  <p className="text-gray-400">No hay items en la orden</p>
+                  <p className="text-gray-400">{t("emptyOrder")}</p>
                 ) : (
                   order.items.map((item) => (
                     <div
@@ -546,7 +550,7 @@ export function OrderModal({
                         <button
                           onClick={() => handleRemoveItem(item.id)}
                           disabled={updating}
-                          title="Eliminar todo"
+                          title={t("removeAll")}
                           className="min-w-[44px] min-h-[44px] rounded-lg bg-error/10 text-error hover:bg-error/20 disabled:opacity-50 flex items-center justify-center font-semibold"
                         >
                           ✕
@@ -559,7 +563,7 @@ export function OrderModal({
 
               <div className="bg-background p-4 rounded mb-4 border border-border">
                 <div className="flex items-center justify-between mb-2">
-                  <p className="text-gray-400">Total</p>
+                  <p className="text-gray-400">{t("total")}</p>
                   {order.status === "bill_requested" ? (
                     <span className="text-xs font-bold uppercase px-2 py-1 rounded bg-warning/20 text-warning border border-warning/40">
                       Cuenta pedida
@@ -577,7 +581,7 @@ export function OrderModal({
 
               {/* Estados manuales */}
               <div className="flex flex-col gap-2 mb-3">
-                <p className="text-xs text-gray-400 uppercase tracking-wide">Estado de la cuenta</p>
+                <p className="text-xs text-gray-400 uppercase tracking-wide">{t("billStatus")}</p>
                 <div className="flex flex-wrap gap-2">
                   {canRequestBill && (
                     <button
@@ -590,7 +594,7 @@ export function OrderModal({
                           : "btn-outline"
                       }`}
                     >
-                      {statusUpdating ? "..." : order.status === "bill_requested" ? "✓ Cuenta pedida" : "Cuenta pedida"}
+                      {statusUpdating ? "..." : order.status === "bill_requested" ? t("billRequested") : t("billRequested")}
                     </button>
                   )}
                   {canCharge && (
@@ -623,7 +627,7 @@ export function OrderModal({
                     onClick={handlePrintTicket}
                     disabled={updating || !order.items?.length}
                     className="btn btn-outline flex-1 min-w-[120px] disabled:opacity-50"
-                    title="Imprimir precuenta o ticket"
+                    title={t("printTicket")}
                   >
                     🖨 Imprimir
                   </button>
@@ -634,7 +638,7 @@ export function OrderModal({
                     disabled={updating || !order.items?.length}
                     className="btn btn-primary flex-1 min-w-[140px] disabled:opacity-50"
                   >
-                    {updating ? "Procesando..." : "Cobrar y Cerrar"}
+                    {updating ? t("loading") : t("chargeAndClose")}
                   </button>
                 )}
                 {availableTables.length > 0 && (
@@ -657,7 +661,7 @@ export function OrderModal({
 
           {/* Add Items */}
           <div>
-            <h3 className="text-lg font-semibold mb-4">Agregar Items</h3>
+            <h3 className="text-lg font-semibold mb-4">{t("addItems")}</h3>
 
             {loading ? (
               <div className="grid grid-cols-2 gap-4">
@@ -782,14 +786,14 @@ export function OrderModal({
                     onClick={() => setPaymentMethod(m.value)}
                     className={`btn btn-sm ${paymentMethod === m.value ? "btn-primary" : "btn-outline"}`}
                   >
-                    {m.label}
+                    {t(m.labelKey)}
                   </button>
                 ))}
               </div>
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-2">Propina</label>
+              <label className="block text-sm font-medium mb-2">{t("notes")}</label>
               <input
                 type="text"
                 inputMode="numeric"
@@ -850,23 +854,23 @@ export function OrderModal({
 
             <div className="bg-background p-4 rounded border border-border text-sm space-y-2">
               <div className="flex justify-between text-gray-400">
-                <span>Subtotal</span>
+                <span>{t("subtotal")}</span>
                 <span>{formatCOP(Number(order.total_amount))}</span>
               </div>
               {(parseMoneyInput(discountAmount) || 0) > 0 && (
                 <div className="flex justify-between text-warning">
-                  <span>Descuento</span>
+                  <span>{t("discount")}</span>
                   <span>-{formatCOP(parseMoneyInput(discountAmount) || 0)}</span>
                 </div>
               )}
               {(parseMoneyInput(tipAmount) || 0) > 0 && (
                 <div className="flex justify-between text-gray-400">
-                  <span>Propina</span>
+                  <span>{t("notes")}</span>
                   <span>{formatCOP(parseMoneyInput(tipAmount) || 0)}</span>
                 </div>
               )}
               <div className="flex justify-between font-bold text-foreground text-base pt-1 border-t border-border">
-                <span>Total a pagar</span>
+                <span>{t("total")}</span>
                 <span>
                   {formatCOP(
                     Math.max(
@@ -894,8 +898,8 @@ export function OrderModal({
                 />
                 <div className="space-y-1.5">
                   <p className="text-xs text-gray-400 leading-relaxed">
-                    <span className="font-semibold text-foreground/80">Botones rápidos:</span>{" "}
-                    <strong>Exacto</strong> pone el total a pagar.
+                    <span className="font-semibold text-foreground/80">{t("quickButtons")}</span>{" "}
+                    <strong>{t("exact")}</strong> pone el total a pagar.
                     Los botones <strong>+1.000</strong>, <strong>+5.000</strong>, etc. suman billetes
                     al monto (puedes pulsar varias veces). El vuelto se calcula solo.
                   </p>
@@ -945,7 +949,7 @@ export function OrderModal({
                         : "bg-error/10 border-error/30 text-error"
                     }`}
                   >
-                    <p className="text-xs uppercase tracking-wide opacity-80">Vuelto a devolver</p>
+                    <p className="text-xs uppercase tracking-wide opacity-80">{t("amountToReturn")}</p>
                     <p className="text-2xl font-black">
                       {formatCOP(
                         Math.max(
@@ -973,7 +977,7 @@ export function OrderModal({
                 disabled={updating}
                 className="btn btn-primary w-full min-h-[48px] text-base font-semibold disabled:opacity-50"
               >
-                {updating ? "Procesando..." : "Confirmar cobro"}
+                {updating ? t("loading") : t("confirmCharge")}
               </button>
             </div>
           </div>
@@ -1081,7 +1085,7 @@ export function OrderModal({
               value={transferTargetId}
               onChange={(e) => setTransferTargetId(e.target.value)}
             >
-              <option value="">Selecciona una mesa</option>
+              <option value="">{t("table")}</option>
               {availableTables.map((t) => (
                 <option key={t.id} value={t.id}>Mesa {t.table_number}</option>
               ))}
@@ -1092,7 +1096,7 @@ export function OrderModal({
               disabled={updating || !transferTargetId}
               className="btn btn-primary w-full disabled:opacity-50"
             >
-              {updating ? "Transfiriendo..." : "Confirmar transferencia"}
+              {updating ? t("loading") : t("transferConfirm")}
             </button>
           </div>
         </div>

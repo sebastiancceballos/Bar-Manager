@@ -1,5 +1,7 @@
 "use client";
 
+import { useI18n } from "@/app/i18n-provider";
+
 import { ProtectedLayout } from "@/app/components/ProtectedLayout";
 import { Navigation } from "@/app/components/Navigation";
 import { useEffect, useState, useCallback, useMemo, useRef } from "react";
@@ -51,8 +53,8 @@ const STATUS_FLOW: Record<
 > = {
   pendiente: { next: "preparando", label: "Pendiente", actionLabel: "Empezar" },
   preparando: { next: "listo", label: "Preparando", actionLabel: "Marcar listo" },
-  listo: { next: "entregado", label: "Listo", actionLabel: "Entregar" },
-  entregado: { next: null, label: "Entregado", actionLabel: "" },
+  listo: { next: "entregado", label: t("ready"), actionLabel: "Entregar" },
+  entregado: { next: null, label: t("delivered"), actionLabel: "" },
 };
 
 const STATUS_STYLES: Record<ItemStatus, string> = {
@@ -63,8 +65,8 @@ const STATUS_STYLES: Record<ItemStatus, string> = {
 };
 
 const SS_STATUS_LABEL: Record<string, string> = {
-  PAID: "Pagado — por preparar",
-  PREPARING: "En preparación",
+  PAID: t("orderPaid"),
+  PREPARING: t("orderPreparing"),
   READY: "Listo — esperando entrega",
 };
 
@@ -95,7 +97,7 @@ function mapDineIn(raw: any): UnifiedOrder {
       status: (item.status || "pendiente") as ItemStatus,
       notes: item.notes,
       product: item.product || {
-        name: item.product_name || "Producto",
+        name: item.product_name || t("product"),
         price: Number(item.price),
         category: item.category,
       },
@@ -125,7 +127,7 @@ function mapSelfService(raw: any): UnifiedOrder {
       status: itemStatusFromOrder,
       notes: item.notes,
       product: {
-        name: item.name || item.product_name || "Producto",
+        name: item.name || item.product_name || t("product"),
         price: Number(item.price) || 0,
       },
     })),
@@ -133,6 +135,8 @@ function mapSelfService(raw: any): UnifiedOrder {
 }
 
 export default function ComandasPage() {
+  const { t } = useI18n();
+
   const [orders, setOrders] = useState<UnifiedOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [updatingItemId, setUpdatingItemId] = useState<number | null>(null);
@@ -320,7 +324,7 @@ export default function ComandasPage() {
 
   const FILTERS: { key: FilterTab; label: string }[] = [
     { key: "activas", label: "Activas" },
-    { key: "mesas", label: "Mesas" },
+    { key: "mesas", label: t("tables") },
     { key: "autoservicio", label: "Autoservicio" },
     { key: "todas", label: "Todas" },
   ];
@@ -332,7 +336,7 @@ export default function ComandasPage() {
         <div className="max-w-7xl mx-auto px-4 py-8">
           <div className="flex flex-wrap justify-between items-center gap-4 mb-6">
             <div>
-              <h1 className="text-3xl font-bold text-foreground">Comandas</h1>
+              <h1 className="text-3xl font-bold text-foreground">{t("comandas")}</h1>
               <p className="text-sm text-gray-400 mt-1">
                 Mesas y autoservicio en un solo panel · actualización en vivo
               </p>
@@ -378,7 +382,7 @@ export default function ComandasPage() {
             </div>
           ) : visibleOrders.length === 0 ? (
             <div className="text-center py-20 text-gray-400">
-              <p className="text-lg">No hay comandas en esta vista</p>
+              <p className="text-lg">{t("noOrders")}</p>
               <p className="text-sm mt-2">Los pedidos de mesa y fichos pagados aparecerán aquí</p>
             </div>
           ) : (
@@ -416,7 +420,7 @@ export default function ComandasPage() {
                                 : "bg-card text-gray-400 border-border"
                             }`}
                           >
-                            {isSS ? "Autoservicio" : "Mesa"}
+                            {isSS ? "Autoservicio" : t("table")}
                           </span>
                         </div>
                         <p className="text-xs text-gray-400 mt-1">

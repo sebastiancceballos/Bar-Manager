@@ -1,5 +1,7 @@
 "use client";
 
+import { useI18n } from "@/app/i18n-provider";
+
 import { ProtectedLayout } from "@/app/components/ProtectedLayout";
 import { Navigation } from "@/app/components/Navigation";
 import { useEffect, useState, useRef, useCallback } from "react";
@@ -40,6 +42,8 @@ interface Order {
 }
 
 export default function TablesPage() {
+  const { t } = useI18n();
+
   const [tables, setTables] = useState<Table[]>([]);
   const [orders, setOrders] = useState<Record<number, Order>>({});
   const [loading, setLoading] = useState(true);
@@ -218,7 +222,7 @@ export default function TablesPage() {
   };
 
   const handleDeleteTable = async (tableId: number) => {
-    if (!confirm("Eliminar esta mesa?")) return;
+    if (!confirm(t("deleteTableConfirm"))) return;
 
     try {
       await fetch(`/api/tables/${tableId}`, { method: "DELETE" });
@@ -242,7 +246,7 @@ export default function TablesPage() {
         <div className="max-w-7xl mx-auto px-4 py-8">
           <div className="flex justify-between items-center mb-6">
             <div>
-              <h1 className="text-3xl font-bold text-foreground">Mesas</h1>
+              <h1 className="text-3xl font-bold text-foreground">{t("tables")}</h1>
               {isAdmin && (
                 <p className="text-sm text-gray-400 mt-1">
                   Arrastra las mesas para reorganizar el layout
@@ -261,7 +265,7 @@ export default function TablesPage() {
 
           {showAddForm && isAdmin && (
             <div className="card mb-6">
-              <h2 className="text-lg font-semibold mb-4">Agregar Mesa</h2>
+              <h2 className="text-lg font-semibold mb-4">{t("addTable")}</h2>
               <form onSubmit={handleAddTable} className="flex gap-4 items-end">
                 <div>
                   <label className="block text-sm mb-1">Numero</label>
@@ -275,7 +279,7 @@ export default function TablesPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm mb-1">Capacidad</label>
+                  <label className="block text-sm mb-1">{t("capacity")}</label>
                   <input
                     type="number"
                     value={newTable.capacity || ""}
@@ -350,7 +354,7 @@ export default function TablesPage() {
               })}
               {tables.length === 0 && (
                 <div className="col-span-2 text-center text-gray-400 py-12">
-                  <p className="mb-4">No hay mesas configuradas</p>
+                  <p className="mb-4">{t("noTables")}</p>
                 </div>
               )}
             </div>
@@ -444,7 +448,7 @@ export default function TablesPage() {
               {tables.length === 0 && (
                 <div className="absolute inset-0 flex items-center justify-center">
                   <div className="text-center text-gray-400">
-                    <p className="mb-4">No hay mesas configuradas</p>
+                    <p className="mb-4">{t("noTables")}</p>
                     {isAdmin && (
                       <button
                         onClick={() => setShowAddForm(true)}
@@ -463,15 +467,15 @@ export default function TablesPage() {
           <div className="flex flex-wrap gap-6 mt-4 text-sm text-gray-400">
             <div className="flex items-center gap-2">
               <div className="w-4 h-4 rounded-full border-2 border-border bg-card"></div>
-              <span>Disponible</span>
+              <span>{t("available")}</span>
             </div>
             <div className="flex items-center gap-2">
               <div className="w-4 h-4 rounded-full border-2 border-secondary bg-secondary/20"></div>
-              <span>Ocupada</span>
+              <span>{t("occupied")}</span>
             </div>
             <div className="flex items-center gap-2">
               <div className="w-4 h-4 rounded-full border-2 border-warning bg-warning/20"></div>
-              <span>Cuenta pedida</span>
+              <span>{t("billRequested")}</span>
             </div>
           </div>
 

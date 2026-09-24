@@ -1,5 +1,7 @@
 "use client";
 
+import { useI18n } from "@/app/i18n-provider";
+
 import { useEffect, useState, use as usePromise } from "react";
 
 const formatCOP = (value: number) =>
@@ -28,6 +30,8 @@ export default function PrintTicketPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  const { t } = useI18n();
+
   const { id } = usePromise(params);
   const [ticket, setTicket] = useState<TicketData | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -53,7 +57,7 @@ export default function PrintTicketPage({
 
   if (!ticket) {
     return (
-      <p style={{ padding: 16, fontFamily: "sans-serif" }}>Cargando ticket…</p>
+      <p style={{ padding: 16, fontFamily: "sans-serif" }}>{t("loading")}</p>
     );
   }
 

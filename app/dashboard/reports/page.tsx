@@ -1,5 +1,7 @@
 "use client";
 
+import { useI18n } from "@/app/i18n-provider";
+
 import { ProtectedLayout } from "@/app/components/ProtectedLayout";
 import { Navigation } from "@/app/components/Navigation";
 import { DailyOrdersModal } from "@/app/components/DailyOrdersModal";
@@ -53,14 +55,16 @@ interface PaymentMethodReport {
 
 const PAYMENT_LABELS: Record<string, string> = {
   autoservicio: "Autoservicio",
-  efectivo: "Efectivo",
-  tarjeta: "Tarjeta",
-  transferencia: "Transferencia",
+  efectivo: t("cashPayment"),
+  tarjeta: t("card"),
+  transferencia: t("transfer"),
   otro: "Otro",
   sin_registrar: "Sin registrar",
 };
 
 export default function ReportsPage() {
+  const { t } = useI18n();
+
   const [reports, setReports] = useState<DailyReport[]>([]);
   const [byWaiter, setByWaiter] = useState<WaiterReport[]>([]);
   const [topProducts, setTopProducts] = useState<ProductReport[]>([]);
@@ -182,7 +186,7 @@ export default function ReportsPage() {
       const orders = data.orders || [];
 
       // Build CSV rows
-      const headers = ["Fecha", "Hora", "# Orden", "Tipo", "Mesa/Ficho", "Mesero/Cliente", "Producto", "Categoría", "Cantidad", "Precio Unitario", "Subtotal", "Total Orden", "Estado"];
+      const headers = [t("date"), t("time"), "# Orden", "Tipo", "Mesa/Ficho", "Mesero/Cliente", t("product"), t("category"), t("quantity"), "Precio Unitario", t("subtotal"), t("orderTotal"), t("status")];
       const csvRows: string[] = [headers.join(";")];
 
       for (const order of orders) {
@@ -191,7 +195,7 @@ export default function ReportsPage() {
         if (order.items.length === 0) {
           csvRows.push([
             date, time, order.id,
-            order.order_type === "self_service" ? "Autoservicio" : "Mesa",
+            order.order_type === "self_service" ? "Autoservicio" : t("table"),
             order.table_number, order.waiter_name || "-",
             "-", "-", "0", "0", "0", Number(order.total_amount), order.status
           ].join(";"));
@@ -200,7 +204,7 @@ export default function ReportsPage() {
             const subtotal = Number(item.price) * item.quantity;
             csvRows.push([
               date, time, order.id,
-              order.order_type === "self_service" ? "Autoservicio" : "Mesa",
+              order.order_type === "self_service" ? "Autoservicio" : t("table"),
               order.table_number, order.waiter_name || "-",
               item.product_name, item.category, item.quantity,
               Number(item.price), subtotal,
@@ -236,10 +240,10 @@ export default function ReportsPage() {
       <div className="min-h-screen bg-background">
         <div className="max-w-7xl mx-auto px-4 py-12">
           <div className="flex items-center justify-between mb-8">
-            <h1 className="text-4xl font-bold text-foreground">Reportes</h1>
+            <h1 className="text-4xl font-bold text-foreground">{t("reports")}</h1>
                         <div className="flex flex-wrap gap-2">
               {[
-                { id: "day", label: "Hoy" },
+                { id: "day", label: t("today") },
                 { id: "week", label: "Semana" },
                 { id: "month", label: "Mes" },
                 { id: "year", label: "Año" },
@@ -269,12 +273,12 @@ export default function ReportsPage() {
               <p className="text-xs text-gray-500 mt-1">{ordersPeriod} pedidos</p>
             </div>
             <div className="card p-4 border border-green-500/40 bg-green-500/5">
-              <p className="text-xs text-green-400 mb-1">Efectivo</p>
+              <p className="text-xs text-green-400 mb-1">{t("cashPayment")}</p>
               <p className="text-2xl font-bold text-green-400">{formatCOP(payTotal("efectivo"))}</p>
               <p className="text-xs text-gray-500 mt-1">{payCount("efectivo")} pagos</p>
             </div>
             <div className="card p-4 border border-blue-500/40 bg-blue-500/5">
-              <p className="text-xs text-blue-400 mb-1">Transferencia</p>
+              <p className="text-xs text-blue-400 mb-1">{t("transfer")}</p>
               <p className="text-2xl font-bold text-blue-400">{formatCOP(payTotal("transferencia"))}</p>
               <p className="text-xs text-gray-500 mt-1">{payCount("transferencia")} pagos</p>
             </div>
@@ -292,10 +296,10 @@ export default function ReportsPage() {
 
           {/* Excel Export Section */}
           <div className="card mb-8">
-            <h3 className="text-lg font-semibold mb-4">Exportar historial de pedidos</h3>
+            <h3 className="text-lg font-semibold mb-4">{t("exportOrders")}</h3>
             <div className="flex flex-wrap items-end gap-4">
               <div>
-                <label className="block text-sm text-gray-400 mb-1">Desde</label>
+                <label className="block text-sm text-gray-400 mb-1">{t("from")}</label>
                 <input
                   type="date"
                   value={exportFrom}
@@ -304,7 +308,7 @@ export default function ReportsPage() {
                 />
               </div>
               <div>
-                <label className="block text-sm text-gray-400 mb-1">Hasta</label>
+                <label className="block text-sm text-gray-400 mb-1">{t("to")}</label>
                 <input
                   type="date"
                   value={exportTo}
@@ -360,7 +364,7 @@ export default function ReportsPage() {
 
           {orgSummary && orgSummary.length > 0 && (
             <div className="card mb-6">
-              <h2 className="text-lg font-semibold mb-2">Consolidado por organización</h2>
+              <h2 className="text-lg font-semibold mb-2">{t("orgSummary")}</h2>
               <p className="text-xs text-gray-400 mb-3">
                 Ventas de todas las sucursales del mismo negocio (org de la sucursal activa).
               </p>
@@ -388,7 +392,7 @@ export default function ReportsPage() {
           )}
 
           {loading ? (
-            <div className="text-gray-400">Cargando reportes...</div>
+            <div className="text-gray-400">{t("loadingReports")}</div>
           ) : (
             <div className="card">
               <h3 className="text-xl font-semibold mb-6">
@@ -398,10 +402,10 @@ export default function ReportsPage() {
                 <table className="w-full min-w-[560px] text-left text-sm">
                   <thead>
                     <tr className="border-b border-border">
-                      <th className="pb-3 px-4 font-semibold">Fecha</th>
-                      <th className="pb-3 px-4 font-semibold">Órdenes</th>
-                      <th className="pb-3 px-4 font-semibold">Ingresos</th>
-                      <th className="pb-3 px-4 font-semibold">Acciones</th>
+                      <th className="pb-3 px-4 font-semibold">{t("date")}</th>
+                      <th className="pb-3 px-4 font-semibold">{t("orders")}</th>
+                      <th className="pb-3 px-4 font-semibold">{t("revenue")}</th>
+                      <th className="pb-3 px-4 font-semibold">{t("actions")}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -443,7 +447,7 @@ export default function ReportsPage() {
             <div className="card">
               <h3 className="text-lg font-semibold mb-4">Ventas por Mesero</h3>
               {byWaiter.length === 0 ? (
-                <p className="text-gray-400 text-sm">Sin datos</p>
+                <p className="text-gray-400 text-sm">{t("noData")}</p>
               ) : (
                 <div className="space-y-3">
                   {byWaiter.map((w) => (
@@ -462,7 +466,7 @@ export default function ReportsPage() {
             <div className="card">
               <h3 className="text-lg font-semibold mb-4">Productos Más Vendidos</h3>
               {topProducts.length === 0 ? (
-                <p className="text-gray-400 text-sm">Sin datos</p>
+                <p className="text-gray-400 text-sm">{t("noData")}</p>
               ) : (
                 <div className="space-y-3">
                   {topProducts.slice(0, 8).map((p) => (
@@ -481,7 +485,7 @@ export default function ReportsPage() {
             <div className="card">
               <h3 className="text-lg font-semibold mb-4">Por Método de Pago</h3>
               {byPaymentMethod.length === 0 ? (
-                <p className="text-gray-400 text-sm">Sin datos</p>
+                <p className="text-gray-400 text-sm">{t("noData")}</p>
               ) : (
                 <div className="space-y-3">
                   {byPaymentMethod.map((p) => (
