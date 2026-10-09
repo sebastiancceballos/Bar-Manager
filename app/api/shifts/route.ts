@@ -2,11 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAuthUser } from "@/lib/auth";
 import { resolveLocationId } from "@/lib/org";
 import { sql } from "@/lib/db";
+import { apiT } from "@/lib/api-i18n";
 
 export async function GET(request: NextRequest) {
   try {
     const user = await getAuthUser();
-    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!user) return NextResponse.json({ error: apiT(request, "apiUnauthorized") }, { status: 401 });
 
     const open = await sql`
       SELECT * FROM shifts WHERE user_id = ${user.id} AND clock_out IS NULL LIMIT 1
@@ -19,7 +20,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ open: open[0] || null, history }, { status: 200 });
   } catch (error) {
     console.error("Shifts GET error:", error);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return NextResponse.json({ error: apiT(request, "internalServerError") }, { status: 500 });
   }
 }
 
@@ -27,10 +28,10 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const user = await getAuthUser();
-    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!user) return NextResponse.json({ error: apiT(request, "apiUnauthorized") }, { status: 401 });
 
     const locId = await resolveLocationId(user.id, user.role);
-    if (!locId) return NextResponse.json({ error: "Sin bar asignado" }, { status: 400 });const open = await sql`
+    if (!locId) return NextResponse.json({ error: apiT(request, "apiNoLocationAssigned") }, { status: 400 });const open = await sql`
       SELECT * FROM shifts WHERE user_id = ${user.id} AND clock_out IS NULL LIMIT 1
     `;
 
@@ -50,11 +51,11 @@ export async function POST(request: NextRequest) {
         RETURNING *
       `;
     } catch {
-      return NextResponse.json({ error: "Ya tienes un turno abierto" }, { status: 409 });
+      return NextResponse.json({ error: apiT(request, "apiAlreadyHaveOpenShift") }, { status: 409 });
     }
     return NextResponse.json({ shift: created[0], action: "clock_in" }, { status: 201 });
   } catch (error) {
     console.error("Shifts POST error:", error);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return NextResponse.json({ error: apiT(request, "internalServerError") }, { status: 500 });
   }
 }

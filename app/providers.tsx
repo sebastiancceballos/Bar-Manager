@@ -1,5 +1,6 @@
 "use client";
 
+import { useI18n } from "@/app/i18n-provider";
 import { createContext, useContext, useEffect, useState } from "react";
 
 interface User {
@@ -25,6 +26,7 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const { t } = useI18n();
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -60,13 +62,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (!response.ok) {
         const data = await response.json();
-        throw new Error(data.error || "Login failed");
+        throw new Error(data.error || t("loginFailed"));
       }
 
       const data = await response.json();
       setUser(data.user);
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Login failed";
+      const message = err instanceof Error ? err.message : t("loginFailed");
       setError(message);
       throw err;
     } finally {

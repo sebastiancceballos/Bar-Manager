@@ -1,3 +1,4 @@
+import { apiTAsync } from "@/lib/api-i18n";
 /**
  * Handlers de reportes por type (Fase 6).
  * Comportamiento equivalente al GET monolítico anterior.
@@ -29,7 +30,7 @@ export async function reportOrgSummary(locId: number, range: string) {
   `;
   const orgId = orgRow[0]?.organization_id;
   if (!orgId) {
-    return { error: "Esta sucursal no tiene organización asignada", status: 400 as const };
+    return { error: await apiTAsync("apiOrgNoOrganization"), status: 400 as const };
   }
   const rows = await sql`
     SELECT

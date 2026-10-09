@@ -2,20 +2,21 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAuthUser } from "@/lib/auth";
 import { resolveLocationId } from "@/lib/org";
 import { sql } from "@/lib/db";
+import { apiT } from "@/lib/api-i18n";
 
 export async function GET(request: NextRequest) {
   try {
     const user = await getAuthUser();
 
     if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return NextResponse.json({ error: apiT(request, "apiUnauthorized") }, { status: 401 });
     }
 
     const { searchParams } = new URL(request.url);
     const tableId = searchParams.get("tableId");
 
     const locId = await resolveLocationId(user.id, user.role);
-    if (!locId) return NextResponse.json({ error: "Sin bar asignado" }, { status: 400 });
+    if (!locId) return NextResponse.json({ error: apiT(request, "apiNoLocationAssigned") }, { status: 400 });
 
     let orders;
     if (tableId) {
@@ -68,7 +69,7 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error("Get orders error:", error);
     return NextResponse.json(
-      { error: "Internal server error" },
+      { error: apiT(request, "internalServerError") },
       { status: 500 }
     );
   }
@@ -79,14 +80,14 @@ export async function POST(request: NextRequest) {
     const user = await getAuthUser();
 
     if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return NextResponse.json({ error: apiT(request, "apiUnauthorized") }, { status: 401 });
     }
 
     const { tableId } = await request.json();
 
     if (!tableId) {
       return NextResponse.json(
-        { error: "Table ID is required" },
+        { error: apiT(request, "apiTableIdRequired") },
         { status: 400 }
       );
     }
@@ -127,7 +128,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error("Create order error:", error);
     return NextResponse.json(
-      { error: "Internal server error" },
+      { error: apiT(request, "internalServerError") },
       { status: 500 }
     );
   }

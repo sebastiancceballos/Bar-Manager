@@ -18,11 +18,11 @@ export default function ChangePasswordPage() {
     e.preventDefault();
     setError(null);
     if (newPassword.length < 8) {
-      setError("Mínimo 8 caracteres");
+      setError(t("minEightChars"));
       return;
     }
     if (newPassword !== confirm) {
-      setError("Las contraseñas no coinciden");
+      setError(t("passwordsDontMatch"));
       return;
     }
     setLoading(true);
@@ -46,9 +46,9 @@ export default function ChangePasswordPage() {
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <form onSubmit={submit} className="card max-w-md w-full space-y-4 p-6">
-        <h1 className="text-xl font-bold text-foreground">Cambiar contraseña</h1>
+        <h1 className="text-xl font-bold text-foreground">{t("changePasswordTitle")}</h1>
         <p className="text-sm text-gray-400">
-          Debes establecer una contraseña nueva antes de continuar.
+          {t("mustSetNewPassword")}
         </p>
         {error && (
           <div className="bg-error/10 border border-error text-error text-sm px-3 py-2 rounded">
@@ -80,7 +80,7 @@ export default function ChangePasswordPage() {
           />
         </div>
         <button type="submit" className="btn btn-primary w-full" disabled={loading}>
-          {loading ? "Guardando..." : t("saveChanges")}
+          {loading ? t("saving") : t("saveChanges")}
         </button>
       </form>
     </div>

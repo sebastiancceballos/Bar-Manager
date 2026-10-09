@@ -3,6 +3,7 @@ import { getAuthUser } from "@/lib/auth";
 import { toErrorResponse } from "@/lib/errors";
 import { sql } from "@/lib/db";
 import { assertOwnsReservation } from "@/lib/tenant";
+import { apiT } from "@/lib/api-i18n";
 
 const VALID_STATUSES = ["confirmada", "cancelada", "completada", "no_show"];
 
@@ -12,7 +13,7 @@ export async function PATCH(
 ) {
   try {
     const user = await getAuthUser();
-    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!user) return NextResponse.json({ error: apiT(request, "apiUnauthorized") }, { status: 401 });
 
     const { id } = await params;
     const reservationId = parseInt(id, 10);
@@ -22,7 +23,7 @@ export async function PATCH(
     const { status } = await request.json();
 
     if (!VALID_STATUSES.includes(status)) {
-      return NextResponse.json({ error: "Estado inválido" }, { status: 400 });
+      return NextResponse.json({ error: apiT(request, "apiInvalidStatus") }, { status: 400 });
     }
 
     const updated = await sql`
@@ -31,7 +32,7 @@ export async function PATCH(
     `;
 
     if (updated.length === 0) {
-      return NextResponse.json({ error: "Reserva no encontrada" }, { status: 404 });
+      return NextResponse.json({ error: apiT(request, "apiReservationNotFound") }, { status: 404 });
     }
 
     return NextResponse.json({ reservation: updated[0] }, { status: 200 });

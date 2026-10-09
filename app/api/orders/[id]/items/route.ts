@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAuthUser } from "@/lib/auth";
 import { assertOwnsOrder } from "@/lib/tenant";
 import { sql } from "@/lib/db";
+import { apiT } from "@/lib/api-i18n";
 
 export async function POST(
   request: NextRequest,
@@ -11,7 +12,7 @@ export async function POST(
     const user = await getAuthUser();
 
     if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return NextResponse.json({ error: apiT(request, "apiUnauthorized") }, { status: 401 });
     }
 
     const { id } = await params;
@@ -22,7 +23,7 @@ export async function POST(
 
     if (!productId || !quantity) {
       return NextResponse.json(
-        { error: "Product ID and quantity are required" },
+        { error: apiT(request, "apiProductIdQuantityRequired") },
         { status: 400 }
       );
     }
@@ -32,14 +33,14 @@ export async function POST(
     const product = products[0];
 
     if (!product) {
-      return NextResponse.json({ error: "Product not found" }, { status: 404 });
+      return NextResponse.json({ error: apiT(request, "apiProductNotFound") }, { status: 404 });
     }
 
     // --- BLOQUEO DE VENTA SIN STOCK ---
     const currentStock = product.stock || 0;
     if (currentStock < quantity) {
       return NextResponse.json(
-        { error: `¡Sin Stock! Solo quedan ${currentStock} unidades de ${product.name}. Por favor reponer.` },
+        { error: apiT(request, "apiOutOfStock", { stock: currentStock, name: product.name }) },
         { status: 400 }
       );
     }
@@ -115,7 +116,7 @@ export async function POST(
   } catch (error) {
     console.error("Add item error:", error);
     return NextResponse.json(
-      { error: "Internal server error" },
+      { error: apiT(request, "internalServerError") },
       { status: 500 }
     );
   }

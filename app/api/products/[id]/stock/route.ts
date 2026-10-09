@@ -3,6 +3,7 @@ import { getAuthUser } from "@/lib/auth";
 import { toErrorResponse } from "@/lib/errors";
 import { assertOwnsProduct } from "@/lib/tenant";
 import { withTransaction, InsufficientStockError } from "@/lib/withTransaction";
+import { apiT } from "@/lib/api-i18n";
 
 export async function POST(
   request: NextRequest,
@@ -11,13 +12,13 @@ export async function POST(
   try {
     const user = await getAuthUser();
     if (!user || (user.role !== "admin" && user.role !== "owner")) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return NextResponse.json({ error: apiT(request, "apiUnauthorized") }, { status: 401 });
     }
 
     const { id } = await params;
     const productId = parseInt(id, 10);
     if (isNaN(productId)) {
-      return NextResponse.json({ error: "ID de producto inválido" }, { status: 400 });
+      return NextResponse.json({ error: apiT(request, "apiInvalidProductId") }, { status: 400 });
     }
 
     const guard = await assertOwnsProduct(productId, user);
@@ -27,12 +28,12 @@ export async function POST(
     const { quantity, type, reason } = body;
 
     if (!quantity || !type) {
-      return NextResponse.json({ error: "Cantidad y tipo son obligatorios" }, { status: 400 });
+      return NextResponse.json({ error: apiT(request, "apiQuantityTypeRequired") }, { status: 400 });
     }
 
     const qtyNum = parseInt(quantity, 10);
     if (!Number.isFinite(qtyNum) || qtyNum <= 0) {
-      return NextResponse.json({ error: "Cantidad inválida" }, { status: 400 });
+      return NextResponse.json({ error: apiT(request, "apiInvalidQuantity") }, { status: 400 });
     }
 
     const isEntry = type === "entry";
@@ -69,7 +70,7 @@ export async function POST(
       throw e;
     }
 
-    return NextResponse.json({ message: "Inventario actualizado correctamente" });
+    return NextResponse.json({ message: apiT(request, "apiInventoryUpdatedSuccess") });
   } catch (error) {
     return toErrorResponse(error);
   }

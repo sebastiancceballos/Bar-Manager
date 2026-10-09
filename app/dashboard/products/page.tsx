@@ -1,6 +1,7 @@
 "use client";
 
 import { useI18n } from "@/app/i18n-provider";
+import { fmtDate, fmtTime } from "@/lib/format-date";
 
 import { ProtectedLayout, AdminOnly } from "@/app/components/ProtectedLayout";
 import { Navigation } from "@/app/components/Navigation";
@@ -25,7 +26,7 @@ interface StockMovement {
 }
 
 export default function ProductsPage() {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
 
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -48,7 +49,7 @@ export default function ProductsPage() {
         setProducts(data.products);
       }
     } catch (err) {
-      setError("Failed to fetch products");
+      setError(t("failedToFetchProducts"));
     } finally {
       setLoading(false);
     }
@@ -84,10 +85,10 @@ export default function ProductsPage() {
         setError(null);
         (e.target as HTMLFormElement).reset();
       } else {
-        setError(data.error || "Error al guardar el producto");
+        setError(data.error || t("errorSavingProduct"));
       }
     } catch (err) {
-      setError("Error de conexión al guardar el producto");
+      setError(t("connectionErrorSaveProduct"));
     }
   };
 
@@ -136,10 +137,10 @@ export default function ProductsPage() {
         setShowStockModal(false);
         (e.target as HTMLFormElement).reset();
       } else {
-        setModalError(data.error || "Error del servidor al ajustar stock");
+        setModalError(data.error || t("serverErrorAdjustingStock"));
       }
     } catch (err) {
-      setModalError("Error de conexión: No se pudo guardar el ajuste");
+      setModalError(t("connectionErrorSaveAdjustment"));
     } finally {
       setAdjusting(false);
     }
@@ -154,7 +155,7 @@ export default function ProductsPage() {
         setShowHistory(true);
       }
     } catch (err) {
-      setError("Error al cargar historial");
+      setError(t("errorLoadingHistory"));
     }
   };
 
@@ -230,7 +231,7 @@ export default function ProductsPage() {
                             <div className={`px-2 py-1 rounded text-xs font-bold ${
                               product.stock <= 5 ? "bg-error/20 text-error" : "bg-primary/20 text-primary"
                             }`}>
-                              Stock: {product.stock}
+                              {t("stock")}: {product.stock}
                             </div>
                           </div>
 
@@ -243,17 +244,17 @@ export default function ProductsPage() {
                               }}
                               className="btn btn-outline btn-sm flex-1 text-[10px]"
                             >
-                              Stock
+                              {t("stock")}
                             </button>
                             <button
                               onClick={() => fetchHistory(product.id)}
                               className="btn btn-outline btn-sm flex-1 text-[10px]"
                             >
-                              Reloj
+                              {t("stockHistoryShort")}
                             </button>
                             <button
                               onClick={() => handleEdit(product)}
-                              title="Editar producto"
+                              title={t("editProduct")}
                               className="btn btn-primary btn-sm px-2"
                             >
                               ✏️
@@ -315,7 +316,7 @@ export default function ProductsPage() {
                     name="name"
                     type="text"
                     className="input w-full"
-                    placeholder="Ej: Cerveza"
+                    placeholder={t("exampleBeer")}
                     defaultValue={editingProduct?.name || ""}
                     key={editingProduct?.id + "-name"}
                     required
@@ -329,7 +330,7 @@ export default function ProductsPage() {
                     type="text"
                     list="category-list"
                     className="input w-full"
-                    placeholder="Ej: bebidas"
+                    placeholder={t("exampleDrinks")}
                     defaultValue={editingProduct?.category || ""}
                     key={editingProduct?.id + "-category"}
                     required
@@ -349,7 +350,7 @@ export default function ProductsPage() {
                     step="1"
                     min="0"
                     className="input w-full"
-                    placeholder="Ej: 5000"
+                    placeholder={t("exampleNumber5000")}
                     defaultValue={editingProduct?.price || ""}
                     key={editingProduct?.id + "-price"}
                     required
@@ -358,7 +359,7 @@ export default function ProductsPage() {
 
                 <div className="flex gap-3 pt-2">
                   <button type="submit" className="btn btn-primary flex-1">
-                    {editingId ? "Actualizar" : "Crear"} Producto
+                    {editingId ? t("update") : t("create")} {t("product")}
                   </button>
                   <button
                     type="button"
@@ -369,7 +370,7 @@ export default function ProductsPage() {
                     }}
                     className="btn btn-secondary flex-1"
                   >
-                    Cancelar
+                    {t("cancel")}
                   </button>
                 </div>
               </form>
@@ -382,7 +383,7 @@ export default function ProductsPage() {
           <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm">
             <div className="bg-card border border-border w-full max-w-md rounded-t-2xl sm:rounded-2xl p-6 shadow-2xl max-h-[92dvh] overflow-y-auto safe-area-pb">
               <h2 className="text-2xl font-bold mb-4">{t("adjustInventory")}</h2>
-              <p className="text-gray-400 mb-6">Producto: <span className="text-foreground font-semibold">{selectedProduct.name}</span></p>
+              <p className="text-gray-400 mb-6">{t("product")}: <span className="text-foreground font-semibold">{selectedProduct.name}</span></p>
               
               {modalError && (
                 <div className="bg-error/10 border border-error text-error px-4 py-3 rounded-lg mb-6 text-sm animate-shake">
@@ -392,10 +393,10 @@ export default function ProductsPage() {
 
               <form onSubmit={handleAdjustStock} className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium mb-1">Tipo de Movimiento</label>
+                  <label className="block text-sm font-medium mb-1">{t("movementType")}</label>
                   <select name="type" className="input w-full" required>
                     <option value="entry">{t("stockIn")}</option>
-                    <option value="exit">Salida (Ajuste manual)</option>
+                    <option value="exit">{t("stockOutManual")}</option>
                     <option value="waste">{t("stockOut")}</option>
                   </select>
                 </div>
@@ -404,15 +405,15 @@ export default function ProductsPage() {
                   <input name="quantity" type="number" min="1" className="input w-full" placeholder="10" required />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">Motivo (Opcional)</label>
-                  <input name="reason" type="text" className="input w-full" placeholder="Compra de lote semanal" />
+                  <label className="block text-sm font-medium mb-1">{t("reasonOptional")}</label>
+                  <input name="reason" type="text" className="input w-full" placeholder={t("weeklyPurchasePlaceholder")} />
                 </div>
                 <div className="flex gap-3 pt-4">
                   <button type="submit" disabled={adjusting} className="btn btn-primary flex-1">
                     {adjusting ? t("saving") : t("confirm")}
                   </button>
                   <button type="button" onClick={() => setShowStockModal(false)} className="btn btn-secondary flex-1">
-                    Cancelar
+                    {t("cancel")}
                   </button>
                 </div>
               </form>
@@ -434,22 +435,22 @@ export default function ProductsPage() {
                   <thead className="border-b border-border">
                     <tr className="text-gray-400 text-sm">
                       <th className="py-2">{t("date")}</th>
-                      <th className="py-2">Tipo</th>
-                      <th className="py-2">Cant.</th>
-                      <th className="py-2">Motivo</th>
+                      <th className="py-2">{t("typeLabel")}</th>
+                      <th className="py-2">{t("qtyAbbrev")}</th>
+                      <th className="py-2">{t("reasonLabel")}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border/50">
                     {movements.map((m) => (
                       <tr key={m.id} className="text-sm">
-                        <td className="py-3">{new Date(m.created_at).toLocaleDateString()} {new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</td>
+                        <td className="py-3">{fmtDate(m.created_at, locale)} {fmtTime(m.created_at, locale, { hour: '2-digit', minute: '2-digit' })}</td>
                         <td className="py-3">
                           <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${
                             m.type === 'entry' ? 'bg-success/20 text-success' : 
                             m.type === 'sale' ? 'bg-primary/20 text-primary' :
                             'bg-error/20 text-error'
                           }`}>
-                            {m.type === 'entry' ? 'Entrada' : m.type === 'sale' ? 'Venta' : m.type === 'waste' ? 'Merma' : 'Salida'}
+                            {m.type === 'entry' ? t('movementEntry') : m.type === 'sale' ? t('movementSale') : m.type === 'waste' ? t('movementWaste') : t('movementExit')}
                           </span>
                         </td>
                         <td className="py-3 font-semibold">{m.quantity}</td>

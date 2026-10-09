@@ -3,6 +3,7 @@ import { getAuthUser } from "@/lib/auth";
 import { toErrorResponse } from "@/lib/errors";
 import { resolveLocationId } from "@/lib/org";
 import { sql } from "@/lib/db";
+import { apiT } from "@/lib/api-i18n";
 
 const MAX_BULK = 50;
 
@@ -14,7 +15,7 @@ export async function POST(request: NextRequest) {
   try {
     const user = await getAuthUser();
     if (!user || user.role !== "admin") {
-      return NextResponse.json({ error: "Sin permiso" }, { status: 403 });
+      return NextResponse.json({ error: apiT(request, "apiNoPermission") }, { status: 403 });
     }
 
     const body = await request.json();
@@ -24,27 +25,27 @@ export async function POST(request: NextRequest) {
 
     if (!Number.isFinite(from) || !Number.isFinite(to) || from < 1 || to < 1) {
       return NextResponse.json(
-        { error: "Desde y Hasta deben ser números enteros mayores a 0" },
+        { error: apiT(request, "apiFromToMustBePositiveInts") },
         { status: 400 }
       );
     }
     if (from > to) {
       return NextResponse.json(
-        { error: "El número inicial no puede ser mayor que el final" },
+        { error: apiT(request, "apiStartNumberGreaterThanEnd") },
         { status: 400 }
       );
     }
     const count = to - from + 1;
     if (count > MAX_BULK) {
       return NextResponse.json(
-        { error: `Máximo ${MAX_BULK} mesas por lote` },
+        { error: apiT(request, "apiBulkMax", { max: MAX_BULK }) },
         { status: 400 }
       );
     }
 
     const locationId = await resolveLocationId(user.id, user.role);
     if (!locationId) {
-      return NextResponse.json({ error: "Sin bar asignado" }, { status: 400 });
+      return NextResponse.json({ error: apiT(request, "apiNoLocationAssigned") }, { status: 400 });
     }
 
     const numbers = Array.from({ length: count }, (_, i) => String(from + i));
@@ -58,7 +59,7 @@ export async function POST(request: NextRequest) {
       const nums = existing.map((r: any) => r.table_number).join(", ");
       return NextResponse.json(
         {
-          error: `Ya existen mesas en este rango: ${nums}. Elige otro rango.`,
+          error: apiT(request, "apiBulkRangeExists", { numbers: nums }),
         },
         { status: 409 }
       );
@@ -84,14 +85,14 @@ export async function POST(request: NextRequest) {
       {
         created: created.length,
         tables: created,
-        message: `Se crearon ${created.length} mesas (${from}–${to})`,
+        message: apiT(request, "apiBulkCreated", { count: created.length, from, to }),
       },
       { status: 201 }
     );
   } catch (error: any) {
     if (error?.code === "23505") {
       return NextResponse.json(
-        { error: "Conflicto: alguna mesa del rango ya existe" },
+        { error: apiT(request, "apiTableRangeConflict") },
         { status: 409 }
       );
     }

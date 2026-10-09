@@ -1,13 +1,14 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getAuthUser } from "@/lib/auth";
 import { sql } from "@/lib/db";
 import { getAccessibleLocations, resolveLocationId } from "@/lib/org";
+import { apiT } from "@/lib/api-i18n";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     const payload = await getAuthUser();
     if (!payload) {
-      return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+      return NextResponse.json({ error: apiT(request, "apiNotAuthenticated") }, { status: 401 });
     }
 
     const rows = await sql`
@@ -16,7 +17,7 @@ export async function GET() {
     `;
     const dbUser = rows[0];
     if (!dbUser) {
-      return NextResponse.json({ error: "User not found" }, { status: 401 });
+      return NextResponse.json({ error: apiT(request, "apiUserNotFound") }, { status: 401 });
     }
 
     let locations: Awaited<ReturnType<typeof getAccessibleLocations>> = [];
@@ -43,6 +44,6 @@ export async function GET() {
     });
   } catch (error) {
     console.error("Auth check error:", error);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return NextResponse.json({ error: apiT(request, "internalServerError") }, { status: 500 });
   }
 }

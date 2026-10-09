@@ -6,6 +6,7 @@ import { canCharge } from "@/lib/permissions";
 import { withTransaction, InsufficientStockError } from "@/lib/withTransaction";
 import { ConflictError, ForbiddenActionError, toErrorResponse } from "@/lib/errors";
 import { logAudit } from "@/lib/audit";
+import { apiT } from "@/lib/api-i18n";
 
 const VALID_PAYMENT = ["efectivo", "tarjeta", "transferencia", "otro"];
 
@@ -19,7 +20,7 @@ export async function PATCH(
 ) {
   try {
     const user = await getAuthUser();
-    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!user) return NextResponse.json({ error: apiT(request, "apiUnauthorized") }, { status: 401 });
     if (!canCharge(user.role)) {
       throw new ForbiddenActionError("Solo caja/admin puede cobrar una parte");
     }
@@ -33,7 +34,7 @@ export async function PATCH(
     const body = await request.json().catch(() => ({}));
     const paymentMethod = body.paymentMethod || "efectivo";
     if (!VALID_PAYMENT.includes(paymentMethod)) {
-      return NextResponse.json({ error: "Método de pago inválido" }, { status: 400 });
+      return NextResponse.json({ error: apiT(request, "apiInvalidPaymentMethod") }, { status: 400 });
     }
 
     const splitRows = await sql`
@@ -43,10 +44,10 @@ export async function PATCH(
     `;
     const split = splitRows[0];
     if (!split) {
-      return NextResponse.json({ error: "Parte no encontrada" }, { status: 404 });
+      return NextResponse.json({ error: apiT(request, "apiSplitPartNotFound") }, { status: 404 });
     }
     if (split.paid) {
-      throw new ConflictError("Esta parte ya está pagada");
+      throw new ConflictError("Esta parte ya está pagada", "apiSplitAlreadyPaid");
     }
 
     await sql`

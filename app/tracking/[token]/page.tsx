@@ -46,12 +46,12 @@ interface TrackingData {
  * Nota: al cobrar, el sistema avanza a PREPARING (cocina), pero en la
  * línea de tiempo t("paid") queda marcado como hecho.
  */
-const STEPS: { status: Status; label: string; icon: typeof CheckCircle2 }[] = [
-  { status: "PENDING_PAYMENT", label: "Pedido recibido", icon: CheckCircle2 },
-  { status: "PAID", label: "Pagado", icon: CreditCard },
-  { status: "PREPARING", label: "En preparación", icon: ChefHat },
-  { status: "READY", label: "Listo para recoger", icon: PartyPopper },
-  { status: "COMPLETED", label: "Entregado", icon: PackageCheck },
+const STEPS: { status: Status; labelKey: string; icon: typeof CheckCircle2 }[] = [
+  { status: "PENDING_PAYMENT", labelKey: "orderReceived", icon: CheckCircle2 },
+  { status: "PAID", labelKey: "orderPaid", icon: CreditCard },
+  { status: "PREPARING", labelKey: "orderPreparing", icon: ChefHat },
+  { status: "READY", labelKey: "orderReady", icon: PartyPopper },
+  { status: "COMPLETED", labelKey: "orderDelivered", icon: PackageCheck },
 ];
 
 function stepIndex(status: Status): number {
@@ -220,8 +220,8 @@ export default function TrackingPage({
             Notification.permission === "granted"
           ) {
             try {
-              new Notification(`¡${json.ticketNumber} listo para recoger!`, {
-                body: "Tu pedido está listo. Pasa a recogerlo.",
+              new Notification(`${json.ticketNumber} ${t("readyNotificationTitle")}`, {
+                body: t("readyNotificationBody"),
                 tag: `order-ready-${json.ticketNumber}`,
               });
             } catch {
@@ -234,7 +234,7 @@ export default function TrackingPage({
         setError(null);
       } catch (err) {
         if (!cancelled)
-          setError(err instanceof Error ? err.message : "Error de conexión");
+          setError(err instanceof Error ? err.message : t("connectionError"));
       }
     }
 
@@ -284,7 +284,7 @@ export default function TrackingPage({
 
       <div className="max-w-md mx-auto px-4 py-10 flex flex-col items-center gap-6">
         <span className="text-sm uppercase tracking-widest opacity-70">
-          Tu número de pedido
+          {t("yourOrderNumber")}
         </span>
         <span className="text-6xl font-black tracking-tight">
           {data.ticketNumber}
@@ -293,15 +293,15 @@ export default function TrackingPage({
         {data.status === "PENDING_PAYMENT" && !isCancelled && (
           <div className="w-full rounded-2xl border-2 border-warning bg-warning/15 px-5 py-5 text-center">
             <p className="text-base font-semibold text-warning leading-snug">
-              ¡Casi listo! Solo falta pagar
+              {t("almostReadyPayNow")}
             </p>
             <p className="text-4xl font-black text-foreground mt-3 tracking-tight">
               {data.ticketNumber}
             </p>
             <p className="text-sm text-foreground/80 mt-3 leading-relaxed">
-              Acércate a la caja con tu número{" "}
-              <strong className="text-foreground">{data.ticketNumber}</strong> para
-              confirmar y pagar tu pedido. El cajero lo necesita para ubicar tu orden.
+              {t("goToCashierWithNumber")}{" "}
+              <strong className="text-foreground">{data.ticketNumber}</strong>{" "}
+              {t("goToCashierWithNumberSuffix")}
             </p>
           </div>
         )}
@@ -312,12 +312,12 @@ export default function TrackingPage({
             {pushStatus === "on" ? (
               <p className="text-xs text-center text-foreground/50 flex items-center justify-center gap-1.5">
                 <Bell className="w-3.5 h-3.5" />
-                Te avisaremos cuando tu pedido esté listo
+                {t("weWillNotifyWhenReady")}
               </p>
             ) : pushStatus === "denied" ? (
               <p className="text-xs text-center text-foreground/50 flex items-center justify-center gap-1.5">
                 <BellOff className="w-3.5 h-3.5" />
-                Notificaciones bloqueadas en el navegador
+                {t("notificationsBlockedInBrowser")}
               </p>
             ) : (
               <button
@@ -337,12 +337,12 @@ export default function TrackingPage({
                 className="w-full min-h-[48px] rounded-xl border border-border bg-card px-4 py-3 text-sm font-semibold flex items-center justify-center gap-2 disabled:opacity-60"
               >
                 <Bell className="w-4 h-4 text-primary" />
-                {pushBusy ? "Activando…" : "Avísame cuando esté listo"}
+                {pushBusy ? t("activating") : t("notifyWhenReady")}
               </button>
             )}
             {pushStatus === "error" && (
               <p className="text-xs text-center text-error mt-2">
-                No se pudieron activar. Revisa la configuración del servidor (VAPID).
+                {t("pushActivateFailed")}
               </p>
             )}
           </div>
@@ -362,7 +362,7 @@ export default function TrackingPage({
                   animate={{ opacity: 1, y: 0 }}
                   className="text-2xl font-bold text-center"
                 >
-                  ¡Tu pedido está listo! 🎉
+                  {t("orderReadyBanner")}
                 </motion.p>
               )}
               {isDelivered && (
@@ -371,7 +371,7 @@ export default function TrackingPage({
                   animate={{ opacity: 1, y: 0 }}
                   className="text-2xl font-bold text-center"
                 >
-                  ¡Pedido entregado! Gracias
+                  {t("orderDeliveredThanks")}
                 </motion.p>
               )}
             </AnimatePresence>
@@ -412,7 +412,7 @@ export default function TrackingPage({
                       )}
                     </div>
                     <span className={`font-medium ${isDone ? "" : "opacity-40"}`}>
-                      {step.label}
+                      {t(step.labelKey)}
                     </span>
                   </div>
                 );

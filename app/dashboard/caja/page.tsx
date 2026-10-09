@@ -1,6 +1,7 @@
 "use client";
 
 import { useI18n } from "@/app/i18n-provider";
+import { fmtDate, fmtDateTime } from "@/lib/format-date";
 
 import { ProtectedLayout } from "@/app/components/ProtectedLayout";
 import { Navigation } from "@/app/components/Navigation";
@@ -28,7 +29,7 @@ interface CashSession {
 }
 
 export default function CajaPage() {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
 
   const [open, setOpen] = useState<CashSession | null>(null);
   const [history, setHistory] = useState<CashSession[]>([]);
@@ -124,14 +125,14 @@ export default function CajaPage() {
           ) : open ? (
             <div className="card space-y-4">
               <span className="text-xs font-bold uppercase px-2 py-1 rounded-full bg-success/10 text-success">
-                Turno abierto
+                {t("shiftOpen")}
               </span>
               <p className="text-sm text-gray-400">
-                Abierto por {open.opened_by_name} ·{" "}
-                {new Date(open.opened_at).toLocaleString("es-CO")}
+                {t("openedByLabel")} {open.opened_by_name} ·{" "}
+                {fmtDateTime(open.opened_at, locale)}
               </p>
               <p className="text-lg">
-                Base: <strong>{formatCOP(Number(open.opening_amount))}</strong>
+                {t("baseAmountLabel")}: <strong>{formatCOP(Number(open.opening_amount))}</strong>
               </p>
               <div className="space-y-3 border-t border-border pt-4">
                 <label className="block text-sm font-medium">
@@ -141,7 +142,7 @@ export default function CajaPage() {
                   type="text"
                   inputMode="numeric"
                   className="input w-full"
-                  placeholder="Ej: 350.000"
+                  placeholder={t("exampleAmount350k")}
                   value={closingAmount}
                   onChange={(e) =>
                     setClosingAmount(onMoneyKeyInput(e.target.value))
@@ -153,14 +154,14 @@ export default function CajaPage() {
                   className="input w-full"
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
-                  placeholder="Opcional"
+                  placeholder={t("optional")}
                 />
                 <button
                   onClick={handleClose}
                   disabled={submitting || !closingAmount}
                   className="btn btn-primary w-full disabled:opacity-50"
                 >
-                  {submitting ? "Cerrando..." : t("closeCashSession")}
+                  {submitting ? t("closing") : t("closeCashSession")}
                 </button>
               </div>
             </div>
@@ -176,7 +177,7 @@ export default function CajaPage() {
                 type="text"
                 inputMode="numeric"
                 className="input w-full"
-                placeholder="Ej: 100.000"
+                placeholder={t("exampleAmount100k")}
                 value={openingAmount}
                 onChange={(e) =>
                   setOpeningAmount(onMoneyKeyInput(e.target.value))
@@ -187,7 +188,7 @@ export default function CajaPage() {
                 disabled={submitting}
                 className="btn btn-primary w-full disabled:opacity-50"
               >
-                {submitting ? "Abriendo..." : t("openCashSession")}
+                {submitting ? t("opening") : t("openCashSession")}
               </button>
             </div>
           )}
@@ -203,11 +204,11 @@ export default function CajaPage() {
                   >
                     <div>
                       <p className="text-sm text-gray-400">
-                        {new Date(h.opened_at).toLocaleDateString("es-CO")} ·{" "}
+                        {fmtDate(h.opened_at, locale)} ·{" "}
                         {h.opened_by_name} → {h.closed_by_name}
                       </p>
                       <p className="text-xs text-gray-500">
-                        Notas: {h.notes || "—"}
+                        {t("notes")}: {h.notes || "—"}
                       </p>
                     </div>
                     <div className="text-left sm:text-right">

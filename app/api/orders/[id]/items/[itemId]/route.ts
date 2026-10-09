@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAuthUser } from "@/lib/auth";
 import { assertOwnsOrder } from "@/lib/tenant";
 import { sql } from "@/lib/db";
+import { apiT } from "@/lib/api-i18n";
 
 export async function DELETE(
   request: NextRequest,
@@ -11,7 +12,7 @@ export async function DELETE(
     const user = await getAuthUser();
 
     if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return NextResponse.json({ error: apiT(request, "apiUnauthorized") }, { status: 401 });
     }
 
     const { id, itemId } = await params;
@@ -75,7 +76,7 @@ export async function DELETE(
   } catch (error) {
     console.error("Delete item error:", error);
     return NextResponse.json(
-      { error: "Internal server error" },
+      { error: apiT(request, "internalServerError") },
       { status: 500 }
     );
   }
@@ -89,7 +90,7 @@ export async function PATCH(
     const user = await getAuthUser();
 
     if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return NextResponse.json({ error: apiT(request, "apiUnauthorized") }, { status: 401 });
     }
 
     const { id, itemId } = await params;
@@ -99,18 +100,18 @@ export async function PATCH(
     const { action, status } = await request.json();
 
     if (action !== "decrement" && action !== "set_status") {
-      return NextResponse.json({ error: "Invalid action" }, { status: 400 });
+      return NextResponse.json({ error: apiT(request, "apiInvalidAction") }, { status: 400 });
     }
 
     if (action === "set_status") {
       const allowedStatuses = ["pendiente", "preparando", "listo", "entregado"];
       if (!status || !allowedStatuses.includes(status)) {
-        return NextResponse.json({ error: "Estado inválido" }, { status: 400 });
+        return NextResponse.json({ error: apiT(request, "apiInvalidStatus") }, { status: 400 });
       }
 
       const itemRows = await sql`SELECT id FROM order_items WHERE id = ${parseInt(itemId)}`;
       if (itemRows.length === 0) {
-        return NextResponse.json({ error: "Item not found" }, { status: 404 });
+        return NextResponse.json({ error: apiT(request, "apiItemNotFound") }, { status: 404 });
       }
 
       await sql`UPDATE order_items SET status = ${status} WHERE id = ${parseInt(itemId)}`;
@@ -137,7 +138,7 @@ export async function PATCH(
     const item = itemRows[0];
 
     if (!item) {
-      return NextResponse.json({ error: "Item not found" }, { status: 404 });
+      return NextResponse.json({ error: apiT(request, "apiItemNotFound") }, { status: 404 });
     }
 
     if (item.quantity > 1) {
@@ -195,7 +196,7 @@ export async function PATCH(
   } catch (error) {
     console.error("Patch item error:", error);
     return NextResponse.json(
-      { error: "Internal server error" },
+      { error: apiT(request, "internalServerError") },
       { status: 500 }
     );
   }

@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthUser } from "@/lib/auth";
 import { sql } from "@/lib/db";
+import { apiT } from "@/lib/api-i18n";
 
 export async function GET(request: NextRequest) {
   try {
     const user = await getAuthUser();
 
     if (!user) {
-      return NextResponse.json({ error: "No autenticado" }, { status: 401 });
+      return NextResponse.json({ error: apiT(request, "apiNotAuthenticated") }, { status: 401 });
     }
 
     const result = await sql`
@@ -21,7 +22,7 @@ export async function GET(request: NextRequest) {
     const location = Array.isArray(result) ? result[0] : null;
 
     if (!location) {
-      return NextResponse.json({ error: "Sin bar asignado" }, { status: 404 });
+      return NextResponse.json({ error: apiT(request, "apiNoLocationAssigned") }, { status: 404 });
     }
 
     return NextResponse.json(
@@ -30,6 +31,6 @@ export async function GET(request: NextRequest) {
     );
   } catch (error) {
     console.error("Error fetching user location:", error);
-    return NextResponse.json({ error: "Error interno" }, { status: 500 });
+    return NextResponse.json({ error: apiT(request, "apiInternalError") }, { status: 500 });
   }
 }

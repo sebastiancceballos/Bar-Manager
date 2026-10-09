@@ -3,6 +3,7 @@ import { getAuthUser } from "@/lib/auth";
 import { resolveLocationId } from "@/lib/org";
 import { sql } from "@/lib/db";
 import { getLocationTimezone } from "@/lib/location";
+import { apiT } from "@/lib/api-i18n";
 
 export async function GET(
   request: NextRequest,
@@ -12,11 +13,11 @@ export async function GET(
     const currentUser = await getAuthUser();
 
     if (!currentUser) {
-      return NextResponse.json({ error: "No autenticado" }, { status: 401 });
+      return NextResponse.json({ error: apiT(request, "apiNotAuthenticated") }, { status: 401 });
     }
 
     if (currentUser.role !== "admin" && currentUser.role !== "owner") {
-      return NextResponse.json({ error: "Sin permiso" }, { status: 403 });
+      return NextResponse.json({ error: apiT(request, "apiNoPermission") }, { status: 403 });
     }
 
     const { date } = await params; // YYYY-MM-DD format
@@ -24,7 +25,7 @@ export async function GET(
     let locId: number | null = null;
     if (currentUser.role === "admin") {
       locId = await resolveLocationId(currentUser.id, currentUser.role);
-      if (!locId) return NextResponse.json({ error: "Admin sin bar asignado" }, { status: 400 });
+      if (!locId) return NextResponse.json({ error: apiT(request, "apiAdminNoLocation") }, { status: 400 });
     }
 
     const tz = locId ? await getLocationTimezone(locId) : "America/Bogota";
@@ -134,6 +135,6 @@ export async function GET(
     return NextResponse.json({ orders: ordersWithItems }, { status: 200 });
   } catch (error) {
     console.error("Error fetching daily orders:", error);
-    return NextResponse.json({ error: "Error interno del servidor" }, { status: 500 });
+    return NextResponse.json({ error: apiT(request, "internalServerError") }, { status: 500 });
   }
 }

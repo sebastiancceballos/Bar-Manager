@@ -5,6 +5,7 @@ import { generateTicketNumber } from "@/lib/self-service";
 import { getAuthUser } from "@/lib/auth";
 import { resolveLocationId } from "@/lib/org";
 import { canAccessSelfServiceQueue, canUseComandas } from "@/lib/permissions";
+import { apiT } from "@/lib/api-i18n";
 
 
 // Panel de caja/cocina: lista de pedidos de autoservicio del bar del usuario,
@@ -14,10 +15,10 @@ export async function GET(request: NextRequest) {
   try {
     const user = await getAuthUser();
     if (!user) {
-      return NextResponse.json({ error: "No autenticado" }, { status: 401 });
+      return NextResponse.json({ error: apiT(request, "apiNotAuthenticated") }, { status: 401 });
     }
     if (!canAccessSelfServiceQueue(user.role) && !canUseComandas(user.role)) {
-      return NextResponse.json({ error: "Sin permiso" }, { status: 403 });
+      return NextResponse.json({ error: apiT(request, "apiNoPermission") }, { status: 403 });
     }
 
     const { searchParams } = new URL(request.url);
@@ -27,7 +28,7 @@ export async function GET(request: NextRequest) {
     const locId =
       user.role === "owner" ? null : await resolveLocationId(user.id, user.role);
     if (!locId && user.role !== "owner") {
-      return NextResponse.json({ error: "Sin bar asignado" }, { status: 400 });
+      return NextResponse.json({ error: apiT(request, "apiNoLocationAssigned") }, { status: 400 });
     }
 
     // Limpieza "al vuelo": no dependemos de un cron de Vercel (los crons
@@ -125,7 +126,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ orders }, { status: 200 });
   } catch (error) {
     console.error("List self-service orders error:", error);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return NextResponse.json({ error: apiT(request, "internalServerError") }, { status: 500 });
   }
 }
 
@@ -144,10 +145,10 @@ export async function POST(request: NextRequest) {
     const items: CartItem[] = Array.isArray(body.items) ? body.items : [];
 
     if (!locationId || Number.isNaN(locationId)) {
-      return NextResponse.json({ error: "Bar inválido" }, { status: 400 });
+      return NextResponse.json({ error: apiT(request, "apiInvalidLocation") }, { status: 400 });
     }
     if (items.length === 0) {
-      return NextResponse.json({ error: "El carrito está vacío" }, { status: 400 });
+      return NextResponse.json({ error: apiT(request, "apiCartEmpty") }, { status: 400 });
     }
 
     const locationRows = await sql`
@@ -155,7 +156,7 @@ export async function POST(request: NextRequest) {
     `;
     if (locationRows.length === 0 || !locationRows[0].self_service_enabled) {
       return NextResponse.json(
-        { error: "El autoservicio no está disponible en este bar" },
+        { error: apiT(request, "apiSelfServiceNotAvailable") },
         { status: 403 }
       );
     }
@@ -164,7 +165,7 @@ export async function POST(request: NextRequest) {
     // el cliente) y validar que pertenezcan a este bar y estén disponibles.
     const productIds = items.map((i) => parseInt(String(i.productId))).filter((n) => !Number.isNaN(n));
     if (productIds.length === 0) {
-      return NextResponse.json({ error: "Productos inválidos" }, { status: 400 });
+      return NextResponse.json({ error: apiT(request, "apiInvalidProducts") }, { status: 400 });
     }
 
     const products = await sql`
@@ -181,7 +182,7 @@ export async function POST(request: NextRequest) {
       const quantity = Math.max(1, Math.floor(Number(item.quantity) || 1));
       if (!product) {
         return NextResponse.json(
-          { error: `Uno de los productos ya no está disponible` },
+          { error: apiT(request, "apiProductUnavailable") },
           { status: 400 }
         );
       }
@@ -233,6 +234,6 @@ export async function POST(request: NextRequest) {
     );
   } catch (error) {
     console.error("Create self-service order error:", error);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return NextResponse.json({ error: apiT(request, "internalServerError") }, { status: 500 });
   }
 }

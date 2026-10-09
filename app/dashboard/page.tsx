@@ -195,7 +195,7 @@ export default function DashboardPage() {
                           <div className={`shrink-0 px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-tighter ${
                             p.stock <= 0 ? "bg-red-500/20 text-red-400" : "bg-amber-500/20 text-amber-400"
                           }`}>
-                            {p.stock <= 0 ? "Agotado" : `${p.stock} Unid.`}
+                            {p.stock <= 0 ? t("outOfStock") : `${p.stock} ${t("unitsAbbrev")}`}
                           </div>
                         </div>
                       ))

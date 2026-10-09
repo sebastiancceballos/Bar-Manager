@@ -57,10 +57,10 @@ export default function OwnerPanel() {
         setTotals(data.totals);
       } else {
         const d = await res.json();
-        setError(d.error || "Error al cargar");
+        setError(d.error || t("errorLoading"));
       }
     } catch {
-      setError("Error de conexión");
+      setError(t("connectionError"));
     } finally {
       setLoading(false);
     }
@@ -81,17 +81,17 @@ export default function OwnerPanel() {
         setBars(prev => prev.map(b => b.id === bar.id ? { ...b, active: !b.active } : b));
       } else {
         const d = await res.json();
-        setError(d.error || "Error al actualizar");
+        setError(d.error || t("errorUpdating"));
       }
     } catch {
-      setError("Error de conexión");
+      setError(t("connectionError"));
     } finally {
       setToggling(null);
     }
   };
 
   if (user?.role !== "owner") {
-    return <div className="min-h-screen bg-background flex items-center justify-center"><div className="text-foreground">Redirigiendo...</div></div>;
+    return <div className="min-h-screen bg-background flex items-center justify-center"><div className="text-foreground">{t("redirecting")}</div></div>;
   }
 
   return (
@@ -101,7 +101,7 @@ export default function OwnerPanel() {
         <div className="max-w-7xl mx-auto px-4 py-10">
 
           <div className="mb-8">
-            <h1 className="text-4xl font-bold text-foreground">Panel Superadmin</h1>
+            <h1 className="text-4xl font-bold text-foreground">{t("superadminPanel")}</h1>
             <p className="text-gray-400 mt-1">{t("orgSummary")}</p>
           </div>
 
@@ -138,15 +138,15 @@ export default function OwnerPanel() {
           )}
 
           {/* Bars list */}
-          <h2 className="text-xl font-semibold text-foreground mb-4">Bares</h2>
+          <h2 className="text-xl font-semibold text-foreground mb-4">{t("bars")}</h2>
 
           {loading ? (
             <div className="text-gray-400">{t("loading")}</div>
           ) : bars.length === 0 ? (
             <div className="card text-center py-12">
-              <p className="text-gray-400">No hay bares registrados.</p>
+              <p className="text-gray-400">{t("noBarsRegistered")}</p>
               <button onClick={() => router.push("/dashboard/bars")} className="btn-primary mt-4">
-                Gestionar Bares
+                {t("manageBars")}
               </button>
             </div>
           ) : (
@@ -162,7 +162,7 @@ export default function OwnerPanel() {
                       <div className="flex items-center gap-2">
                         <h3 className="text-lg font-bold text-foreground">{bar.name}</h3>
                         <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${bar.active ? "bg-green-500/20 text-green-400" : "bg-red-500/20 text-red-400"}`}>
-                          {bar.active ? "Activo" : "Inactivo"}
+                          {bar.active ? t("active") : t("inactive")}
                         </span>
                       </div>
                       <p className="text-xs text-gray-400 mt-0.5">{bar.address}</p>
@@ -175,7 +175,7 @@ export default function OwnerPanel() {
                           : "bg-green-500/10 text-green-400 hover:bg-green-500/20 border border-green-500/30"
                         }`}
                     >
-                      {toggling === bar.id ? "..." : bar.active ? "Desactivar" : "Activar"}
+                      {toggling === bar.id ? "..." : bar.active ? t("deactivate") : t("activate")}
                     </button>
                   </div>
 
@@ -186,12 +186,12 @@ export default function OwnerPanel() {
                       <p className="font-bold text-foreground">
                         {bar.occupiedTables}<span className="text-gray-500 font-normal text-xs">/{bar.totalTables}</span>
                       </p>
-                      <p className="text-gray-500 text-xs">ocupadas</p>
+                      <p className="text-gray-500 text-xs">{t("occupiedTablesLabel")}</p>
                     </div>
                     <div className="bg-background/50 rounded-lg p-3 text-center">
-                      <p className="text-gray-400 text-xs mb-1">Equipo</p>
+                      <p className="text-gray-400 text-xs mb-1">{t("teamLabel")}</p>
                       <p className="font-bold text-foreground">{bar.adminCount + bar.waiterCount}</p>
-                      <p className="text-gray-500 text-xs">{bar.adminCount} admin · {bar.waiterCount} mes.</p>
+                      <p className="text-gray-500 text-xs">{bar.adminCount} {t("adminCountAbbrev")} · {bar.waiterCount} {t("waiterCountAbbrev")}</p>
                     </div>
                     <div className="bg-background/50 rounded-lg p-3 text-center">
                       <p className="text-gray-400 text-xs mb-1">{t("ordersToday")}</p>
@@ -221,19 +221,19 @@ export default function OwnerPanel() {
               onClick={() => router.push("/dashboard/bars")}
               className="btn-primary"
             >
-              + Gestionar Bares
+              + {t("manageBars")}
             </button>
             <button
               onClick={() => router.push("/dashboard/users")}
               className="btn-secondary"
             >
-              Gestionar Usuarios
+              {t("manageUsers")}
             </button>
             <button
               onClick={fetchStats}
               className="px-4 py-2 text-sm bg-card border border-border text-gray-400 hover:text-foreground rounded-lg transition-smooth"
             >
-              ↻ Actualizar
+              ↻ {t("refreshButton")}
             </button>
           </div>
 

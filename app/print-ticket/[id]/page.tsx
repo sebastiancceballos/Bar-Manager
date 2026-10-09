@@ -1,6 +1,7 @@
 "use client";
 
 import { useI18n } from "@/app/i18n-provider";
+import { fmtDateTime } from "@/lib/format-date";
 
 import { useEffect, useState, use as usePromise } from "react";
 
@@ -11,6 +12,13 @@ const formatCOP = (value: number) =>
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
   }).format(Number(value) || 0);
+
+const PAYMENT_LABEL_KEYS: Record<string, string> = {
+  efectivo: "cashPayment",
+  tarjeta: "card",
+  transferencia: "transfer",
+  otro: "other",
+};
 
 interface TicketData {
   ticketNumber: string;
@@ -30,7 +38,7 @@ export default function PrintTicketPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
 
   const { id } = usePromise(params);
   const [ticket, setTicket] = useState<TicketData | null>(null);
@@ -106,14 +114,13 @@ export default function PrintTicketPage({
 
       <div className="actions no-print">
         <p className="center bold" style={{ fontFamily: "system-ui" }}>
-          Ticket 58 mm — {ticket.ticketNumber}
+          {t("ticketHash")} 58 mm — {ticket.ticketNumber}
         </p>
         <p className="muted center" style={{ fontFamily: "system-ui" }}>
-          Elige tu impresora PT-210 / Bluetooth y confirma. No se imprime solo
-          para evitar trabajos colgados.
+          {t("choosePrinterHint")}
         </p>
         <button type="button" onClick={() => window.print()}>
-          Imprimir ticket
+          {t("printTicketButton")}
         </button>
       </div>
 
@@ -128,12 +135,12 @@ export default function PrintTicketPage({
           {ticket.ticketNumber}
         </div>
         <div className="center muted">
-          {new Date(ticket.createdAt).toLocaleString("es-CO")}
+          {fmtDateTime(ticket.createdAt, locale)}
         </div>
         {ticket.cashierName && (
-          <div className="center muted">Cajero: {ticket.cashierName}</div>
+          <div className="center muted">{t("cashierLabel")}: {ticket.cashierName}</div>
         )}
-        {ticket.clientName && <div>Cliente: {ticket.clientName}</div>}
+        {ticket.clientName && <div>{t("customerLabel")}: {ticket.clientName}</div>}
         <hr className="sep" />
         {ticket.items.map((item, i) => (
           <div key={i}>
@@ -148,19 +155,19 @@ export default function PrintTicketPage({
         ))}
         <hr className="sep" />
         {ticket.customerNotes && (
-          <div className="note">Nota: {ticket.customerNotes}</div>
+          <div className="note">{t("noteLabel")}: {ticket.customerNotes}</div>
         )}
         <div className="line" style={{ fontWeight: 900, fontSize: 14 }}>
-          <span>TOTAL</span>
+          <span>{t("totalLabel")}</span>
           <span>{formatCOP(ticket.total)}</span>
         </div>
         {ticket.paymentMethod && (
           <div className="center muted" style={{ marginTop: 4 }}>
-            Pago: {ticket.paymentMethod}
+            {t("paymentLabel")}: {PAYMENT_LABEL_KEYS[ticket.paymentMethod] ? t(PAYMENT_LABEL_KEYS[ticket.paymentMethod]) : ticket.paymentMethod}
           </div>
         )}
         <div className="center muted" style={{ marginTop: 10 }}>
-          ¡Gracias por su visita!
+          {t("thanksForVisit")}
         </div>
       </div>
     </>

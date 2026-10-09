@@ -268,7 +268,7 @@ export default function TablesPage() {
               <h2 className="text-lg font-semibold mb-4">{t("addTable")}</h2>
               <form onSubmit={handleAddTable} className="flex gap-4 items-end">
                 <div>
-                  <label className="block text-sm mb-1">Numero</label>
+                  <label className="block text-sm mb-1">{t("numberLabel")}</label>
                   <input
                     type="text"
                     value={newTable.table_number}
@@ -291,14 +291,14 @@ export default function TablesPage() {
                   />
                 </div>
                 <button type="submit" className="btn-primary">
-                  Agregar
+                  {t("add")}
                 </button>
                 <button
                   type="button"
                   onClick={() => setShowAddForm(false)}
                   className="btn-secondary"
                 >
-                  Cancelar
+                  {t("cancel")}
                 </button>
               </form>
             </div>
@@ -337,7 +337,7 @@ export default function TablesPage() {
                       {table.table_number}
                     </span>
                     <span className="text-xs text-gray-400">
-                      {table.capacity} pers.
+                      {table.capacity} {t("peopleAbbrev")}
                     </span>
                     {isOccupied && (
                       <span className={`text-xs font-semibold mt-1 ${amountClass}`}>
@@ -346,7 +346,7 @@ export default function TablesPage() {
                     )}
                     {billRequested && (
                       <span className="text-[10px] font-bold uppercase text-warning mt-0.5">
-                        Cuenta
+                        {t("billLabel")}
                       </span>
                     )}
                   </div>
@@ -416,7 +416,7 @@ export default function TablesPage() {
                       {table.table_number}
                     </span>
                     <span className="text-xs text-gray-400">
-                      {table.capacity} pers.
+                      {table.capacity} {t("peopleAbbrev")}
                     </span>
                     {isOccupied && (
                       <span className={`text-xs font-semibold mt-1 ${amountClass}`}>
@@ -425,7 +425,7 @@ export default function TablesPage() {
                     )}
                     {billRequested && (
                       <span className="text-[10px] font-bold uppercase text-warning mt-0.5">
-                        Cuenta
+                        {t("billLabel")}
                       </span>
                     )}
 

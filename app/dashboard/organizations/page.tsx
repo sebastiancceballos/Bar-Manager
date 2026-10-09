@@ -48,7 +48,7 @@ export default function OrganizationsPage() {
     try {
       const res = await fetch("/api/organizations");
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Error al cargar");
+      if (!res.ok) throw new Error(data.error || t("errorLoading"));
       setOrgs(data.organizations || []);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Error");
@@ -81,9 +81,9 @@ export default function OrganizationsPage() {
         body: JSON.stringify({ name: orgName }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "No se pudo crear");
+      if (!res.ok) throw new Error(data.error || t("couldNotCreateOrg"));
       setCreatedOrgId(data.organization.id);
-      setMsg(`Organización "${data.organization.name}" creada`);
+      setMsg(`${t("organization")} "${data.organization.name}" ${t("orgCreatedMsg")}`);
       setStep(2);
       await load();
     } catch (e) {
@@ -96,7 +96,7 @@ export default function OrganizationsPage() {
   const createBar = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!createdOrgId) {
-      setError("Crea primero la organización (paso 1)");
+      setError(t("createOrgFirstStep"));
       return;
     }
     setSaving(true);
@@ -112,8 +112,8 @@ export default function OrganizationsPage() {
         }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "No se pudo crear sucursal");
-      setMsg(`Sucursal "${data.location.name}" creada`);
+      if (!res.ok) throw new Error(data.error || t("couldNotCreateLocation"));
+      setMsg(`${t("location_")} "${data.location.name}" ${t("locationCreatedMsg")}`);
       setBarForm({ name: "", address: "" });
       await loadLocations();
       await load();
@@ -143,8 +143,8 @@ export default function OrganizationsPage() {
         }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "No se pudo crear admin");
-      setMsg(`Administrador ${data.user?.email || adminForm.email} creado`);
+      if (!res.ok) throw new Error(data.error || t("couldNotCreateAdmin"));
+      setMsg(`${t("role_admin")} ${data.user?.email || adminForm.email} ${t("adminCreatedMsg")}`);
       setAdminForm({ name: "", email: "", password: "", locationId: "" });
       setStep(1);
       setOrgName("");
@@ -177,7 +177,7 @@ export default function OrganizationsPage() {
   };
 
   const deleteOrg = async (id: number) => {
-    if (!confirm("¿Eliminar organización vacía?")) return;
+    if (!confirm(t("confirmDeleteEmptyOrg"))) return;
     setSaving(true);
     try {
       const res = await fetch(`/api/organizations/${id}`, { method: "DELETE" });
@@ -194,7 +194,7 @@ export default function OrganizationsPage() {
   if (user?.role !== "owner") {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center text-foreground">
-        Redirigiendo...
+        {t("redirecting")}
       </div>
     );
   }
@@ -207,8 +207,7 @@ export default function OrganizationsPage() {
           <div>
             <h1 className="text-3xl font-bold text-foreground">{t("organizations")}</h1>
             <p className="text-gray-400 mt-1 text-sm">
-              Alta de cliente: organización → sucursales → administrador del negocio. CRUD:
-              renombrar, suspender, eliminar (si no tiene sucursales).
+              {t("orgOnboardingSubtitle")}
             </p>
           </div>
 
@@ -225,51 +224,51 @@ export default function OrganizationsPage() {
 
           <div className="card space-y-4">
             <div className="flex flex-wrap gap-2 text-xs font-semibold uppercase tracking-wide">
-              <span className={step === 1 ? "text-primary" : "text-gray-500"}>1. Organización</span>
+              <span className={step === 1 ? "text-primary" : "text-gray-500"}>1. {t("stepOrganization")}</span>
               <span className="text-gray-600">→</span>
-              <span className={step === 2 ? "text-primary" : "text-gray-500"}>2. Sucursal</span>
+              <span className={step === 2 ? "text-primary" : "text-gray-500"}>2. {t("stepLocation")}</span>
               <span className="text-gray-600">→</span>
-              <span className={step === 3 ? "text-primary" : "text-gray-500"}>3. Admin</span>
+              <span className={step === 3 ? "text-primary" : "text-gray-500"}>3. {t("stepAdmin")}</span>
             </div>
 
             {step === 1 && (
               <form onSubmit={createOrg} className="space-y-3">
                 <input
                   className="input w-full"
-                  placeholder="Nombre del cliente / negocio"
+                  placeholder={t("businessNamePlaceholder")}
                   value={orgName}
                   onChange={(e) => setOrgName(e.target.value)}
                   required
                 />
                 <button type="submit" disabled={saving} className="btn btn-primary disabled:opacity-50">
-                  Crear y continuar
+                  {t("createAndContinue")}
                 </button>
               </form>
             )}
 
             {step === 2 && (
               <form onSubmit={createBar} className="space-y-3">
-                <p className="text-sm text-gray-400">Organización #{createdOrgId}</p>
+                <p className="text-sm text-gray-400">{t("organization")} #{createdOrgId}</p>
                 <input
                   className="input w-full"
-                  placeholder="Nombre de la sucursal"
+                  placeholder={t("locationNamePlaceholder")}
                   value={barForm.name}
                   onChange={(e) => setBarForm({ ...barForm, name: e.target.value })}
                   required
                 />
                 <input
                   className="input w-full"
-                  placeholder="Dirección"
+                  placeholder={t("addressPlaceholder")}
                   value={barForm.address}
                   onChange={(e) => setBarForm({ ...barForm, address: e.target.value })}
                   required
                 />
                 <div className="flex gap-2">
                   <button type="button" className="btn btn-outline" onClick={() => setStep(1)}>
-                    Atrás
+                    {t("back")}
                   </button>
                   <button type="submit" disabled={saving} className="btn btn-primary disabled:opacity-50">
-                    Crear sucursal y continuar
+                    {t("createLocationAndContinue")}
                   </button>
                 </div>
               </form>
@@ -279,7 +278,7 @@ export default function OrganizationsPage() {
               <form onSubmit={createAdmin} className="space-y-3">
                 <input
                   className="input w-full"
-                  placeholder="Nombre del administrador"
+                  placeholder={t("adminNamePlaceholder")}
                   value={adminForm.name}
                   onChange={(e) => setAdminForm({ ...adminForm, name: e.target.value })}
                   required
@@ -295,7 +294,7 @@ export default function OrganizationsPage() {
                 <input
                   className="input w-full"
                   type="password"
-                  placeholder="Contraseña (mín. 6)"
+                  placeholder={t("passwordMinPlaceholder")}
                   value={adminForm.password}
                   onChange={(e) => setAdminForm({ ...adminForm, password: e.target.value })}
                   required
@@ -316,10 +315,10 @@ export default function OrganizationsPage() {
                 </select>
                 <div className="flex gap-2">
                   <button type="button" className="btn btn-outline" onClick={() => setStep(2)}>
-                    Atrás
+                    {t("back")}
                   </button>
                   <button type="submit" disabled={saving} className="btn btn-primary disabled:opacity-50">
-                    Crear administrador
+                    {t("createAdminButton")}
                   </button>
                 </div>
               </form>
@@ -327,12 +326,12 @@ export default function OrganizationsPage() {
           </div>
 
           <div className="card">
-            <h2 className="font-semibold text-lg mb-4">Listado y gestión</h2>
+            <h2 className="font-semibold text-lg mb-4">{t("listAndManage")}</h2>
             {loading ? (
               <p className="text-gray-400">{t("loading")}</p>
             ) : orgs.length === 0 ? (
               <p className="text-gray-400 text-sm">
-                No hay organizaciones. Usa el asistente o el SQL de migración en Neon.
+                {t("noOrgsYet")}
               </p>
             ) : (
               <ul className="divide-y divide-border">
@@ -355,7 +354,7 @@ export default function OrganizationsPage() {
                         </span>
                       </p>
                       <p className="text-gray-400 text-xs">
-                        #{o.id} · {o.location_count ?? 0} sucursal(es) · {o.admin_count ?? 0} admin(s)
+                        #{o.id} · {o.location_count ?? 0} {t("locationsCountSuffix")} · {o.admin_count ?? 0} {t("adminsCountSuffix")}
                       </p>
                     </div>
                     <div className="flex flex-wrap gap-2">
@@ -364,11 +363,11 @@ export default function OrganizationsPage() {
                         className="btn btn-outline btn-sm"
                         disabled={saving}
                         onClick={() => {
-                          const n = prompt("Nuevo nombre", o.name);
+                          const n = prompt(t("promptNewName"), o.name);
                           if (n && n.trim()) patchOrg(o.id, { name: n.trim() });
                         }}
                       >
-                        Renombrar
+                        {t("rename")}
                       </button>
                       <button
                         type="button"
@@ -380,7 +379,7 @@ export default function OrganizationsPage() {
                           })
                         }
                       >
-                        {o.status === "active" ? "Suspender" : "Activar"}
+                        {o.status === "active" ? t("suspend") : t("activate")}
                       </button>
                       <button
                         type="button"
@@ -388,7 +387,7 @@ export default function OrganizationsPage() {
                         disabled={saving}
                         onClick={() => deleteOrg(o.id)}
                       >
-                        Eliminar
+                        {t("delete")}
                       </button>
                       <button
                         type="button"
@@ -396,11 +395,11 @@ export default function OrganizationsPage() {
                         onClick={() => {
                           setCreatedOrgId(o.id);
                           setStep(2);
-                          setMsg(`Añadir sucursal a "${o.name}"`);
+                          setMsg(`${t("addLocationTo")} "${o.name}"`);
                           loadLocations();
                         }}
                       >
-                        + Sucursal
+                        {t("addLocationShort")}
                       </button>
                     </div>
                   </li>

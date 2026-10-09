@@ -35,13 +35,6 @@ interface SelfServiceOrder {
 
 const ALLOWED_ROLES = ["owner", "admin", "cashier"];
 
-const TABS: { key: string; label: string }[] = [
-  { key: "", label: "Todos (activos)" },
-  { key: "PENDING_PAYMENT", label: "Por cobrar" },
-  { key: "PREPARING", label: "En preparación" },
-  { key: "READY", label: "Listos" },
-];
-
 function OrdersDashboardContent() {
   const { t } = useI18n();
   const STATUS_TABS = [
@@ -68,7 +61,7 @@ function OrdersDashboardContent() {
       if (!res.ok) throw new Error(data.error);
       setOrders(data.orders);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Error cargando pedidos");
+      setError(err instanceof Error ? err.message : t("errorLoadingOrders"));
     } finally {
       setIsLoading(false);
     }
@@ -98,7 +91,7 @@ function OrdersDashboardContent() {
       if (!res.ok) throw new Error(data.error);
       await load();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "No se pudo actualizar el pedido");
+      setError(err instanceof Error ? err.message : t("couldNotUpdateOrder"));
     } finally {
       setBusyId(null);
     }
@@ -107,7 +100,7 @@ function OrdersDashboardContent() {
   if (user && !ALLOWED_ROLES.includes(user.role)) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center text-error">
-        No tienes permiso para acceder aquí
+        {t("noPermissionToAccess")}
       </div>
     );
   }
@@ -132,15 +125,15 @@ function OrdersDashboardContent() {
 
         {!search && (
           <div className="flex gap-2 overflow-x-auto pb-2 mb-4">
-            {TABS.map((t) => (
+            {STATUS_TABS.map((tabItem) => (
               <button
-                key={t.key}
-                onClick={() => setTab(t.key)}
+                key={tabItem.key}
+                onClick={() => setTab(tabItem.key)}
                 className={`min-h-[44px] px-4 rounded-full text-sm whitespace-nowrap ${
-                  tab === t.key ? "bg-primary text-white" : "bg-card border border-border"
+                  tab === tabItem.key ? "bg-primary text-white" : "bg-card border border-border"
                 }`}
               >
-                {t.label}
+                {tabItem.label}
               </button>
             ))}
           </div>
@@ -200,7 +193,7 @@ function OrdersDashboardContent() {
                           <option value="efectivo">{t("cashPayment")}</option>
                           <option value="tarjeta">{t("card")}</option>
                           <option value="transferencia">{t("transfer")}</option>
-                          <option value="otro">Otro</option>
+                          <option value="otro">{t("other")}</option>
                         </select>
                         <div className="flex gap-2">
                         <button
@@ -208,7 +201,7 @@ function OrdersDashboardContent() {
                           onClick={() => changeStatus(order.id, "PAID", payMethod)}
                           className="min-h-[44px] px-4 bg-success text-white rounded-lg flex items-center gap-2 font-semibold disabled:opacity-50"
                         >
-                          <CreditCard className="w-4 h-4" /> Confirmar pago
+                          <CreditCard className="w-4 h-4" /> {t("confirmPayment")}
                         </button>
                         <button
                           disabled={busyId === order.id}
@@ -227,7 +220,7 @@ function OrdersDashboardContent() {
                         onClick={() => changeStatus(order.id, "COMPLETED")}
                         className="min-h-[44px] px-4 bg-primary text-white rounded-lg flex items-center gap-2 font-semibold disabled:opacity-50"
                       >
-                        <CheckCircle2 className="w-4 h-4" /> Entregado
+                        <CheckCircle2 className="w-4 h-4" /> {t("delivered")}
                       </button>
                     )}
                   </div>
@@ -242,10 +235,10 @@ function OrdersDashboardContent() {
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60">
             <div className="bg-card border border-border rounded-2xl p-6 max-w-sm w-full shadow-xl">
               <h2 className="text-lg font-bold text-foreground mb-2">
-                ¿Cancelar este pedido?
+                {t("cancelThisOrderQuestion")}
               </h2>
               <p className="text-sm text-foreground/70 mb-1">
-                Ficho{" "}
+                {t("ticketLabel")}{" "}
                 <span className="font-black text-foreground">
                   {cancelTarget.ticket_number}
                 </span>
@@ -254,9 +247,9 @@ function OrdersDashboardContent() {
                   : ""}
               </p>
               <p className="text-sm text-foreground/60 mb-6">
-                Esta acción no se puede deshacer.
+                {t("cannotUndo")}.
                 {cancelTarget.status !== "PENDING_PAYMENT"
-                  ? " El stock de los productos se devolverá al inventario."
+                  ? ` ${t("stockWillBeReturned")}`
                   : ""}
               </p>
               <div className="flex gap-3">
@@ -265,7 +258,7 @@ function OrdersDashboardContent() {
                   onClick={() => setCancelTarget(null)}
                   className="flex-1 min-h-[44px] rounded-lg border border-border bg-background font-semibold"
                 >
-                  No
+                  {t("no")}
                 </button>
                 <button
                   type="button"
@@ -277,7 +270,7 @@ function OrdersDashboardContent() {
                   }}
                   className="flex-1 min-h-[44px] rounded-lg bg-error text-white font-semibold disabled:opacity-50"
                 >
-                  Sí, cancelar
+                  {t("yesCancelButton")}
                 </button>
               </div>
             </div>
@@ -293,11 +286,11 @@ function StatusBadge({ status }: { status: string }) {
 
   const map: Record<string, { label: string; className: string }> = {
     PENDING_PAYMENT: { label: t("toCharge"), className: "bg-warning/20 text-warning" },
-    PAID: { label: "Pagado", className: "bg-primary/20 text-primary" },
+    PAID: { label: t("paid"), className: "bg-primary/20 text-primary" },
     PREPARING: { label: t("orderPreparing"), className: "bg-secondary/20 text-secondary" },
     READY: { label: t("ready"), className: "bg-success/20 text-success" },
     COMPLETED: { label: t("delivered"), className: "bg-foreground/10 text-foreground/60" },
-    CANCELLED: { label: "Cancelado", className: "bg-error/20 text-error" },
+    CANCELLED: { label: t("cancelled"), className: "bg-error/20 text-error" },
   };
   const info = map[status] || { label: status, className: "bg-foreground/10" };
   return <span className={`text-xs font-semibold px-2 py-1 rounded-full ${info.className}`}>{info.label}</span>;

@@ -1,6 +1,7 @@
 "use client";
 
 import { useI18n } from "@/app/i18n-provider";
+import { fmtDate, fmtTime, fmtDateOnly } from "@/lib/format-date";
 
 import { ProtectedLayout } from "@/app/components/ProtectedLayout";
 import { Navigation } from "@/app/components/Navigation";
@@ -18,12 +19,6 @@ const formatCOP = (value: number) =>
  * como medianoche UTC, y toLocaleDateString() lo muestra en la zona
  * horaria local del navegador, restando horas y mostrando el día anterior.
  */
-function formatDateOnly(dateStr: string): string {
-  const match = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})/);
-  if (!match) return new Date(dateStr).toLocaleDateString("es-MX");
-  const [, year, month, day] = match;
-  return new Date(parseInt(year), parseInt(month) - 1, parseInt(day)).toLocaleDateString("es-MX");
-}
 
 
 interface DailyReport {
@@ -53,17 +48,18 @@ interface PaymentMethodReport {
   total: number;
 }
 
-const PAYMENT_LABELS: Record<string, string> = {
-  autoservicio: "Autoservicio",
-  efectivo: "Efectivo",
-  tarjeta: "Tarjeta",
-  transferencia: "Transferencia",
-  otro: "Otro",
-  sin_registrar: "Sin registrar",
+const PAYMENT_LABEL_KEYS: Record<string, string> = {
+  autoservicio: "selfService",
+  efectivo: "cashPayment",
+  tarjeta: "card",
+  transferencia: "transfer",
+  otro: "other",
+  sin_registrar: "unregistered",
 };
 
 export default function ReportsPage() {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
+  const fmtDateOnlyLocal = (d: string) => fmtDateOnly(d, locale);
 
   const [reports, setReports] = useState<DailyReport[]>([]);
   const [byWaiter, setByWaiter] = useState<WaiterReport[]>([]);
@@ -117,12 +113,12 @@ export default function ReportsPage() {
           setReports(data.reports);
         } else {
           const errData = await response.json().catch(() => ({}));
-          setReportsError(errData.error || `Error del servidor (HTTP ${response.status})`);
+          setReportsError(errData.error || `${t("serverError")} (HTTP ${response.status})`);
           setReports([]);
         }
       } catch (error) {
         console.error("Failed to fetch reports:", error);
-        setReportsError("No se pudo conectar con el servidor");
+        setReportsError(t("couldNotConnectServer"));
         setReports([]);
       } finally {
         setLoading(false);
@@ -186,16 +182,16 @@ export default function ReportsPage() {
       const orders = data.orders || [];
 
       // Build CSV rows
-      const headers = [t("date"), t("time"), "# Orden", "Tipo", "Mesa/Ficho", "Mesero/Cliente", t("product"), t("category"), t("quantity"), "Precio Unitario", t("subtotal"), t("orderTotal"), t("status")];
+      const headers = [t("date"), t("time"), t("csvOrderNumber"), t("csvType"), t("csvTableTicket"), t("csvWaiterCustomer"), t("product"), t("category"), t("quantity"), t("csvUnitPrice"), t("subtotal"), t("orderTotal"), t("status")];
       const csvRows: string[] = [headers.join(";")];
 
       for (const order of orders) {
-        const date = new Date(order.created_at).toLocaleDateString("es-CO");
-        const time = new Date(order.created_at).toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit" });
+        const date = fmtDate(order.created_at, locale);
+        const time = fmtTime(order.created_at, locale, { hour: "2-digit", minute: "2-digit" });
         if (order.items.length === 0) {
           csvRows.push([
             date, time, order.id,
-            order.order_type === "self_service" ? "Autoservicio" : t("table"),
+            order.order_type === "self_service" ? t("selfService") : t("table"),
             order.table_number, order.waiter_name || "-",
             "-", "-", "0", "0", "0", Number(order.total_amount), order.status
           ].join(";"));
@@ -204,7 +200,7 @@ export default function ReportsPage() {
             const subtotal = Number(item.price) * item.quantity;
             csvRows.push([
               date, time, order.id,
-              order.order_type === "self_service" ? "Autoservicio" : t("table"),
+              order.order_type === "self_service" ? t("selfService") : t("table"),
               order.table_number, order.waiter_name || "-",
               item.product_name, item.category, item.quantity,
               Number(item.price), subtotal,
@@ -222,13 +218,13 @@ export default function ReportsPage() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `pedidos_${exportFrom}_${exportTo}.csv`;
+      a.download = `${t("csvFilePrefix")}_${exportFrom}_${exportTo}.csv`;
       a.click();
       URL.revokeObjectURL(url);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
       console.error("Export failed:", msg);
-      alert("Error al exportar: " + msg);
+      alert(t("exportErrorPrefix") + ": " + msg);
     } finally {
       setExporting(false);
     }
@@ -270,25 +266,25 @@ export default function ReportsPage() {
                 {dateRange === "day" ? t("salesToday") : t("salesPeriod")}
               </p>
               <p className="text-2xl font-bold text-primary">{formatCOP(totalPeriod)}</p>
-              <p className="text-xs text-gray-500 mt-1">{ordersPeriod} pedidos</p>
+              <p className="text-xs text-gray-500 mt-1">{ordersPeriod} {t("orders").toLowerCase()}</p>
             </div>
             <div className="card p-4 border border-green-500/40 bg-green-500/5">
               <p className="text-xs text-green-400 mb-1">{t("cashPayment")}</p>
               <p className="text-2xl font-bold text-green-400">{formatCOP(payTotal("efectivo"))}</p>
-              <p className="text-xs text-gray-500 mt-1">{payCount("efectivo")} pagos</p>
+              <p className="text-xs text-gray-500 mt-1">{payCount("efectivo")} {t("paymentsLower")}</p>
             </div>
             <div className="card p-4 border border-blue-500/40 bg-blue-500/5">
               <p className="text-xs text-blue-400 mb-1">{t("transfer")}</p>
               <p className="text-2xl font-bold text-blue-400">{formatCOP(payTotal("transferencia"))}</p>
-              <p className="text-xs text-gray-500 mt-1">{payCount("transferencia")} pagos</p>
+              <p className="text-xs text-gray-500 mt-1">{payCount("transferencia")} {t("paymentsLower")}</p>
             </div>
             <div className="card p-4 border border-border">
-              <p className="text-xs text-gray-400 mb-1">Tarjeta / otros</p>
+              <p className="text-xs text-gray-400 mb-1">{t("cardAndOthers")}</p>
               <p className="text-2xl font-bold text-foreground">
                 {formatCOP(payTotal("tarjeta") + payTotal("otro") + payTotal("sin_dato") + payTotal("sin_registrar"))}
               </p>
               <p className="text-xs text-gray-500 mt-1">
-                {payCount("tarjeta") + payCount("otro")} pagos
+                {payCount("tarjeta") + payCount("otro")} {t("paymentsLower")}
               </p>
             </div>
           </div>
@@ -357,7 +353,7 @@ export default function ReportsPage() {
 
           {reportsError && (
             <div className="bg-error/10 border border-error text-error px-4 py-3 rounded-lg mb-6 text-sm">
-              ⚠️ No se pudieron cargar los ingresos por día: {reportsError}
+              ⚠️ {t("couldNotLoadDailyRevenue")}: {reportsError}
             </div>
           )}
 
@@ -366,13 +362,13 @@ export default function ReportsPage() {
             <div className="card mb-6">
               <h2 className="text-lg font-semibold mb-2">{t("orgSummary")}</h2>
               <p className="text-xs text-gray-400 mb-3">
-                Ventas de todas las sucursales del mismo negocio (org de la sucursal activa).
+                {t("orgSummarySubtitle")}
               </p>
               {orgTotals && (
                 <p className="text-sm mb-3">
-                  Total: <strong>{formatCOP(Number(orgTotals.total))}</strong>
+                  {t("total")}: <strong>{formatCOP(Number(orgTotals.total))}</strong>
                   {" · "}
-                  {orgTotals.order_count} pedidos
+                  {orgTotals.order_count} {t("orders")}
                 </p>
               )}
               <ul className="space-y-2 text-sm">
@@ -383,7 +379,7 @@ export default function ReportsPage() {
                   >
                     <span>{row.location_name}</span>
                     <span>
-                      {formatCOP(Number(row.total))} · {row.order_count} pedidos
+                      {formatCOP(Number(row.total))} · {row.order_count} {t("orders")}
                     </span>
                   </li>
                 ))}
@@ -415,7 +411,7 @@ export default function ReportsPage() {
                         className="border-b border-border/50 hover:bg-card/50 transition-smooth"
                       >
                         <td className="py-3 px-4">
-                          {formatDateOnly(report.date)}
+                          {fmtDateOnlyLocal(report.date)}
                         </td>
                         <td className="py-3 px-4">{report.orderCount}</td>
                         <td className="py-3 px-4 text-success font-semibold">
@@ -426,7 +422,7 @@ export default function ReportsPage() {
                             onClick={() => handleViewMore(report.date)}
                             className="bg-primary text-white px-4 py-1 rounded text-sm hover:bg-primary/90 transition-colors"
                           >
-                            Ver más
+                            {t("viewMore")}
                           </button>
                         </td>
                       </tr>
@@ -454,7 +450,7 @@ export default function ReportsPage() {
                     <div key={w.waiterId ?? w.waiterName} className="flex justify-between items-center text-sm">
                       <div>
                         <p className="font-medium">{w.waiterName}</p>
-                        <p className="text-xs text-gray-500">{w.orderCount} órdenes · propinas {formatCOP(w.totalTips)}</p>
+                        <p className="text-xs text-gray-500">{w.orderCount} {t("orders")} · {t("tipsLabel")} {formatCOP(w.totalTips)}</p>
                       </div>
                       <span className="font-semibold text-success">{formatCOP(w.total)}</span>
                     </div>
@@ -473,7 +469,7 @@ export default function ReportsPage() {
                     <div key={p.productName} className="flex justify-between items-center text-sm">
                       <div>
                         <p className="font-medium">{p.productName}</p>
-                        <p className="text-xs text-gray-500">{p.unitsSold} unidades · {p.category}</p>
+                        <p className="text-xs text-gray-500">{p.unitsSold} {t("unitsSoldLabel")} · {p.category}</p>
                       </div>
                       <span className="font-semibold text-primary">{formatCOP(p.total)}</span>
                     </div>
@@ -491,8 +487,8 @@ export default function ReportsPage() {
                   {byPaymentMethod.map((p) => (
                     <div key={p.paymentMethod} className="flex justify-between items-center text-sm">
                       <div>
-                        <p className="font-medium">{PAYMENT_LABELS[p.paymentMethod] || p.paymentMethod}</p>
-                        <p className="text-xs text-gray-500">{p.orderCount} órdenes</p>
+                        <p className="font-medium">{t(PAYMENT_LABEL_KEYS[p.paymentMethod]) || p.paymentMethod}</p>
+                        <p className="text-xs text-gray-500">{p.orderCount} {t("orders")}</p>
                       </div>
                       <span className="font-semibold text-secondary">{formatCOP(p.total)}</span>
                     </div>

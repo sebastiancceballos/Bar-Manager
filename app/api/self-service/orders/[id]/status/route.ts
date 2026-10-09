@@ -6,6 +6,7 @@ import { logAudit } from "@/lib/audit";
 import { canTransition, SELF_SERVICE_STATUSES, SelfServiceStatus } from "@/lib/self-service";
 import { canCharge, canUseComandas } from "@/lib/permissions";
 import { notifyOrder } from "@/lib/push";
+import { apiT, apiTAsync } from "@/lib/api-i18n";
 
 
 const STOCK_DEDUCTED_STATUSES = new Set(["PAID", "PREPARING", "READY", "COMPLETED"]);
@@ -29,7 +30,7 @@ async function deductStockForOrder(
     if (stock < qty) {
       return {
         ok: false,
-        error: `Sin stock suficiente de "${item.name}": hay ${stock}, se necesitan ${qty}. Repón inventario antes de cobrar.`,
+        error: await apiTAsync("apiInsufficientStockDetail", { name: item.name, stock, qty }),
       };
     }
   }
@@ -90,12 +91,12 @@ export async function PATCH(
   try {
     const user = await getAuthUser();
     if (!user) {
-      return NextResponse.json({ error: "No autenticado" }, { status: 401 });
+      return NextResponse.json({ error: apiT(request, "apiNotAuthenticated") }, { status: 401 });
     }
     // Cualquiera que opere comandas o cobre puede intentar la transición;
     // canTransition valida el movimiento concreto.
     if (!canUseComandas(user.role) && !canCharge(user.role)) {
-      return NextResponse.json({ error: "Sin permiso" }, { status: 403 });
+      return NextResponse.json({ error: apiT(request, "apiNoPermission") }, { status: 403 });
     }
 
     const { id } = await params;
@@ -109,7 +110,7 @@ export async function PATCH(
     const VALID_PAYMENT = ["efectivo", "tarjeta", "transferencia", "otro"];
 
     if (!SELF_SERVICE_STATUSES.includes(newStatus)) {
-      return NextResponse.json({ error: "Estado inválido" }, { status: 400 });
+      return NextResponse.json({ error: apiT(request, "apiInvalidStatus") }, { status: 400 });
     }
 
     const rows = await sql`
@@ -118,13 +119,13 @@ export async function PATCH(
     `;
     const order = rows[0];
     if (!order || order.order_type !== "self_service") {
-      return NextResponse.json({ error: "Pedido no encontrado" }, { status: 404 });
+      return NextResponse.json({ error: apiT(request, "apiOrderNotFound") }, { status: 404 });
     }
 
     if (!canTransition(order.status, newStatus as SelfServiceStatus, user.role)) {
       return NextResponse.json(
         {
-          error: `Tu rol (${user.role}) no puede pasar el pedido de ${order.status} a ${newStatus}`,
+          error: apiT(request, "apiRoleCannotChangeStatus", { role: user.role, from: order.status, to: newStatus }),
         },
         { status: 403 }
       );
@@ -234,6 +235,6 @@ export async function PATCH(
     return NextResponse.json({ order: updated[0] }, { status: 200 });
   } catch (error) {
     console.error("Update self-service status error:", error);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return NextResponse.json({ error: apiT(request, "internalServerError") }, { status: 500 });
   }
 }

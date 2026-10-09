@@ -282,7 +282,7 @@ export function Navigation() {
                 type="button"
                 onClick={() => setIsMenuOpen((v) => !v)}
                 className="p-2 rounded-lg text-foreground hover:bg-card"
-                aria-label={isMenuOpen ? "Cerrar menú" : "Abrir menú"}
+                aria-label={isMenuOpen ? t("closeMenu") : t("openMenu")}
               >
                 {isMenuOpen ? (
                   <X className="w-6 h-6" />
@@ -334,7 +334,7 @@ export function Navigation() {
                       {user?.name}
                     </div>
                     <div className="text-sm font-medium text-gray-400">
-                      {roleLabel(user?.role)}
+                      {user?.role ? t(`role_${user.role}`, roleLabel(user.role)) : ""}
                     </div>
                   </div>
                 </div>
@@ -353,14 +353,14 @@ export function Navigation() {
                     className="flex w-full items-center gap-3 px-3 py-3 rounded-lg text-base font-medium text-primary hover:bg-primary/10 transition-smooth"
                   >
                     <HelpCircle className="w-5 h-5" />
-                    Ver Guía
+                    {t("guide")}
                   </button>
                   <button
                     onClick={handleLogout}
                     className="flex w-full items-center gap-3 px-3 py-3 rounded-lg text-base font-medium text-error hover:bg-error/10 transition-smooth"
                   >
                     <LogOut className="w-5 h-5" />
-                    Cerrar Sesión
+                    {t("logout")}
                   </button>
                 </div>
               </div>
@@ -375,7 +375,7 @@ export function Navigation() {
       {showBottomNav && (
         <nav
           className="md:hidden fixed bottom-0 inset-x-0 z-50 border-t border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 safe-area-pb"
-          aria-label="Navegación rápida"
+          aria-label={t("quickNav")}
         >
           <div className="flex items-stretch justify-around max-w-lg mx-auto">
             {bottomLinks.map((link) => {

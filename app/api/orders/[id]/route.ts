@@ -3,6 +3,7 @@ import { getAuthUser } from "@/lib/auth";
 import { assertOwnsOrder } from "@/lib/tenant";
 import { sql } from "@/lib/db";
 import { toErrorResponse } from "@/lib/errors";
+import { apiT } from "@/lib/api-i18n";
 import {
   attachOrderItems,
   transferOrderToTable,
@@ -17,7 +18,7 @@ export async function PUT(
   try {
     const user = await getAuthUser();
     if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return NextResponse.json({ error: apiT(request, "apiUnauthorized") }, { status: 401 });
     }
 
     const { id } = await params;
@@ -44,7 +45,7 @@ export async function PUT(
       const existing = await sql`SELECT * FROM orders WHERE id = ${orderId}`;
       const current = existing[0];
       if (!current) {
-        return NextResponse.json({ error: "Order not found" }, { status: 404 });
+        return NextResponse.json({ error: apiT(request, "apiOrderNotFound") }, { status: 404 });
       }
       const result = await transferOrderToTable({
         orderId,
@@ -59,7 +60,7 @@ export async function PUT(
     }
 
     if (!status) {
-      return NextResponse.json({ error: "Status is required" }, { status: 400 });
+      return NextResponse.json({ error: apiT(request, "apiStatusRequired") }, { status: 400 });
     }
 
     // Cobrar / cerrar
@@ -89,13 +90,13 @@ export async function PUT(
 }
 
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const user = await getAuthUser();
     if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return NextResponse.json({ error: apiT(request, "apiUnauthorized") }, { status: 401 });
     }
 
     const { id } = await params;
@@ -107,7 +108,7 @@ export async function GET(
     const orders = await sql`SELECT * FROM orders WHERE id = ${orderId}`;
     let order = orders[0];
     if (!order) {
-      return NextResponse.json({ error: "Order not found" }, { status: 404 });
+      return NextResponse.json({ error: apiT(request, "apiOrderNotFound") }, { status: 404 });
     }
 
     order = await attachOrderItems(order);

@@ -38,7 +38,9 @@ export async function transferOrderToTable(opts: {
   if (current.status !== "open" && current.status !== "bill_requested") {
     throw new AppError(
       "Solo se pueden transferir órdenes abiertas o con cuenta pedida",
-      400
+      400,
+      "APP_ERROR",
+      "apiOnlyOpenOrdersTransfer"
     );
   }
 
@@ -47,7 +49,7 @@ export async function transferOrderToTable(opts: {
 
   const targetTable = await sql`SELECT * FROM tables WHERE id = ${newTableId}`;
   if (targetTable.length === 0) {
-    throw new AppError("Mesa destino no encontrada", 404);
+    throw new AppError("Mesa destino no encontrada", 404, "APP_ERROR", "apiTargetTableNotFound");
   }
 
   const openOnTarget = await sql`
@@ -58,7 +60,7 @@ export async function transferOrderToTable(opts: {
     LIMIT 1
   `;
   if (openOnTarget[0]) {
-    throw new AppError("La mesa destino ya tiene una orden abierta", 409);
+    throw new AppError("La mesa destino ya tiene una orden abierta", 409, "APP_ERROR", "apiTargetTableHasOpenOrder");
   }
 
   const updated = await sql`
@@ -68,7 +70,7 @@ export async function transferOrderToTable(opts: {
     RETURNING *
   `;
   if (!updated[0]) {
-    throw new AppError("No se pudo transferir (la mesa destino ya tiene una orden abierta)", 409);
+    throw new AppError("No se pudo transferir (la mesa destino ya tiene una orden abierta)", 409, "APP_ERROR", "apiCouldNotTransferTargetBusy");
   }
 
   const loc = await sql`SELECT location_id FROM tables WHERE id = ${current.table_id}`;
@@ -116,25 +118,29 @@ export async function closeOrderWithPayment(opts: {
     throw new ForbiddenActionError(
       user.role === "waiter"
         ? "El mesero no puede cobrar ni cerrar la cuenta. Llama a caja."
-        : "Sin permiso para cobrar"
+        : "Sin permiso para cobrar",
+      user.role === "waiter" ? "apiWaiterCannotCharge" : "apiNoPermissionCharge"
     );
   }
 
   const existing = await sql`SELECT * FROM orders WHERE id = ${orderId}`;
   const current = existing[0];
-  if (!current) throw new AppError("Order not found", 404);
+  if (!current) throw new AppError("Order not found", 404, "APP_ERROR", "apiOrderNotFound");
 
   if (!paymentMethod || !VALID_PAYMENT_METHODS.includes(paymentMethod as any)) {
     throw new AppError(
       "Método de pago inválido. Usa: " + VALID_PAYMENT_METHODS.join(", "),
-      400
+      400,
+      "APP_ERROR",
+      "apiInvalidPaymentMethodUse",
+      { methods: VALID_PAYMENT_METHODS.join(", ") }
     );
   }
 
   const tip = Number(tipAmount) || 0;
   let discount = Number(discountAmount) || 0;
   if (tip < 0 || discount < 0) {
-    throw new AppError("Propina y descuento no pueden ser negativos", 400);
+    throw new AppError("Propina y descuento no pueden ser negativos", 400, "APP_ERROR", "apiTipDiscountNegative");
   }
 
   let discountAuthorizedBy: number | null = null;
@@ -145,22 +151,23 @@ export async function closeOrderWithPayment(opts: {
     } else {
       if (!authorizerEmail || !authorizerPassword) {
         throw new ForbiddenActionError(
-          "Para aplicar un descuento, un admin debe autorizar con su email y contraseña"
+          "Para aplicar un descuento, un admin debe autorizar con su email y contraseña",
+          "apiDiscountNeedsAdminAuth"
         );
       }
       const authRows = await sql`SELECT * FROM users WHERE email = ${authorizerEmail} LIMIT 1`;
       const authorizer = authRows[0];
       if (!authorizer || (authorizer.role !== "admin" && authorizer.role !== "owner")) {
-        throw new ForbiddenActionError("Autorizador inválido");
+        throw new ForbiddenActionError("Autorizador inválido", "apiInvalidAuthorizer");
       }
       const validPw = await bcrypt.compare(authorizerPassword, authorizer.password_hash);
       if (!validPw) {
-        throw new ForbiddenActionError("Contraseña de autorización incorrecta");
+        throw new ForbiddenActionError("Contraseña de autorización incorrecta", "apiWrongAuthPassword");
       }
       discountAuthorizedBy = authorizer.id;
     }
     if (!discountReason || !String(discountReason).trim()) {
-      throw new InvalidDiscountError("Debes indicar el motivo del descuento");
+      throw new InvalidDiscountError("Debes indicar el motivo del descuento", "apiDiscountReasonRequired");
     }
   }
 
@@ -222,7 +229,9 @@ export async function closeOrderWithPayment(opts: {
         if (result.rowCount === 0) {
           throw new InsufficientStockError(
             `Sin stock suficiente de "${item.name}". Repón inventario antes de cobrar.`,
-            item.name
+            item.name,
+            "apiInsufficientStockCharge",
+            { name: item.name }
           );
         }
         const reason = `Venta mesa (orden #${orderId})`;
@@ -307,11 +316,12 @@ export async function setOrderManualStatus(opts: {
   if (user.role === "waiter") {
     if (status !== "bill_requested" && status !== "open") {
       throw new ForbiddenActionError(
-        "El mesero solo puede marcar 'Cuenta pedida' o dejar la orden abierta"
+        "El mesero solo puede marcar 'Cuenta pedida' o dejar la orden abierta",
+        "apiWaiterOnlyBillRequested"
       );
     }
   } else if (!canCharge(user.role) && user.role !== "waiter") {
-    throw new ForbiddenActionError("Sin permiso para cambiar estado");
+    throw new ForbiddenActionError("Sin permiso para cambiar estado", "apiNoPermissionChangeStatus");
   }
 
   if (
@@ -320,7 +330,7 @@ export async function setOrderManualStatus(opts: {
     status !== "paid"
   ) {
     if (!["open", "bill_requested", "paid", "closed"].includes(status)) {
-      throw new AppError("Estado inválido", 400);
+      throw new AppError("Estado inválido", 400, "APP_ERROR", "apiInvalidStatus");
     }
   }
 
@@ -330,6 +340,6 @@ export async function setOrderManualStatus(opts: {
     WHERE id = ${orderId}
     RETURNING *
   `;
-  if (!orders[0]) throw new AppError("Order not found", 404);
+  if (!orders[0]) throw new AppError("Order not found", 404, "APP_ERROR", "apiOrderNotFound");
   return attachOrderItems(orders[0]);
 }

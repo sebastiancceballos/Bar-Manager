@@ -3,13 +3,14 @@ import { getAuthUser } from "@/lib/auth";
 import { resolveLocationId } from "@/lib/org";
 import { sql } from "@/lib/db";
 import { getLocationTimezone } from "@/lib/location";
+import { apiT } from "@/lib/api-i18n";
 
 export async function GET(request: NextRequest) {
   try {
     const user = await getAuthUser();
 
     if (!user || (user.role !== "admin" && user.role !== "owner")) {
-      return NextResponse.json({ error: "Sin permiso" }, { status: 403 });
+      return NextResponse.json({ error: apiT(request, "apiNoPermission") }, { status: 403 });
     }
 
     const { searchParams } = new URL(request.url);
@@ -17,11 +18,11 @@ export async function GET(request: NextRequest) {
     const to = searchParams.get("to");     // YYYY-MM-DD
 
     if (!from || !to) {
-      return NextResponse.json({ error: "Se requieren fechas from y to" }, { status: 400 });
+      return NextResponse.json({ error: apiT(request, "apiFromToDatesRequired") }, { status: 400 });
     }
 
     const locId = await resolveLocationId(user.id, user.role);
-    if (!locId) return NextResponse.json({ error: "Sin bar asignado" }, { status: 400 });
+    if (!locId) return NextResponse.json({ error: apiT(request, "apiNoLocationAssigned") }, { status: 400 });
 
     const tz = await getLocationTimezone(locId);
 
@@ -103,6 +104,6 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ orders: result }, { status: 200 });
   } catch (error) {
     console.error("Export error:", error);
-    return NextResponse.json({ error: "Error interno" }, { status: 500 });
+    return NextResponse.json({ error: apiT(request, "apiInternalError") }, { status: 500 });
   }
 }

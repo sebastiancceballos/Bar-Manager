@@ -6,15 +6,16 @@ import { canCharge } from "@/lib/permissions";
 import { computeSplit, houseRemainder } from "@/lib/order-split";
 import { computeOrderTotals } from "@/lib/services/order-totals";
 import { ConflictError, ForbiddenActionError, toErrorResponse } from "@/lib/errors";
+import { apiT } from "@/lib/api-i18n";
 
 /** GET: listar splits de la orden */
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const user = await getAuthUser();
-    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!user) return NextResponse.json({ error: apiT(request, "apiUnauthorized") }, { status: 401 });
 
     const { id } = await params;
     const orderId = parseInt(id, 10);
@@ -56,7 +57,7 @@ export async function POST(
 ) {
   try {
     const user = await getAuthUser();
-    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!user) return NextResponse.json({ error: apiT(request, "apiUnauthorized") }, { status: 401 });
     if (!canCharge(user.role)) {
       throw new ForbiddenActionError("Solo caja/admin puede dividir la cuenta");
     }
@@ -75,17 +76,18 @@ export async function POST(
       `;
       if ((unpaid[0]?.c || 0) > 0) {
         throw new ConflictError(
-          "Hay partes ya pagadas. No se pueden cancelar los splits automáticamente."
+          "Hay partes ya pagadas. No se pueden cancelar los splits automáticamente.",
+          "apiSplitsAlreadyPaid"
         );
       }
       await sql`DELETE FROM order_splits WHERE order_id = ${orderId}`;
-      return NextResponse.json({ message: "Splits cancelados", splits: [] });
+      return NextResponse.json({ message: apiT(request, "apiSplitsCancelled"), splits: [] });
     }
 
     const parts = parseInt(String(body.parts), 10);
     if (!Number.isInteger(parts) || parts < 2 || parts > 20) {
       return NextResponse.json(
-        { error: "parts debe ser un entero entre 2 y 20" },
+        { error: apiT(request, "apiPartsMustBeIntBetween2And20") },
         { status: 400 }
       );
     }
@@ -95,7 +97,8 @@ export async function POST(
     `;
     if (existing.length > 0) {
       throw new ConflictError(
-        "La orden ya tiene splits. Cancélalos primero (POST { cancel: true }) si ninguno está pagado."
+        "La orden ya tiene splits. Cancélalos primero (POST { cancel: true }) si ninguno está pagado.",
+        "apiOrderAlreadySplit"
       );
     }
 
@@ -103,10 +106,10 @@ export async function POST(
       SELECT id, status, total_amount FROM orders WHERE id = ${orderId} LIMIT 1
     `;
     const order = orderRows[0];
-    if (!order) return NextResponse.json({ error: "Orden no encontrada" }, { status: 404 });
+    if (!order) return NextResponse.json({ error: apiT(request, "apiOrderNotFound") }, { status: 404 });
     if (["paid", "closed", "CANCELLED"].includes(order.status)) {
       return NextResponse.json(
-        { error: "No se puede dividir una orden ya cerrada o cancelada" },
+        { error: apiT(request, "apiCannotSplitClosedOrder") },
         { status: 400 }
       );
     }
@@ -146,7 +149,7 @@ export async function POST(
     });
     const total = Math.floor(finalTotal);
     if (total <= 0) {
-      return NextResponse.json({ error: "El total de la orden es 0" }, { status: 400 });
+      return NextResponse.json({ error: apiT(request, "apiOrderTotalZero") }, { status: 400 });
     }
 
     const amounts = computeSplit(total, parts);
@@ -168,7 +171,7 @@ export async function POST(
         splits,
         total,
         houseRemainder: house,
-        message: `Cuenta dividida en ${parts} partes de ${amounts[0]} (residuo casa: ${house})`,
+        message: apiT(request, "apiSplitDone", { parts, amount: amounts[0], house }),
       },
       { status: 201 }
     );

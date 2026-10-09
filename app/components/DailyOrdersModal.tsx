@@ -1,6 +1,7 @@
 "use client";
 
 import { useI18n } from "@/app/i18n-provider";
+import { fmtDate, fmtTime, fmtDateTime, fmtDateOnly } from "@/lib/format-date";
 
 import { useEffect, useState } from "react";
 import { downloadInvoice } from "./InvoicePDF";
@@ -16,12 +17,6 @@ const formatCOP = (value: number) =>
  * órdenes que en realidad son del 18/7. Esto arma la fecha localmente,
  * sin pasar por ninguna conversión de zona horaria.
  */
-function formatDateOnly(dateStr: string): string {
-  const match = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})/);
-  if (!match) return new Date(dateStr).toLocaleDateString("es-ES");
-  const [, year, month, day] = match;
-  return new Date(parseInt(year), parseInt(month) - 1, parseInt(day)).toLocaleDateString("es-ES");
-}
 
 
 interface OrderItem {
@@ -62,7 +57,7 @@ interface DailyOrdersModalProps {
 }
 
 export function DailyOrdersModal({ date, isOpen, onClose }: DailyOrdersModalProps) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
 
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(false);
@@ -98,9 +93,9 @@ export function DailyOrdersModal({ date, isOpen, onClose }: DailyOrdersModalProp
         <div className="sticky top-0 bg-background border-b border-border p-4 sm:p-6 flex justify-between items-center">
           <div>
             <h2 className="text-xl sm:text-2xl font-bold text-foreground">
-              Órdenes del {formatDateOnly(date)}
+              {t("ordersOf")} {fmtDateOnly(date, locale)}
             </h2>
-            <p className="text-gray-400 text-sm mt-1">Total de órdenes: {orders.length}</p>
+            <p className="text-gray-400 text-sm mt-1">{t("totalOrdersLabel")}: {orders.length}</p>
           </div>
           <button
             onClick={onClose}
@@ -127,11 +122,11 @@ export function DailyOrdersModal({ date, isOpen, onClose }: DailyOrdersModalProp
                     <div>
                       <p className="font-semibold text-foreground">
                         {order.order_type === "self_service"
-                          ? `Autoservicio ${order.ticket_number || "#" + order.id}`
-                          : `Factura #${order.id} - Mesa ${order.table_number}`}
+                          ? `${t("selfService")} ${order.ticket_number || "#" + order.id}`
+                          : `${t("invoiceHash")}${order.id} - ${t("table")} ${order.table_number}`}
                       </p>
                       <p className="text-sm text-gray-400">
-                        {new Date(order.created_at).toLocaleString("es-ES")}
+                        {fmtDateTime(order.created_at, locale)}
                       </p>
                     </div>
                     <div className="text-right">
@@ -144,7 +139,7 @@ export function DailyOrdersModal({ date, isOpen, onClose }: DailyOrdersModalProp
 
                   <div className="grid grid-cols-2 gap-4 mb-3 text-sm">
                     <div>
-                      <p className="text-gray-400">Mesero</p>
+                      <p className="text-gray-400">{t("waiterLabel")}</p>
                       <p className="text-foreground">{order.waiter_name}</p>
                     </div>
                     {order.modifier_name && order.modifier_name !== order.waiter_name && (
@@ -157,7 +152,7 @@ export function DailyOrdersModal({ date, isOpen, onClose }: DailyOrdersModalProp
 
                   {/* Items preview */}
                   <div className="mb-3 max-h-20 overflow-hidden">
-                    <p className="text-xs text-gray-400 mb-1">Productos ({order.items.length}):</p>
+                    <p className="text-xs text-gray-400 mb-1">{t("products")} ({order.items.length}):</p>
                     <div className="text-xs text-gray-300">
                       {order.items.map((item) => (
                         <div key={item.id} className="flex justify-between">
@@ -173,13 +168,13 @@ export function DailyOrdersModal({ date, isOpen, onClose }: DailyOrdersModalProp
                       onClick={() => setSelectedOrder(order)}
                       className="flex-1 min-h-[44px] bg-primary text-white rounded text-sm hover:bg-primary/90 transition-colors"
                     >
-                      Ver Detalles
+                      {t("viewDetails")}
                     </button>
                     <button
                       onClick={() => downloadInvoice(order)}
                       className="flex-1 min-h-[44px] bg-card border border-border text-foreground rounded text-sm hover:border-primary transition-colors"
                     >
-                      Descargar PDF
+                      {t("downloadPdf")}
                     </button>
                   </div>
                 </div>
@@ -194,7 +189,7 @@ export function DailyOrdersModal({ date, isOpen, onClose }: DailyOrdersModalProp
         <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-[60] p-0 sm:p-4">
           <div className="bg-background border border-border rounded-t-2xl sm:rounded-lg max-w-2xl w-full max-h-[92dvh] sm:max-h-[90vh] overflow-y-auto">
             <div className="sticky top-0 bg-background border-b border-border p-4 sm:p-6 flex justify-between items-center">
-              <h3 className="text-lg sm:text-xl font-bold text-foreground">Detalles de Factura #{selectedOrder.id}</h3>
+              <h3 className="text-lg sm:text-xl font-bold text-foreground">{t("invoiceDetails")} #{selectedOrder.id}</h3>
               <button
                 onClick={() => setSelectedOrder(null)}
                 className="min-w-[44px] min-h-[44px] flex items-center justify-center text-gray-400 hover:text-foreground text-2xl font-bold -mr-2"
@@ -207,29 +202,29 @@ export function DailyOrdersModal({ date, isOpen, onClose }: DailyOrdersModalProp
               {/* Header Info */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <p className="text-gray-400 text-sm">Bar</p>
+                  <p className="text-gray-400 text-sm">{t("barLabel")}</p>
                   <p className="text-foreground font-semibold">{selectedOrder.location_name}</p>
                 </div>
                 <div>
                   <p className="text-gray-400 text-sm">
-                    {selectedOrder.order_type === "self_service" ? "Tipo / Ficho" : t("table")}
+                    {selectedOrder.order_type === "self_service" ? t("typeTicketLabel") : t("table")}
                   </p>
                   <p className="text-foreground font-semibold">
                     {selectedOrder.order_type === "self_service"
-                      ? `Autoservicio ${selectedOrder.ticket_number || ""}`
+                      ? `${t("selfService")} ${selectedOrder.ticket_number || ""}`
                       : selectedOrder.table_number}
                   </p>
                 </div>
                 <div>
                   <p className="text-gray-400 text-sm">{t("date")}</p>
                   <p className="text-foreground font-semibold">
-                    {new Date(selectedOrder.created_at).toLocaleDateString("es-ES")}
+                    {fmtDate(selectedOrder.created_at, locale)}
                   </p>
                 </div>
                 <div>
                   <p className="text-gray-400 text-sm">{t("time")}</p>
                   <p className="text-foreground font-semibold">
-                    {new Date(selectedOrder.created_at).toLocaleTimeString("es-ES")}
+                    {fmtTime(selectedOrder.created_at, locale)}
                   </p>
                 </div>
               </div>
@@ -237,25 +232,25 @@ export function DailyOrdersModal({ date, isOpen, onClose }: DailyOrdersModalProp
               {/* Mesero Info */}
               <div className="bg-card p-4 rounded border border-border">
                 <p className="text-foreground font-semibold mb-2">
-                  {selectedOrder.order_type === "self_service" ? "Cliente" : "Mesero Responsable"}
+                  {selectedOrder.order_type === "self_service" ? t("customerLabel") : t("responsibleWaiter")}
                 </p>
                 <p className="text-gray-300">{selectedOrder.waiter_name || "—"}</p>
                 {selectedOrder.order_type !== "self_service" && (
                   <p className="text-gray-400 text-sm">{selectedOrder.waiter_email}</p>
                 )}
                 {selectedOrder.order_type === "self_service" && selectedOrder.customer_notes && (
-                  <p className="text-gray-400 text-sm mt-2">Notas: {selectedOrder.customer_notes}</p>
+                  <p className="text-gray-400 text-sm mt-2">{t("notes")}: {selectedOrder.customer_notes}</p>
                 )}
               </div>
 
               {/* Modificador Info */}
               {selectedOrder.modifier_name && selectedOrder.modifier_name !== selectedOrder.waiter_name && (
                 <div className="bg-card p-4 rounded border border-border">
-                  <p className="text-foreground font-semibold mb-2">Última Modificación Por</p>
+                  <p className="text-foreground font-semibold mb-2">{t("lastModifiedBy")}</p>
                   <p className="text-gray-300">{selectedOrder.modifier_name}</p>
                   <p className="text-gray-400 text-sm">{selectedOrder.modifier_email}</p>
                   <p className="text-gray-400 text-xs mt-1">
-                    {new Date(selectedOrder.updated_at).toLocaleString("es-ES")}
+                    {fmtDateTime(selectedOrder.updated_at, locale)}
                   </p>
                 </div>
               )}
@@ -266,7 +261,7 @@ export function DailyOrdersModal({ date, isOpen, onClose }: DailyOrdersModalProp
                 <div className="bg-card rounded border border-border overflow-hidden">
                   <div className="grid grid-cols-[minmax(0,2fr)_auto_auto] sm:grid-cols-[minmax(0,2fr)_auto_auto_auto] gap-2 bg-card/50 p-3 border-b border-border font-semibold text-xs sm:text-sm text-gray-300">
                     <div>{t("product")}</div>
-                    <div className="text-center">Cant.</div>
+                    <div className="text-center">{t("qtyAbbrev")}</div>
                     <div className="hidden sm:block text-right">{t("price")}</div>
                     <div className="text-right">{t("subtotal")}</div>
                   </div>
@@ -302,13 +297,13 @@ export function DailyOrdersModal({ date, isOpen, onClose }: DailyOrdersModalProp
                   onClick={() => downloadInvoice(selectedOrder)}
                   className="flex-1 min-h-[44px] bg-success text-white rounded font-semibold hover:bg-success/90 transition-colors"
                 >
-                  Descargar PDF
+                  {t("downloadPdf")}
                 </button>
                 <button
                   onClick={() => setSelectedOrder(null)}
                   className="flex-1 min-h-[44px] bg-card border border-border text-foreground rounded font-semibold hover:border-primary transition-colors"
                 >
-                  Cerrar
+                  {t("close")}
                 </button>
               </div>
             </div>

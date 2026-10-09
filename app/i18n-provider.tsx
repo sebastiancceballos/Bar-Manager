@@ -36,6 +36,21 @@ function readStoredLocale(): Locale {
   return DEFAULT_LOCALE;
 }
 
+/**
+ * Mirrors the locale into a cookie (same name as the localStorage key) so
+ * API routes can read the user's language preference without every fetch()
+ * call across the app having to send it explicitly. See lib/api-i18n.ts.
+ */
+function writeLocaleCookie(next: Locale) {
+  if (typeof document === "undefined") return;
+  try {
+    const maxAge = 60 * 60 * 24 * 365; // 1 year
+    document.cookie = `${LOCALE_STORAGE_KEY}=${next}; path=/; max-age=${maxAge}; SameSite=Lax`;
+  } catch {
+    /* ignore */
+  }
+}
+
 export function I18nProvider({ children }: { children: React.ReactNode }) {
   const [locale, setLocaleState] = useState<Locale>(DEFAULT_LOCALE);
 
@@ -43,6 +58,10 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
     const stored = readStoredLocale();
     setLocaleState(stored);
     document.documentElement.lang = stored;
+    // Make sure the cookie is in sync on first load too (e.g. if it was
+    // cleared, or this is a fresh browser profile that only has the
+    // localStorage default).
+    writeLocaleCookie(stored);
   }, []);
 
   const setLocale = useCallback((next: Locale) => {
@@ -53,6 +72,7 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
     } catch {
       /* ignore */
     }
+    writeLocaleCookie(next);
     document.documentElement.lang = next;
   }, []);
 

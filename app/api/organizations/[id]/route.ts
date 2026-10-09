@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthUser } from "@/lib/auth";
 import { sql } from "@/lib/db";
+import { apiT } from "@/lib/api-i18n";
 
 export async function PATCH(
   request: NextRequest,
@@ -9,7 +10,7 @@ export async function PATCH(
   try {
     const user = await getAuthUser();
     if (!user || user.role !== "owner") {
-      return NextResponse.json({ error: "Solo Superadmin" }, { status: 403 });
+      return NextResponse.json({ error: apiT(request, "apiOnlySuperadmin") }, { status: 403 });
     }
     const { id } = await params;
     const orgId = parseInt(id, 10);
@@ -17,7 +18,7 @@ export async function PATCH(
     const { name, status } = body;
 
     if (status && !["active", "suspended"].includes(status)) {
-      return NextResponse.json({ error: "status inválido (active|suspended)" }, { status: 400 });
+      return NextResponse.json({ error: apiT(request, "apiInvalidStatusActiveSuspended") }, { status: 400 });
     }
 
     if (name != null && String(name).trim()) {
@@ -43,22 +44,22 @@ export async function PATCH(
     }
 
     const rows = await sql`SELECT * FROM organizations WHERE id = ${orgId}`;
-    if (!rows[0]) return NextResponse.json({ error: "No encontrada" }, { status: 404 });
+    if (!rows[0]) return NextResponse.json({ error: apiT(request, "apiNotFoundFem") }, { status: 404 });
     return NextResponse.json({ organization: rows[0] }, { status: 200 });
   } catch (error) {
     console.error("PATCH org:", error);
-    return NextResponse.json({ error: "Error interno" }, { status: 500 });
+    return NextResponse.json({ error: apiT(request, "apiInternalError") }, { status: 500 });
   }
 }
 
 export async function DELETE(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const user = await getAuthUser();
     if (!user || user.role !== "owner") {
-      return NextResponse.json({ error: "Solo Superadmin" }, { status: 403 });
+      return NextResponse.json({ error: apiT(request, "apiOnlySuperadmin") }, { status: 403 });
     }
     const { id } = await params;
     const orgId = parseInt(id, 10);
@@ -66,7 +67,7 @@ export async function DELETE(
     const locs = await sql`SELECT COUNT(*)::int AS c FROM locations WHERE organization_id = ${orgId}`;
     if ((locs[0]?.c || 0) > 0) {
       return NextResponse.json(
-        { error: "Tiene sucursales. Suspéndela o elimina/reasigna sucursales antes." },
+        { error: apiT(request, "apiHasLocationsSuspendFirst") },
         { status: 409 }
       );
     }
@@ -75,6 +76,6 @@ export async function DELETE(
     return NextResponse.json({ ok: true }, { status: 200 });
   } catch (error) {
     console.error("DELETE org:", error);
-    return NextResponse.json({ error: "Error interno" }, { status: 500 });
+    return NextResponse.json({ error: apiT(request, "apiInternalError") }, { status: 500 });
   }
 }

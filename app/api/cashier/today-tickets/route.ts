@@ -1,30 +1,31 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getAuthUser } from "@/lib/auth";
 import { resolveLocationId } from "@/lib/org";
 import { getLocationTimezone } from "@/lib/location";
 import { sql } from "@/lib/db";
 import { toErrorResponse } from "@/lib/errors";
+import { apiT } from "@/lib/api-i18n";
 
 /**
  * Historial de cobros de HOY para reimprimir tickets.
  * Solo rol cashier (el admin usa Reportes).
  */
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     const user = await getAuthUser();
     if (!user) {
-      return NextResponse.json({ error: "No autenticado" }, { status: 401 });
+      return NextResponse.json({ error: apiT(request, "apiNotAuthenticated") }, { status: 401 });
     }
     if (user.role !== "cashier") {
       return NextResponse.json(
-        { error: "Solo el cajero puede usar este listado" },
+        { error: apiT(request, "apiOnlyCashierCanUseList") },
         { status: 403 }
       );
     }
 
     const locId = await resolveLocationId(user.id, user.role);
     if (!locId) {
-      return NextResponse.json({ error: "Sin bar asignado" }, { status: 400 });
+      return NextResponse.json({ error: apiT(request, "apiNoLocationAssigned") }, { status: 400 });
     }
 
     const tz = await getLocationTimezone(locId);

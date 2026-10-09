@@ -15,7 +15,7 @@ export default function KitchenRedirectPage() {
   }, [router]);
   return (
     <div className="min-h-screen bg-background flex items-center justify-center text-foreground">
-      Redirigiendo a Comandas…
+      {t("redirectingToTickets")}
     </div>
   );
 }

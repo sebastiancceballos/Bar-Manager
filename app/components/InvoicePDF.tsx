@@ -1,9 +1,24 @@
 "use client";
 
 /**
- * Ticket térmico 58 mm (PT-210 y similares).
- * HTML mínimo + monospace para el diálogo de impresión de Android/Bluetooth.
+ * Thermal ticket 58 mm (PT-210 and similar).
+ * Minimal HTML + monospace for the Android/Bluetooth print dialog.
  */
+
+import { translate, type Locale, DEFAULT_LOCALE, LOCALE_STORAGE_KEY } from "@/lib/i18n";
+import { intlLocale } from "@/lib/format-date";
+
+/** Reads the locale currently selected by the user (falls back to the app default). */
+function getCurrentLocale(): Locale {
+  if (typeof window === "undefined") return DEFAULT_LOCALE;
+  try {
+    const raw = localStorage.getItem(LOCALE_STORAGE_KEY);
+    if (raw === "es" || raw === "en") return raw;
+  } catch {
+    /* ignore */
+  }
+  return DEFAULT_LOCALE;
+}
 
 export interface OrderItem {
   id?: number;
@@ -38,11 +53,11 @@ export interface Order {
   items: OrderItem[];
 }
 
-const PAYMENT_LABELS: Record<string, string> = {
-  efectivo: "Efectivo",
-  tarjeta: "Tarjeta",
-  transferencia: "Transferencia",
-  otro: "Otro",
+const PAYMENT_LABEL_KEYS: Record<string, string> = {
+  efectivo: "cashPayment",
+  tarjeta: "card",
+  transferencia: "transfer",
+  otro: "other",
 };
 
 const formatCOP = (value: number) =>
@@ -53,19 +68,22 @@ const formatCOP = (value: number) =>
     maximumFractionDigits: 0,
   }).format(Number(value) || 0);
 
-/** Trunca nombres largos para 58 mm */
+/** Truncates long names so they fit on a 58 mm ticket */
 function trunc(s: string, n = 20): string {
   const t = String(s || "").trim();
   return t.length > n ? t.slice(0, n - 1) + "…" : t;
 }
 
 /**
- * Ticket de texto/HTML ultra simple para impresoras térmicas Bluetooth 58 mm.
+ * Ultra-simple text/HTML ticket for 58 mm Bluetooth thermal printers.
  */
-export function buildThermalTicketHTML(order: Order): string {
+export function buildThermalTicketHTML(order: Order, locale: Locale = getCurrentLocale()): string {
+  const tr = (key: string) => translate(locale, key);
+  const htmlLang = locale;
   const date = new Date(order.created_at);
-  const dateStr = date.toLocaleDateString("es-CO");
-  const timeStr = date.toLocaleTimeString("es-CO", {
+  const dateLocale = intlLocale(locale);
+  const dateStr = date.toLocaleDateString(dateLocale);
+  const timeStr = date.toLocaleTimeString(dateLocale, {
     hour: "2-digit",
     minute: "2-digit",
   });
@@ -73,11 +91,11 @@ export function buildThermalTicketHTML(order: Order): string {
   const isSS =
     order.order_type === "self_service" || Boolean(order.ticket_number);
   const title = isSS
-    ? `Ficho ${order.ticket_number || "#" + order.id}`
-    : `Mesa ${order.table_number || "—"}`;
+    ? `${tr("ticketHash")} ${order.ticket_number || "#" + order.id}`
+    : `${tr("table")} ${order.table_number || "—"}`;
   const docTitle = isSS
-    ? `Ticket ${order.ticket_number || order.id}`
-    : `Factura #${order.id}`;
+    ? `${tr("ticketHash")} ${order.ticket_number || order.id}`
+    : `${tr("invoiceHash")}${order.id}`;
 
   const subtotal =
     order.subtotal_amount != null
@@ -103,7 +121,7 @@ export function buildThermalTicketHTML(order: Order): string {
     .join("");
 
   return `<!DOCTYPE html>
-<html lang="es">
+<html lang="${htmlLang}">
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
@@ -175,10 +193,10 @@ export function buildThermalTicketHTML(order: Order): string {
 </head>
 <body>
   <div class="actions no-print">
-    <p class="center bold">Ticket térmico 58 mm</p>
-    <p class="muted center">Usa este botón con tu PT-210 / Bluetooth</p>
-    <button type="button" onclick="window.print()">Imprimir ticket</button>
-    <button type="button" class="secondary" onclick="window.close()">Cerrar</button>
+    <p class="center bold">${tr("thermalTicket58mm")}</p>
+    <p class="muted center">${tr("useButtonHint")}</p>
+    <button type="button" onclick="window.print()">${tr("printTicketButton")}</button>
+    <button type="button" class="secondary" onclick="window.close()">${tr("close")}</button>
   </div>
 
   <div class="ticket">
@@ -187,86 +205,88 @@ export function buildThermalTicketHTML(order: Order): string {
     <div class="center big" style="margin:6px 0;">${title}</div>
     ${
       !isSS
-        ? `<div class="center muted">Factura #${order.id}</div>`
+        ? `<div class="center muted">${tr("invoiceHash")}${order.id}</div>`
         : ""
     }
     ${
       order.client_name
-        ? `<div>Cliente: ${trunc(order.client_name, 22)}</div>`
+        ? `<div>${tr("customerLabel")}: ${trunc(order.client_name, 22)}</div>`
         : ""
     }
     ${
       order.waiter_name
-        ? `<div class="muted">Mesero: ${trunc(order.waiter_name, 20)}</div>`
+        ? `<div class="muted">${tr("waiterLabel")}: ${trunc(order.waiter_name, 20)}</div>`
         : ""
     }
     <hr class="sep"/>
-    ${itemLines || "<div class='muted'>Sin ítems</div>"}
+    ${itemLines || `<div class='muted'>${tr("noItems")}</div>`}
     <hr class="sep"/>
-    <div class="line"><span>Subtotal</span><span>${formatCOP(subtotal)}</span></div>
+    <div class="line"><span>${tr("subtotal")}</span><span>${formatCOP(subtotal)}</span></div>
     ${
       discount > 0
-        ? `<div class="line"><span>Descuento</span><span>-${formatCOP(discount)}</span></div>`
+        ? `<div class="line"><span>${tr("discount")}</span><span>-${formatCOP(discount)}</span></div>`
         : ""
     }
     ${
       tax > 0
-        ? `<div class="line"><span>IVA</span><span>${formatCOP(tax)}</span></div>`
+        ? `<div class="line"><span>${tr("tax")}</span><span>${formatCOP(tax)}</span></div>`
         : ""
     }
     ${
       tip > 0
-        ? `<div class="line"><span>Propina</span><span>${formatCOP(tip)}</span></div>`
+        ? `<div class="line"><span>${tr("tip")}</span><span>${formatCOP(tip)}</span></div>`
         : ""
     }
-    <div class="line total"><span>TOTAL</span><span>${formatCOP(
+    <div class="line total"><span>${tr("totalLabel")}</span><span>${formatCOP(
       Number(order.total_amount)
     )}</span></div>
     <hr class="sep"/>
     ${
       order.payment_method
-        ? `<div class="center">Pago: ${
-            PAYMENT_LABELS[order.payment_method] || order.payment_method
+        ? `<div class="center">${tr("paymentLabel")}: ${
+            tr(PAYMENT_LABEL_KEYS[order.payment_method]) || order.payment_method
           }</div>`
         : ""
     }
     ${
       order.customer_notes
-        ? `<div class="note">Nota: ${trunc(String(order.customer_notes), 40)}</div>`
+        ? `<div class="note">${tr("noteLabel")}: ${trunc(String(order.customer_notes), 40)}</div>`
         : ""
     }
-    <div class="center muted" style="margin-top:8px;">¡Gracias por su visita!</div>
+    <div class="center muted" style="margin-top:8px;">${tr("thanksForVisit")}</div>
   </div>
 </body>
 </html>`;
 }
 
 /**
- * Abre ticket térmico 58 mm.
- * Por defecto pide confirmación: "¿Imprimir factura…?"
- * Pasa { skipConfirm: true } si el usuario ya aceptó en otro diálogo.
+ * Opens the 58 mm thermal ticket.
+ * By default asks for confirmation: "Print the invoice for…?"
+ * Pass { skipConfirm: true } if the user already confirmed in another dialog.
  */
 export function downloadInvoice(
   order: Order,
   opts?: { skipConfirm?: boolean }
 ): void {
+  const locale = getCurrentLocale();
+  const tr = (key: string) => translate(locale, key);
   const label = order.ticket_number
-    ? `ficho ${order.ticket_number}`
+    ? `${tr("ticketWord")} ${order.ticket_number}`
     : order.table_number
-      ? `mesa ${order.table_number}`
+      ? `${tr("table").toLowerCase()} ${order.table_number}`
       : `#${order.id}`;
   const total = formatCOP(Number(order.total_amount) || 0);
 
   if (!opts?.skipConfirm) {
     const ok = window.confirm(
-      `¿Imprimir la factura de ${label}?
+      `${tr("printInvoiceQuestion")} ${label}?
 
-Total: ${total}`
+${tr("totalWord")}: ${total}`
     );
     if (!ok) return;
   }
 
-  const html = buildThermalTicketHTML(order);
+  const html = buildThermalTicketHTML(order, locale);
   const blob = new Blob([html], { type: "text/html;charset=utf-8" });
   const url = URL.createObjectURL(blob);
   const win = window.open(url, "_blank", "width=320,height=640");

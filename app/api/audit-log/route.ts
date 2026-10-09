@@ -2,18 +2,19 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAuthUser } from "@/lib/auth";
 import { resolveLocationId } from "@/lib/org";
 import { sql } from "@/lib/db";
+import { apiT } from "@/lib/api-i18n";
 
 export async function GET(request: NextRequest) {
   try {
     const user = await getAuthUser();
     if (!user || (user.role !== "admin" && user.role !== "owner")) {
-      return NextResponse.json({ error: "Sin permiso" }, { status: 403 });
+      return NextResponse.json({ error: apiT(request, "apiNoPermission") }, { status: 403 });
     }
 
     let locId: number | null = null;
     if (user.role === "admin") {
       locId = await resolveLocationId(user.id, user.role);
-      if (!locId) return NextResponse.json({ error: "Admin sin bar asignado" }, { status: 400 });
+      if (!locId) return NextResponse.json({ error: apiT(request, "apiAdminNoLocation") }, { status: 400 });
     }
 
     const rows = locId
@@ -36,6 +37,6 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ entries: rows }, { status: 200 });
   } catch (error) {
     console.error("Audit log error:", error);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return NextResponse.json({ error: apiT(request, "internalServerError") }, { status: 500 });
   }
 }

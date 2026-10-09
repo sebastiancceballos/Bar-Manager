@@ -2,17 +2,18 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAuthUser } from "@/lib/auth";
 import { resolveLocationId } from "@/lib/org";
 import { sql } from "@/lib/db";
+import { apiT } from "@/lib/api-i18n";
 
 export async function GET(request: NextRequest) {
   try {
     const currentUser = await getAuthUser();
 
     if (!currentUser) {
-      return NextResponse.json({ error: "No autenticado" }, { status: 401 });
+      return NextResponse.json({ error: apiT(request, "apiNotAuthenticated") }, { status: 401 });
     }
 
     if (currentUser.role !== "owner" && currentUser.role !== "admin") {
-      return NextResponse.json({ error: "Sin permiso" }, { status: 403 });
+      return NextResponse.json({ error: apiT(request, "apiNoPermission") }, { status: 403 });
     }
 
     let users: Record<string, unknown>[] = [];
@@ -55,6 +56,6 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ users }, { status: 200 });
   } catch (error) {
     console.error("Error fetching users:", error);
-    return NextResponse.json({ error: "Error interno del servidor" }, { status: 500 });
+    return NextResponse.json({ error: apiT(request, "internalServerError") }, { status: 500 });
   }
 }
