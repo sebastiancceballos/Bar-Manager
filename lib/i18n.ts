@@ -759,6 +759,15 @@ const es: Record<string, string> = {
   apiWaiterOnlyBillRequested: 'El mesero solo puede marcar \'Cuenta pedida\' o dejar la orden abierta',
   apiNoPermissionChangeStatus: 'Sin permiso para cambiar estado',
   apiLocalDateUnavailable: 'No se pudo determinar la fecha local del bar para el ficho',
+  // --- Order integrity (items / charge) ---
+  apiInvalidQuantityRange: 'La cantidad debe ser un número entero entre 1 y 99',
+  apiOrderNotModifiable: 'Esta orden ya fue cobrada o cancelada y no se puede modificar',
+  apiOrderAlreadyPaid: 'Esta orden ya fue cobrada',
+  apiStockWarning: 'Atención: hay {reserved} de {name} pedidas en mesas abiertas y solo quedan {stock} en stock',
+  apiInsufficientStockSplit: 'Sin stock suficiente de "{name}" al cerrar la cuenta dividida',
+  // --- Refresh feedback ---
+  refreshFailed: 'No se pudo actualizar. Revisa tu conexión: lo que ves puede estar desactualizado.',
+  sessionExpired: 'Tu sesión expiró. Cierra sesión e ingresa de nuevo.',
 };
 
 const en: Record<string, string> = {
@@ -1517,6 +1526,15 @@ const en: Record<string, string> = {
   apiWaiterOnlyBillRequested: 'Waiters can only mark "Bill requested" or leave the order open',
   apiNoPermissionChangeStatus: 'No permission to change the status',
   apiLocalDateUnavailable: 'Could not determine the venue\'s local date for the ticket',
+  // --- Order integrity (items / charge) ---
+  apiInvalidQuantityRange: 'Quantity must be a whole number between 1 and 99',
+  apiOrderNotModifiable: 'This order has already been paid or cancelled and can\'t be modified',
+  apiOrderAlreadyPaid: 'This order has already been paid',
+  apiStockWarning: 'Heads up: {reserved} of {name} are ordered across open tables and only {stock} are in stock',
+  apiInsufficientStockSplit: 'Not enough stock of "{name}" to close the split bill',
+  // --- Refresh feedback ---
+  refreshFailed: 'Couldn\'t refresh. Check your connection: what you see may be out of date.',
+  sessionExpired: 'Your session has expired. Sign out and sign in again.',
 };
 
 export const messages: Record<Locale, Record<string, string>> = { es, en };

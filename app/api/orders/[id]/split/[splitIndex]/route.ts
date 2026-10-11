@@ -4,6 +4,7 @@ import { sql } from "@/lib/db";
 import { assertOwnsOrder } from "@/lib/tenant";
 import { canCharge } from "@/lib/permissions";
 import { withTransaction, InsufficientStockError } from "@/lib/withTransaction";
+import { deductOrderStock } from "@/lib/services/stock";
 import { ConflictError, ForbiddenActionError, toErrorResponse } from "@/lib/errors";
 import { logAudit } from "@/lib/audit";
 import { apiT } from "@/lib/api-i18n";
@@ -50,11 +51,16 @@ export async function PATCH(
       throw new ConflictError("Esta parte ya está pagada", "apiSplitAlreadyPaid");
     }
 
-    await sql`
+    const marked = await sql`
       UPDATE order_splits
       SET paid = true, paid_at = NOW(), payment_method = ${paymentMethod}
-      WHERE id = ${split.id}
+      WHERE id = ${split.id} AND paid = false
+      RETURNING id
     `;
+    if (marked.length === 0) {
+      // Otra petición la pagó justo antes (doble clic / dos dispositivos)
+      throw new ConflictError("Esta parte ya está pagada", "apiSplitAlreadyPaid");
+    }
 
     const all = await sql`
       SELECT * FROM order_splits WHERE order_id = ${orderId} ORDER BY split_index
@@ -74,35 +80,12 @@ export async function PATCH(
             return;
           }
 
-          const items = await client.query(
-            `SELECT oi.product_id, oi.quantity, p.name
-             FROM order_items oi
-             JOIN products p ON p.id = oi.product_id
-             WHERE oi.order_id = $1 AND oi.product_id IS NOT NULL`,
-            [orderId]
-          );
-
-          for (const item of items.rows) {
-            const qty = Number(item.quantity) || 0;
-            if (qty <= 0) continue;
-            const result = await client.query(
-              `UPDATE products
-               SET stock = COALESCE(stock, 0) - $1, updated_at = NOW()
-               WHERE id = $2 AND COALESCE(stock, 0) >= $1
-               RETURNING id`,
-              [qty, item.product_id]
-            );
-            if (result.rowCount === 0) {
-              throw new InsufficientStockError(
-                `Sin stock suficiente de "${item.name}" al cerrar la cuenta dividida`
-              );
-            }
-            await client.query(
-              `INSERT INTO stock_movements (product_id, quantity, type, reason, created_by)
-               VALUES ($1, $2, 'sale', $3, $4)`,
-              [item.product_id, qty, `Venta dividida (orden #${orderId})`, user.id]
-            );
-          }
+          // El inventario se descuenta UNA sola vez, al cerrar la cuenta.
+          await deductOrderStock(client, {
+            orderId,
+            userId: user.id,
+            reason: `Venta dividida (orden #${orderId})`,
+          });
 
           await client.query(
             `UPDATE orders
@@ -120,7 +103,7 @@ export async function PATCH(
             UPDATE order_splits SET paid = false, paid_at = null, payment_method = null
             WHERE id = ${split.id}
           `;
-          return NextResponse.json({ error: e.message }, { status: 400 });
+          return toErrorResponse(e);
         }
         throw e;
       }

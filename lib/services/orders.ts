@@ -4,9 +4,11 @@ import { logAudit } from "@/lib/audit";
 import type { JWTPayload } from "@/lib/auth";
 import { canCharge } from "@/lib/permissions";
 import { assertOwnsTable } from "@/lib/tenant";
-import { withTransaction, InsufficientStockError } from "@/lib/withTransaction";
+import { withTransaction } from "@/lib/withTransaction";
+import { deductOrderStock } from "@/lib/services/stock";
 import {
   AppError,
+  ConflictError,
   ForbiddenActionError,
   InvalidDiscountError,
 } from "@/lib/errors";
@@ -176,7 +178,7 @@ export async function closeOrderWithPayment(opts: {
     SELECT COALESCE(SUM(quantity * price), 0) as subtotal
     FROM order_items WHERE order_id = ${orderId}
   `;
-  const subtotal = Number(itemSums[0]?.subtotal) || Number(current.total_amount) || 0;
+  let subtotal = Number(itemSums[0]?.subtotal) || Number(current.total_amount) || 0;
 
   let taxRate = 0;
   if (current.table_id) {
@@ -199,48 +201,42 @@ export async function closeOrderWithPayment(opts: {
     taxRate = Number(p[0]?.tax_rate) || 0;
   }
 
-  const { tax, finalTotal } = computeOrderTotals({
+  let { tax, finalTotal } = computeOrderTotals({
     subtotal,
     discount,
     tip,
     taxRate,
   });
 
-  const lineItems = await sql`
-    SELECT oi.product_id, oi.quantity, p.name, COALESCE(p.stock, 0) AS stock
-    FROM order_items oi
-    JOIN products p ON oi.product_id = p.id
-    WHERE oi.order_id = ${orderId}
-  `;
-
   let updatedRow: any;
   try {
     updatedRow = await withTransaction(async (client) => {
-      for (const item of lineItems) {
-        const qty = Number(item.quantity) || 0;
-        if (qty <= 0 || !item.product_id) continue;
-        const result = await client.query(
-          `UPDATE products
-           SET stock = COALESCE(stock, 0) - $1, updated_at = NOW()
-           WHERE id = $2 AND COALESCE(stock, 0) >= $1
-           RETURNING id, stock`,
-          [qty, item.product_id]
-        );
-        if (result.rowCount === 0) {
-          throw new InsufficientStockError(
-            `Sin stock suficiente de "${item.name}". Repón inventario antes de cobrar.`,
-            item.name,
-            "apiInsufficientStockCharge",
-            { name: item.name }
-          );
-        }
-        const reason = `Venta mesa (orden #${orderId})`;
-        await client.query(
-          `INSERT INTO stock_movements (product_id, quantity, type, reason, created_by)
-           VALUES ($1, $2, 'sale', $3, $4)`,
-          [item.product_id, qty, reason, user.id]
-        );
+      // Bloquea la orden: un segundo cobro simultáneo espera y luego es rechazado.
+      const locked = (
+        await client.query(`SELECT status FROM orders WHERE id = $1 FOR UPDATE`, [orderId])
+      ).rows[0];
+      if (!locked) throw new AppError("Order not found", 404, "APP_ERROR", "apiOrderNotFound");
+      if (locked.status === "paid" || locked.status === "closed") {
+        throw new ConflictError("Esta orden ya fue cobrada", "apiOrderAlreadyPaid");
       }
+      if (locked.status !== "open" && locked.status !== "bill_requested") {
+        throw new ConflictError("La orden no se puede modificar", "apiOrderNotModifiable");
+      }
+
+      // Totales con los ítems reales de este momento (ya con la orden bloqueada).
+      const sums = await client.query(
+        `SELECT COALESCE(SUM(quantity * price), 0) AS subtotal FROM order_items WHERE order_id = $1`,
+        [orderId]
+      );
+      subtotal = Number(sums.rows[0]?.subtotal) || Number(current.total_amount) || 0;
+      ({ tax, finalTotal } = computeOrderTotals({ subtotal, discount, tip, taxRate }));
+
+      // El inventario se descuenta UNA sola vez, aquí, al cobrar.
+      await deductOrderStock(client, {
+        orderId,
+        userId: user.id,
+        reason: `Venta mesa (orden #${orderId})`,
+      });
 
       const upd = await client.query(
         `UPDATE orders
@@ -275,7 +271,6 @@ export async function closeOrderWithPayment(opts: {
       return upd.rows[0];
     });
   } catch (e) {
-    if (e instanceof InsufficientStockError) throw e;
     throw e;
   }
 

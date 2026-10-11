@@ -1,0 +1,13 @@
+{
+  "name": "bar-manager-db-tests",
+  "private": true,
+  "type": "module",
+  "description": "Pruebas de rutas/servicios contra Postgres en memoria (PGlite). Aisladas del proyecto principal.",
+  "scripts": {
+    "test": "node run.mjs"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "^0.3.0",
+    "tsx": "^4.19.0"
+  }
+}

@@ -53,7 +53,7 @@ interface OrderModalProps {
   tableNumber: string;
   order: Order | null;
   onClose: () => void;
-  onUpdate: () => void;
+  onUpdate: () => void | Promise<void>;
   /** Actualiza estado en el mapa de mesas al instante */
   onOrderStatusChange?: (tableId: number, status: string) => void;
   open: boolean;
@@ -88,6 +88,7 @@ export function OrderModal({
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [warning, setWarning] = useState<string | null>(null);
 
   const [showSplit, setShowSplit] = useState(false);
   const [splitParts, setSplitParts] = useState(2);
@@ -176,6 +177,7 @@ export function OrderModal({
     try {
       setUpdating(true);
       setError(null);
+      setWarning(null);
       const response = await fetch(`/api/orders/${orderId}/items`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -183,9 +185,11 @@ export function OrderModal({
       });
 
       if (response.ok) {
-        onUpdate();
+        const data = await response.json().catch(() => ({}));
+        setWarning(data?.stockWarning?.message || null);
+        await onUpdate();
       } else {
-        const data = await response.json();
+        const data = await response.json().catch(() => ({}));
         setError(data.error || t("errorAddItem"));
       }
     } catch (error) {
@@ -206,7 +210,7 @@ export function OrderModal({
       });
 
       if (response.ok) {
-        onUpdate();
+        await onUpdate();
       }
     } catch (error) {
       console.error("Failed to remove item:", error);
@@ -227,7 +231,7 @@ export function OrderModal({
       });
 
       if (response.ok) {
-        onUpdate();
+        await onUpdate();
       } else {
         const data = await response.json();
         setError(data.error || t("errorDecrementItem"));
@@ -269,7 +273,7 @@ export function OrderModal({
       }
       // Immediate color update on the map
       onOrderStatusChange?.(tableId, newStatus);
-      onUpdate();
+      await onUpdate();
     } catch {
       setError(t("connectionErrorStatusChange"));
     } finally {
@@ -364,7 +368,7 @@ export function OrderModal({
         });
         setShowPayment(false);
         setPaidSuccess(true);
-        onUpdate();
+        await onUpdate();
       } else {
         setPaymentError(data.error || t("errorCharge"));
       }
@@ -440,7 +444,7 @@ export function OrderModal({
         };
         setLastPaidOrder(paid);
         setPaidSuccess(true);
-        onUpdate();
+        await onUpdate();
       }
     } catch (e) {
       setSplitError(e instanceof Error ? e.message : "Error");
@@ -484,7 +488,7 @@ export function OrderModal({
       const data = await response.json();
       if (response.ok) {
         setShowTransfer(false);
-        onUpdate();
+        await onUpdate();
         onClose();
       } else {
         setTransferError(data.error || t("errorTransfer"));
@@ -516,6 +520,12 @@ export function OrderModal({
           {error && (
             <div className="bg-error/10 border border-error text-error px-4 py-3 rounded-lg text-sm animate-shake">
               ⚠️ {error}
+            </div>
+          )}
+
+          {warning && !error && (
+            <div className="bg-warning/10 border border-warning text-warning px-4 py-3 rounded-lg text-sm">
+              ⚠️ {warning}
             </div>
           )}
 

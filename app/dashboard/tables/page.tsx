@@ -47,6 +47,7 @@ export default function TablesPage() {
   const [tables, setTables] = useState<Table[]>([]);
   const [orders, setOrders] = useState<Record<number, Order>>({});
   const [loading, setLoading] = useState(true);
+  const [refreshError, setRefreshError] = useState<string | null>(null);
   const [selectedTableId, setSelectedTableId] = useState<number | null>(null);
   const [showOrderModal, setShowOrderModal] = useState(false);
   const [draggingTable, setDraggingTable] = useState<number | null>(null);
@@ -74,6 +75,16 @@ export default function TablesPage() {
         fetch("/api/orders"),
       ]);
 
+      if (tablesRes.status === 401 || ordersRes.status === 401) {
+        setRefreshError(t("sessionExpired"));
+        return;
+      }
+      if (!tablesRes.ok || !ordersRes.ok) {
+        setRefreshError(t("refreshFailed"));
+      } else {
+        setRefreshError(null);
+      }
+
       if (tablesRes.ok) {
         const data = await tablesRes.json();
         setTables(data.tables);
@@ -92,10 +103,11 @@ export default function TablesPage() {
       }
     } catch (error) {
       console.error("Failed to fetch data:", error);
+      setRefreshError(t("refreshFailed"));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     fetchData();
@@ -181,8 +193,8 @@ export default function TablesPage() {
     setShowOrderModal(true);
   };
 
-  const handleOrderUpdate = () => {
-    fetchData();
+  const handleOrderUpdate = async () => {
+    await fetchData();
   };
 
   /** Pinta la mesa al instante al cambiar estado (cuenta pedida / en curso) */
@@ -244,6 +256,11 @@ export default function TablesPage() {
       <Navigation />
       <div className="min-h-screen bg-background">
         <div className="max-w-7xl mx-auto px-4 py-8">
+          {refreshError && (
+            <div className="mb-4 bg-warning/10 border border-warning text-warning px-4 py-3 rounded-lg text-sm">
+              ⚠️ {refreshError}
+            </div>
+          )}
           <div className="flex justify-between items-center mb-6">
             <div>
               <h1 className="text-3xl font-bold text-foreground">{t("tables")}</h1>
