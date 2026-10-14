@@ -283,6 +283,7 @@ export function Navigation() {
                       <Link
                         href={link.href}
                         title={link.label}
+                        data-tour={`nav:${link.href}`}
                         aria-current={active ? "page" : undefined}
                         className={`flex items-center gap-1.5 p-2 lg:px-3 rounded-lg text-sm font-medium whitespace-nowrap transition-smooth ${link.className || ""} ${
                           active
@@ -303,6 +304,7 @@ export function Navigation() {
               <button
                 ref={menuButtonRef}
                 type="button"
+                data-tour="more-menu"
                 onClick={() => setIsMenuOpen((v) => !v)}
                 aria-expanded={isMenuOpen}
                 aria-controls="nav-overflow-menu"
@@ -417,7 +419,9 @@ export function Navigation() {
           </div>
         </div>
 
-        <Onboarding />
+        <Onboarding
+          links={navLinks.map(({ href, label }) => ({ href, label }))}
+        />
       </nav>
 
       {/* Bottom navigation — cajero (y mesero) en móvil */}
@@ -434,6 +438,7 @@ export function Navigation() {
                 <Link
                   key={link.href}
                   href={link.href}
+                  data-tour={`nav:${link.href}`}
                   className={`flex flex-1 flex-col items-center justify-center gap-0.5 py-2 min-h-[56px] text-[10px] font-medium transition-colors ${
                     active
                       ? "text-primary"
