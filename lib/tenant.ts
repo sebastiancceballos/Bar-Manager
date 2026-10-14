@@ -5,6 +5,7 @@
  * El rol "owner" (Superadmin de plataforma) bypasea el filtro de location.
  */
 import { NextResponse } from "next/server";
+import { apiTAsync } from "@/lib/api-i18n";
 import { sql } from "@/lib/db";
 import type { JWTPayload } from "@/lib/auth";
 import { resolveLocationId } from "@/lib/org";
@@ -24,15 +25,28 @@ export type TenantFail = {
 
 export type TenantResult = TenantOk | TenantFail;
 
-function notFound(entity = "Recurso"): TenantFail {
+const NOT_FOUND_KEYS: Record<string, string> = {
+  Mesa: "apiTableNotFound",
+  Producto: "apiProductNotFound",
+  Orden: "apiOrderNotFound",
+  Reserva: "apiReservationNotFound",
+  "Sesión de caja": "apiCashSessionNotFound",
+  Sucursal: "apiLocationNotFound",
+};
+
+async function notFound(entity = "Recurso"): Promise<TenantFail> {
+  const key = NOT_FOUND_KEYS[entity] || "apiResourceNotFound";
   return {
-    error: NextResponse.json({ error: `${entity} no encontrado` }, { status: 404 }),
+    error: NextResponse.json({ error: await apiTAsync(key) }, { status: 404 }),
   };
 }
 
-function noBar(): TenantFail {
+async function noBar(): Promise<TenantFail> {
   return {
-    error: NextResponse.json({ error: "Sin bar asignado" }, { status: 400 }),
+    error: NextResponse.json(
+      { error: await apiTAsync("apiNoLocationAssigned") },
+      { status: 400 }
+    ),
   };
 }
 

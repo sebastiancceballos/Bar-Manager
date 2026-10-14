@@ -1,5 +1,7 @@
 "use client";
 
+import { useI18n } from "@/app/i18n-provider";
+
 import { useEffect, useMemo, useState, use as usePromise } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
@@ -39,6 +41,8 @@ export default function SelfServicePage({
 }: {
   params: Promise<{ locationId: string }>;
 }) {
+  const { t } = useI18n();
+
   const { locationId } = usePromise(params);
   const router = useRouter();
 
@@ -59,7 +63,7 @@ export default function SelfServicePage({
     fetch(`/api/self-service/menu/${locationId}`)
       .then(async (r) => {
         const data = await r.json();
-        if (!r.ok) throw new Error(data.error || "No se pudo cargar el menú");
+        if (!r.ok) throw new Error(data.error || t("couldNotLoadMenu"));
         return data;
       })
       .then((data) => {
@@ -150,14 +154,14 @@ export default function SelfServicePage({
       try {
         data = await res.json();
       } catch {
-        throw new Error("Respuesta inválida del servidor");
+        throw new Error(t("invalidServerResponse"));
       }
       if (!res.ok) {
         throw new Error(data.error || data.detail || `Error ${res.status}`);
       }
       const token = data.order?.trackingToken || data.order?.public_token;
       if (!token) {
-        throw new Error("Pedido creado pero sin token de seguimiento");
+        throw new Error(t("orderCreatedNoToken"));
       }
 
       localStorage.removeItem(cartKey(locationId));
@@ -165,7 +169,7 @@ export default function SelfServicePage({
       setIsSheetOpen(false);
       router.push(`/tracking/${token}`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "No se pudo crear el pedido");
+      setError(err instanceof Error ? err.message : t("couldNotCreateOrder"));
       setIsSubmitting(false);
     }
   }
@@ -174,7 +178,7 @@ export default function SelfServicePage({
     return (
       <div className="min-h-screen bg-background flex flex-col items-center justify-center gap-3 text-foreground">
         <Loader2 className="w-10 h-10 text-primary animate-spin" />
-        <p>Cargando menú…</p>
+        <p>{t("loadingMenu")}</p>
       </div>
     );
   }
@@ -304,7 +308,7 @@ export default function SelfServicePage({
               className="fixed bottom-0 left-0 right-0 z-50 bg-card rounded-t-2xl max-h-[85vh] flex flex-col"
             >
               <div className="flex items-center justify-between p-4 border-b border-border shrink-0">
-                <h2 className="font-bold text-lg">Tu pedido</h2>
+                <h2 className="font-bold text-lg">{t("yourOrder")}</h2>
                 <button
                   onClick={() => setIsSheetOpen(false)}
                   className="min-w-[44px] min-h-[44px] flex items-center justify-center"
@@ -316,7 +320,7 @@ export default function SelfServicePage({
               {/* min-h-0 es clave para que overflow-y funcione dentro de flex */}
               <div className="overflow-y-auto flex-1 min-h-0 p-4 flex flex-col gap-3">
                 <p className="text-xs text-foreground/50 -mt-1">
-                  ¿Notas distintas en el mismo producto? Añádelo otra vez desde el menú y escribe la nota en cada línea.
+                  {t("differentNotesHint")}
                 </p>
                 {cart.map((line, index) => (
                   <div key={index} className="bg-background rounded-lg p-3 border border-border">
@@ -341,7 +345,7 @@ export default function SelfServicePage({
                     <input
                       value={line.notes}
                       onChange={(e) => updateNotes(index, e.target.value)}
-                      placeholder="Notas de esta línea (ej. sin cebolla)"
+                      placeholder={t("lineNotesPlaceholder")}
                       className="mt-2 w-full bg-transparent border border-border rounded-lg px-3 py-2 text-sm"
                     />
                   </div>
@@ -350,13 +354,13 @@ export default function SelfServicePage({
                 <input
                   value={clientName}
                   onChange={(e) => setClientName(e.target.value)}
-                  placeholder="Tu nombre (opcional)"
+                  placeholder={t("yourNameOptional")}
                   className="w-full bg-background border border-border rounded-lg px-3 py-3 text-base"
                 />
                 <textarea
                   value={customerNotes}
                   onChange={(e) => setCustomerNotes(e.target.value)}
-                  placeholder="Notas generales del pedido (opcional)"
+                  placeholder={t("orderNotesOptional")}
                   className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm"
                   rows={2}
                 />
@@ -366,7 +370,7 @@ export default function SelfServicePage({
               {/* Footer fijo: total + confirmar siempre visibles */}
               <div className="p-4 border-t border-border shrink-0 bg-card">
                 <div className="flex justify-between text-sm mb-3">
-                  <span className="text-foreground/70">Total</span>
+                  <span className="text-foreground/70">{t("total")}</span>
                   <span className="font-bold">{formatCOP(cartTotal)}</span>
                 </div>
                 <button
@@ -377,7 +381,7 @@ export default function SelfServicePage({
                   {isSubmitting ? (
                     <Loader2 className="w-5 h-5 animate-spin" />
                   ) : (
-                    <>Confirmar pedido · {formatCOP(cartTotal)}</>
+                    <>{t("confirmOrderButton")} · {formatCOP(cartTotal)}</>
                   )}
                 </button>
               </div>

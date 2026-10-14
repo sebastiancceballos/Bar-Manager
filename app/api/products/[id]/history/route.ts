@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAuthUser } from "@/lib/auth";
 import { assertOwnsProduct } from "@/lib/tenant";
 import { sql } from "@/lib/db";
+import { apiT } from "@/lib/api-i18n";
 
 export async function GET(
   request: NextRequest,
@@ -10,7 +11,7 @@ export async function GET(
   try {
     const user = await getAuthUser();
     if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return NextResponse.json({ error: apiT(request, "apiUnauthorized") }, { status: 401 });
     }
 
     const { id } = await params;
@@ -29,6 +30,6 @@ export async function GET(
     return NextResponse.json({ movements });
   } catch (error) {
     console.error("Get history error:", error);
-    return NextResponse.json({ error: "Error al obtener historial" }, { status: 500 });
+    return NextResponse.json({ error: apiT(request, "apiErrorFetchingHistory") }, { status: 500 });
   }
 }

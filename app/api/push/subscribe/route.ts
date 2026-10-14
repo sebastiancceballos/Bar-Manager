@@ -3,6 +3,7 @@ import { sql } from "@/lib/db";
 import { getAuthUser } from "@/lib/auth";
 import { resolveLocationId } from "@/lib/org";
 import { toErrorResponse } from "@/lib/errors";
+import { apiT } from "@/lib/api-i18n";
 
 /**
  * POST body:
@@ -24,7 +25,7 @@ export async function POST(request: NextRequest) {
 
     if (!endpoint || !p256dh || !auth) {
       return NextResponse.json(
-        { error: "Suscripción incompleta (endpoint/keys)" },
+        { error: apiT(request, "apiIncompleteSubscription") },
         { status: 400 }
       );
     }
@@ -37,7 +38,7 @@ export async function POST(request: NextRequest) {
     if (scope === "order") {
       if (!publicToken) {
         return NextResponse.json(
-          { error: "publicToken requerido para notificaciones del pedido" },
+          { error: apiT(request, "apiPublicTokenRequired") },
           { status: 400 }
         );
       }
@@ -47,21 +48,21 @@ export async function POST(request: NextRequest) {
         LIMIT 1
       `;
       if (!rows[0]) {
-        return NextResponse.json({ error: "Pedido no encontrado" }, { status: 404 });
+        return NextResponse.json({ error: apiT(request, "apiOrderNotFound") }, { status: 404 });
       }
       orderId = rows[0].id;
       token = rows[0].public_token;
     } else {
       const user = await getAuthUser();
       if (!user) {
-        return NextResponse.json({ error: "No autenticado" }, { status: 401 });
+        return NextResponse.json({ error: apiT(request, "apiNotAuthenticated") }, { status: 401 });
       }
       userId = user.id;
       // Nunca confiar en body.locationId (aislamiento multi-tenant)
       locId = await resolveLocationId(user.id, user.role);
       if (!locId) {
         return NextResponse.json(
-          { error: "Sin bar asignado para notificaciones del personal" },
+          { error: apiT(request, "apiNoLocationForStaffNotifications") },
           { status: 400 }
         );
       }

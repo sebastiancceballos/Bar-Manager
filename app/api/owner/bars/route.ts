@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthUser } from "@/lib/auth";
 import { sql } from "@/lib/db";
+import { apiT } from "@/lib/api-i18n";
 
 // PATCH /api/owner/bars  { id, active }
 export async function PATCH(request: NextRequest) {
@@ -8,13 +9,13 @@ export async function PATCH(request: NextRequest) {
     const user = await getAuthUser();
 
     if (!user || user.role !== "owner") {
-      return NextResponse.json({ error: "Sin permiso" }, { status: 403 });
+      return NextResponse.json({ error: apiT(request, "apiNoPermission") }, { status: 403 });
     }
 
     const { id, active } = await request.json();
 
     if (id === undefined || active === undefined) {
-      return NextResponse.json({ error: "Faltan campos id y active" }, { status: 400 });
+      return NextResponse.json({ error: apiT(request, "apiMissingIdActiveFields") }, { status: 400 });
     }
 
     await sql`UPDATE locations SET active = ${active} WHERE id = ${parseInt(id)}`;
@@ -27,6 +28,6 @@ export async function PATCH(request: NextRequest) {
 
   } catch (error) {
     console.error("Toggle bar error:", error);
-    return NextResponse.json({ error: "Error interno" }, { status: 500 });
+    return NextResponse.json({ error: apiT(request, "apiInternalError") }, { status: 500 });
   }
 }

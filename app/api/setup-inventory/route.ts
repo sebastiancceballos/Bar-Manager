@@ -2,20 +2,21 @@ import { NextRequest, NextResponse } from "next/server";
 import { sql } from "@/lib/db";
 import { getAuthUser } from "@/lib/auth";
 import { toErrorResponse } from "@/lib/errors";
+import { apiT } from "@/lib/api-i18n";
 
 /**
  * Ya no ejecuta DDL. El esquema debe venir de migraciones
  * (scripts/16_locations_active_and_inventory.sql y anteriores).
  * Solo limpia stock negativo si las columnas existen.
  */
-export async function POST(_request: NextRequest) {
+export async function POST(request: NextRequest) {
   try {
     const user = await getAuthUser();
     if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return NextResponse.json({ error: apiT(request, "apiUnauthorized") }, { status: 401 });
     }
     if (user.role !== "admin" && user.role !== "owner") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+      return NextResponse.json({ error: apiT(request, "apiUnauthorized") }, { status: 403 });
     }
 
     try {
@@ -31,8 +32,7 @@ export async function POST(_request: NextRequest) {
     }
 
     return NextResponse.json({
-      message:
-        "Stock negativo corregido. El esquema no se modifica desde la API; usa los scripts SQL de migración.",
+      message: apiT(request, "apiNegativeStockFixed"),
     });
   } catch (error) {
     return toErrorResponse(error);

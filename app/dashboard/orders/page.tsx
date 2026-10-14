@@ -1,5 +1,7 @@
 "use client";
 
+import { useI18n } from "@/app/i18n-provider";
+
 import { useEffect, useState, useCallback } from "react";
 import { useAuth } from "@/app/providers";
 import { ProtectedLayout } from "@/app/components/ProtectedLayout";
@@ -33,14 +35,14 @@ interface SelfServiceOrder {
 
 const ALLOWED_ROLES = ["owner", "admin", "cashier"];
 
-const TABS: { key: string; label: string }[] = [
-  { key: "", label: "Todos (activos)" },
-  { key: "PENDING_PAYMENT", label: "Por cobrar" },
-  { key: "PREPARING", label: "En preparación" },
-  { key: "READY", label: "Listos" },
-];
-
 function OrdersDashboardContent() {
+  const { t } = useI18n();
+  const STATUS_TABS = [
+    { key: "", label: t("allActive") },
+    { key: "PENDING_PAYMENT", label: t("toCharge") },
+    { key: "PREPARING", label: t("orderPreparing") },
+    { key: "READY", label: t("readyPlural") },
+  ];
   const { user } = useAuth();
   const [orders, setOrders] = useState<SelfServiceOrder[]>([]);
   const [tab, setTab] = useState("");
@@ -59,7 +61,7 @@ function OrdersDashboardContent() {
       if (!res.ok) throw new Error(data.error);
       setOrders(data.orders);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Error cargando pedidos");
+      setError(err instanceof Error ? err.message : t("errorLoadingOrders"));
     } finally {
       setIsLoading(false);
     }
@@ -89,7 +91,7 @@ function OrdersDashboardContent() {
       if (!res.ok) throw new Error(data.error);
       await load();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "No se pudo actualizar el pedido");
+      setError(err instanceof Error ? err.message : t("couldNotUpdateOrder"));
     } finally {
       setBusyId(null);
     }
@@ -98,7 +100,7 @@ function OrdersDashboardContent() {
   if (user && !ALLOWED_ROLES.includes(user.role)) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center text-error">
-        No tienes permiso para acceder aquí
+        {t("noPermissionToAccess")}
       </div>
     );
   }
@@ -107,7 +109,7 @@ function OrdersDashboardContent() {
     <div className="min-h-screen bg-background text-foreground pb-20 md:pb-8">
       <Navigation />
       <main className="max-w-5xl mx-auto px-4 py-6">
-        <h1 className="text-2xl font-bold mb-4">Caja · Pedidos de autoservicio</h1>
+        <h1 className="text-2xl font-bold mb-4">{t("selfServiceCash")}</h1>
 
         <div className="flex flex-col sm:flex-row gap-3 mb-4">
           <div className="relative flex-1">
@@ -115,7 +117,7 @@ function OrdersDashboardContent() {
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Buscar por número de ficho (ej. 0042)"
+              placeholder={t("searchTicketPlaceholder")}
               className="w-full bg-card border border-border rounded-lg pl-9 pr-3 py-3 text-base"
             />
           </div>
@@ -123,15 +125,15 @@ function OrdersDashboardContent() {
 
         {!search && (
           <div className="flex gap-2 overflow-x-auto pb-2 mb-4">
-            {TABS.map((t) => (
+            {STATUS_TABS.map((tabItem) => (
               <button
-                key={t.key}
-                onClick={() => setTab(t.key)}
+                key={tabItem.key}
+                onClick={() => setTab(tabItem.key)}
                 className={`min-h-[44px] px-4 rounded-full text-sm whitespace-nowrap ${
-                  tab === t.key ? "bg-primary text-white" : "bg-card border border-border"
+                  tab === tabItem.key ? "bg-primary text-white" : "bg-card border border-border"
                 }`}
               >
-                {t.label}
+                {tabItem.label}
               </button>
             ))}
           </div>
@@ -144,7 +146,7 @@ function OrdersDashboardContent() {
             <Loader2 className="w-8 h-8 animate-spin text-primary" />
           </div>
         ) : orders.length === 0 ? (
-          <p className="text-foreground/60 text-center py-10">No hay pedidos en esta vista.</p>
+          <p className="text-foreground/60 text-center py-10">{t("noOrdersInView")}</p>
         ) : (
           <div className="flex flex-col gap-3">
             {orders.map((order) => (
@@ -176,22 +178,22 @@ function OrdersDashboardContent() {
                       target="_blank"
                       rel="noreferrer"
                       className="min-w-[44px] min-h-[44px] flex items-center justify-center bg-background border border-border rounded-lg"
-                      title="Imprimir ticket"
+                      title={t("printTicket")}
                     >
                       <Printer className="w-4 h-4" />
                     </a>
                     {order.status === "PENDING_PAYMENT" && (
                       <div className="flex flex-col gap-2 w-full sm:w-auto">
-                        <label className="text-xs text-gray-400">Medio de pago</label>
+                        <label className="text-xs text-gray-400">{t("paymentMethod")}</label>
                         <select
                           className="input py-1.5 text-sm"
                           value={payMethod}
                           onChange={(e) => setPayMethod(e.target.value as typeof payMethod)}
                         >
-                          <option value="efectivo">Efectivo</option>
-                          <option value="tarjeta">Tarjeta</option>
-                          <option value="transferencia">Transferencia</option>
-                          <option value="otro">Otro</option>
+                          <option value="efectivo">{t("cashPayment")}</option>
+                          <option value="tarjeta">{t("card")}</option>
+                          <option value="transferencia">{t("transfer")}</option>
+                          <option value="otro">{t("other")}</option>
                         </select>
                         <div className="flex gap-2">
                         <button
@@ -199,13 +201,13 @@ function OrdersDashboardContent() {
                           onClick={() => changeStatus(order.id, "PAID", payMethod)}
                           className="min-h-[44px] px-4 bg-success text-white rounded-lg flex items-center gap-2 font-semibold disabled:opacity-50"
                         >
-                          <CreditCard className="w-4 h-4" /> Confirmar pago
+                          <CreditCard className="w-4 h-4" /> {t("confirmPayment")}
                         </button>
                         <button
                           disabled={busyId === order.id}
                           onClick={() => setCancelTarget(order)}
                           className="min-w-[44px] min-h-[44px] flex items-center justify-center bg-background border border-border text-error rounded-lg disabled:opacity-50"
-                          title="Cancelar pedido"
+                          title={t("cancelOrder")}
                         >
                           <Ban className="w-4 h-4" />
                         </button>
@@ -218,7 +220,7 @@ function OrdersDashboardContent() {
                         onClick={() => changeStatus(order.id, "COMPLETED")}
                         className="min-h-[44px] px-4 bg-primary text-white rounded-lg flex items-center gap-2 font-semibold disabled:opacity-50"
                       >
-                        <CheckCircle2 className="w-4 h-4" /> Entregado
+                        <CheckCircle2 className="w-4 h-4" /> {t("delivered")}
                       </button>
                     )}
                   </div>
@@ -233,10 +235,10 @@ function OrdersDashboardContent() {
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60">
             <div className="bg-card border border-border rounded-2xl p-6 max-w-sm w-full shadow-xl">
               <h2 className="text-lg font-bold text-foreground mb-2">
-                ¿Cancelar este pedido?
+                {t("cancelThisOrderQuestion")}
               </h2>
               <p className="text-sm text-foreground/70 mb-1">
-                Ficho{" "}
+                {t("ticketLabel")}{" "}
                 <span className="font-black text-foreground">
                   {cancelTarget.ticket_number}
                 </span>
@@ -245,9 +247,9 @@ function OrdersDashboardContent() {
                   : ""}
               </p>
               <p className="text-sm text-foreground/60 mb-6">
-                Esta acción no se puede deshacer.
+                {t("cannotUndo")}.
                 {cancelTarget.status !== "PENDING_PAYMENT"
-                  ? " El stock de los productos se devolverá al inventario."
+                  ? ` ${t("stockWillBeReturned")}`
                   : ""}
               </p>
               <div className="flex gap-3">
@@ -256,7 +258,7 @@ function OrdersDashboardContent() {
                   onClick={() => setCancelTarget(null)}
                   className="flex-1 min-h-[44px] rounded-lg border border-border bg-background font-semibold"
                 >
-                  No
+                  {t("no")}
                 </button>
                 <button
                   type="button"
@@ -268,7 +270,7 @@ function OrdersDashboardContent() {
                   }}
                   className="flex-1 min-h-[44px] rounded-lg bg-error text-white font-semibold disabled:opacity-50"
                 >
-                  Sí, cancelar
+                  {t("yesCancelButton")}
                 </button>
               </div>
             </div>
@@ -280,19 +282,23 @@ function OrdersDashboardContent() {
 }
 
 function StatusBadge({ status }: { status: string }) {
+  const { t } = useI18n();
+
   const map: Record<string, { label: string; className: string }> = {
-    PENDING_PAYMENT: { label: "Por cobrar", className: "bg-warning/20 text-warning" },
-    PAID: { label: "Pagado", className: "bg-primary/20 text-primary" },
-    PREPARING: { label: "En preparación", className: "bg-secondary/20 text-secondary" },
-    READY: { label: "Listo", className: "bg-success/20 text-success" },
-    COMPLETED: { label: "Entregado", className: "bg-foreground/10 text-foreground/60" },
-    CANCELLED: { label: "Cancelado", className: "bg-error/20 text-error" },
+    PENDING_PAYMENT: { label: t("toCharge"), className: "bg-warning/20 text-warning" },
+    PAID: { label: t("paid"), className: "bg-primary/20 text-primary" },
+    PREPARING: { label: t("orderPreparing"), className: "bg-secondary/20 text-secondary" },
+    READY: { label: t("ready"), className: "bg-success/20 text-success" },
+    COMPLETED: { label: t("delivered"), className: "bg-foreground/10 text-foreground/60" },
+    CANCELLED: { label: t("cancelled"), className: "bg-error/20 text-error" },
   };
   const info = map[status] || { label: status, className: "bg-foreground/10" };
   return <span className={`text-xs font-semibold px-2 py-1 rounded-full ${info.className}`}>{info.label}</span>;
 }
 
 export default function OrdersDashboardPage() {
+  const { t } = useI18n();
+
   return (
     <ProtectedLayout>
       <OrdersDashboardContent />

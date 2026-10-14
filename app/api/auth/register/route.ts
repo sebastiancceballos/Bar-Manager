@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { getAuthUser, UserRole } from "@/lib/auth";
 import { sql } from "@/lib/db";
+import { apiT } from "@/lib/api-i18n";
 
 /**
  * POST /api/auth/register
@@ -54,7 +55,7 @@ export async function POST(request: NextRequest) {
     
     if (!currentUser) {
       return NextResponse.json(
-        { error: "No autenticado. Debes iniciar sesión para crear usuarios." },
+        { error: apiT(request, "apiNotAuthenticatedCreateUsers") },
         { status: 401 }
       );
     }
@@ -67,12 +68,12 @@ export async function POST(request: NextRequest) {
     if (!name || !email || !password || !role) {
       return NextResponse.json(
         { 
-          error: "Campos requeridos faltantes",
+          error: apiT(request, "apiMissingRequiredFields"),
           details: {
-            name: !name ? "El nombre es requerido" : null,
-            email: !email ? "El email es requerido" : null,
-            password: !password ? "La contraseña es requerida" : null,
-            role: !role ? "El rol es requerido" : null,
+            name: !name ? apiT(request, "apiNameFieldRequired") : null,
+            email: !email ? apiT(request, "apiEmailFieldRequired") : null,
+            password: !password ? apiT(request, "apiPasswordFieldRequired") : null,
+            role: !role ? apiT(request, "apiRoleFieldRequired") : null,
           }
         },
         { status: 400 }
@@ -83,7 +84,7 @@ export async function POST(request: NextRequest) {
     const validRoles: UserRole[] = ["admin", "waiter", "cashier", "kitchen"];
     if (!validRoles.includes(role as UserRole)) {
       return NextResponse.json(
-        { error: `Rol inválido. Roles permitidos: ${validRoles.join(", ")}` },
+        { error: apiT(request, "apiInvalidRoleAllowed", { roles: validRoles.join(", ") }) },
         { status: 400 }
       );
     }
@@ -97,9 +98,9 @@ export async function POST(request: NextRequest) {
 
     if (!allowedRoles.includes(typedRole)) {
       if (ROLE_HIERARCHY[typedRole] >= ROLE_HIERARCHY[creatorRole]) {
-        return NextResponse.json({ error: "No puedes crear un usuario con un rol igual o superior al tuyo." }, { status: 403 });
+        return NextResponse.json({ error: apiT(request, "apiCannotCreateEqualOrHigherRole") }, { status: 403 });
       }
-      return NextResponse.json({ error: `Tu rol (${creatorRole}) no tiene permiso para crear usuarios con rol ${typedRole}.` }, { status: 403 });
+      return NextResponse.json({ error: apiT(request, "apiRoleCannotCreate", { creator: creatorRole, target: typedRole }) }, { status: 403 });
     }
 
     // 3.1 Validate location_id scope
@@ -108,7 +109,7 @@ export async function POST(request: NextRequest) {
         const creatorLocRow = await sql`SELECT location_id FROM users WHERE id = ${currentUser.id} LIMIT 1`;
         const creatorLocId = creatorLocRow[0]?.location_id;
         if (parseInt(location_id) !== creatorLocId) {
-          return NextResponse.json({ error: "No tienes permiso para asignar usuarios a este bar." }, { status: 403 });
+          return NextResponse.json({ error: apiT(request, "apiNoPermissionAssignUsers") }, { status: 403 });
         }
       }
       // Note: Owner can assign to any location, so no check needed for owner role.
@@ -120,7 +121,7 @@ export async function POST(request: NextRequest) {
 
     if (existingUser) {
       return NextResponse.json(
-        { error: "Ya existe un usuario con este email." },
+        { error: apiT(request, "apiUserEmailExists") },
         { status: 400 }
       );
     }
@@ -152,7 +153,7 @@ export async function POST(request: NextRequest) {
     // 7. Return success response (without password_hash)
     return NextResponse.json(
       {
-        message: "Usuario creado exitosamente",
+        message: apiT(request, "apiUserCreatedSuccess"),
         user: {
           id: newUser.id,
           name: newUser.name,
@@ -168,7 +169,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error("Register error:", error);
     return NextResponse.json(
-      { error: "Error interno del servidor" },
+      { error: apiT(request, "internalServerError") },
       { status: 500 }
     );
   }

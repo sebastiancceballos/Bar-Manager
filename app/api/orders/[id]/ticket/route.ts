@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAuthUser } from "@/lib/auth";
 import { assertOwnsOrder } from "@/lib/tenant";
 import { sql } from "@/lib/db";
+import { apiT } from "@/lib/api-i18n";
 
 const ALLOWED_ROLES = ["owner", "admin", "cashier", "kitchen", "waiter"];
 
@@ -16,7 +17,7 @@ export async function GET(
   try {
     const user = await getAuthUser();
     if (!user || !ALLOWED_ROLES.includes(user.role)) {
-      return NextResponse.json({ error: "Sin permiso" }, { status: 403 });
+      return NextResponse.json({ error: apiT(request, "apiNoPermission") }, { status: 403 });
     }
 
     const { id } = await params;
@@ -35,6 +36,7 @@ export async function GET(
         o.updated_at,
         o.modified_by,
         o.status,
+        o.payment_method,
         loc.id AS location_id,
         loc.name AS location_name,
         loc.address AS location_address,
@@ -54,7 +56,7 @@ export async function GET(
     `;
     const order = rows[0];
     if (!order) {
-      return NextResponse.json({ error: "Pedido no encontrado" }, { status: 404 });
+      return NextResponse.json({ error: apiT(request, "apiOrderNotFound") }, { status: 404 });
     }
 
     // Cajero: 1) quien cobró (audit PENDING_PAYMENT -> PREPARING)
@@ -117,6 +119,7 @@ export async function GET(
         locationName,
         locationAddress,
         cashierName,
+        paymentMethod: order.payment_method ?? null,
         items: items.map((i: any) => ({
           name: i.name,
           quantity: i.quantity,
@@ -128,6 +131,6 @@ export async function GET(
     );
   } catch (error) {
     console.error("Get ticket error:", error);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return NextResponse.json({ error: apiT(request, "internalServerError") }, { status: 500 });
   }
 }

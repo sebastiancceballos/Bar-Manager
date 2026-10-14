@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthUser } from "@/lib/auth";
 import { sql } from "@/lib/db";
+import { apiT } from "@/lib/api-i18n";
 
 /** GET: list orgs (superadmin all; admin only own). POST: create org (superadmin). */
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     const user = await getAuthUser();
-    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!user) return NextResponse.json({ error: apiT(request, "apiUnauthorized") }, { status: 401 });
 
     if (user.role === "owner") {
       const orgs = await sql`
@@ -34,11 +35,11 @@ export async function GET() {
       return NextResponse.json({ organizations: orgs }, { status: 200 });
     }
 
-    return NextResponse.json({ error: "Sin permiso" }, { status: 403 });
+    return NextResponse.json({ error: apiT(request, "apiNoPermission") }, { status: 403 });
   } catch (error) {
     console.error("GET organizations:", error);
     return NextResponse.json(
-      { error: "Error al listar organizaciones. ¿Corriste scripts/11_organizations.sql?" },
+      { error: apiT(request, "apiErrorListingOrgMigration") },
       { status: 500 }
     );
   }
@@ -48,12 +49,12 @@ export async function POST(request: NextRequest) {
   try {
     const user = await getAuthUser();
     if (!user || user.role !== "owner") {
-      return NextResponse.json({ error: "Solo Superadmin puede crear organizaciones" }, { status: 403 });
+      return NextResponse.json({ error: apiT(request, "apiOnlySuperadminCreateOrgs") }, { status: 403 });
     }
 
     const { name } = await request.json();
     if (!name || !String(name).trim()) {
-      return NextResponse.json({ error: "Nombre requerido" }, { status: 400 });
+      return NextResponse.json({ error: apiT(request, "apiNameRequired") }, { status: 400 });
     }
 
     const rows = await sql`
@@ -65,7 +66,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error("POST organizations:", error);
     return NextResponse.json(
-      { error: "Error al crear. ¿Corriste scripts/11_organizations.sql?" },
+      { error: apiT(request, "apiErrorCreatingOrgMigration") },
       { status: 500 }
     );
   }

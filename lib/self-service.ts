@@ -1,3 +1,4 @@
+import { AppError } from "@/lib/errors";
 import { sql } from "./db";
 import type { UserRole } from "./auth";
 
@@ -89,7 +90,7 @@ export async function generateTicketNumber(locationId: number): Promise<string> 
   `;
   const periodDate = dateRows[0]?.period_date;
   if (!periodDate) {
-    throw new Error("No se pudo determinar la fecha local del bar para el ficho");
+    throw new AppError("No se pudo determinar la fecha local del bar para el ficho", 500, "APP_ERROR", "apiLocalDateUnavailable");
   }
 
   const rows = await sql`

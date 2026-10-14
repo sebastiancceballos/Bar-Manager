@@ -5,14 +5,15 @@ import { resolveLocationId } from "@/lib/org";
 import { canManageCashSession } from "@/lib/permissions";
 import { sql } from "@/lib/db";
 import { logAudit } from "@/lib/audit";
+import { apiT } from "@/lib/api-i18n";
 
 export async function GET(request: NextRequest) {
   try {
     const user = await getAuthUser();
-    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!user) return NextResponse.json({ error: apiT(request, "apiUnauthorized") }, { status: 401 });
 
     const locId = await resolveLocationId(user.id, user.role);
-    if (!locId) return NextResponse.json({ error: "Sin bar asignado" }, { status: 400 });
+    if (!locId) return NextResponse.json({ error: apiT(request, "apiNoLocationAssigned") }, { status: 400 });
 
     const open = await sql`
       SELECT cs.*, u.name as opened_by_name
@@ -42,15 +43,15 @@ export async function POST(request: NextRequest) {
   try {
     const user = await getAuthUser();
     if (!user || !canManageCashSession(user.role)) {
-      return NextResponse.json({ error: "Sin permiso para abrir el turno de caja" }, { status: 403 });
+      return NextResponse.json({ error: apiT(request, "apiNoPermissionOpenShift") }, { status: 403 });
     }
 
     const locId = await resolveLocationId(user.id, user.role);
-    if (!locId) return NextResponse.json({ error: "Sin bar asignado" }, { status: 400 });
+    if (!locId) return NextResponse.json({ error: apiT(request, "apiNoLocationAssigned") }, { status: 400 });
 
     const { openingAmount } = await request.json();
     const amount = Number(openingAmount) || 0;
-    if (amount < 0) return NextResponse.json({ error: "El monto inicial no puede ser negativo" }, { status: 400 });
+    if (amount < 0) return NextResponse.json({ error: apiT(request, "apiOpeningAmountNegative") }, { status: 400 });
 
     let created;
     try {
@@ -60,7 +61,7 @@ export async function POST(request: NextRequest) {
         RETURNING *
       `;
     } catch {
-      return NextResponse.json({ error: "Ya hay un turno de caja abierto para este bar" }, { status: 409 });
+      return NextResponse.json({ error: apiT(request, "apiShiftAlreadyOpenForLocation") }, { status: 409 });
     }
 
     await logAudit({

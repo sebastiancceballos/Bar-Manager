@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { signToken, setAuthCookie } from "@/lib/auth";
 import { sql } from "@/lib/db";
+import { apiT } from "@/lib/api-i18n";
 
 interface DbUser {
   id: number;
@@ -23,7 +24,7 @@ export async function POST(request: NextRequest) {
 
     if (!email || !password) {
       return NextResponse.json(
-        { error: "Email and password required" },
+        { error: apiT(request, "apiEmailPasswordRequired") },
         { status: 400 }
       );
     }
@@ -36,7 +37,7 @@ export async function POST(request: NextRequest) {
 
     if (!user) {
       return NextResponse.json(
-        { error: "Invalid credentials" },
+        { error: apiT(request, "apiInvalidCredentials") },
         { status: 401 }
       );
     }
@@ -45,7 +46,7 @@ export async function POST(request: NextRequest) {
     if (user.locked_until && new Date(user.locked_until).getTime() > Date.now()) {
       const minutesLeft = Math.ceil((new Date(user.locked_until).getTime() - Date.now()) / 60000);
       return NextResponse.json(
-        { error: `Cuenta bloqueada temporalmente por intentos fallidos. Intenta de nuevo en ${minutesLeft} min.` },
+        { error: apiT(request, "apiAccountLockedMinutes", { minutes: minutesLeft }) },
         { status: 429 }
       );
     }
@@ -61,13 +62,13 @@ export async function POST(request: NextRequest) {
           WHERE id = ${user.id}
         `;
         return NextResponse.json(
-          { error: `Demasiados intentos fallidos. Cuenta bloqueada por ${LOCK_MINUTES} minutos.` },
+          { error: apiT(request, "apiTooManyAttempts", { minutes: LOCK_MINUTES }) },
           { status: 429 }
         );
       }
       await sql`UPDATE users SET failed_attempts = ${attempts} WHERE id = ${user.id}`;
       return NextResponse.json(
-        { error: "Invalid credentials" },
+        { error: apiT(request, "apiInvalidCredentials") },
         { status: 401 }
       );
     }
@@ -87,7 +88,7 @@ export async function POST(request: NextRequest) {
       const loc = Array.isArray(locResult) ? locResult[0] : null;
       if (loc && loc.active === false) {
         return NextResponse.json(
-          { error: "Tu bar está desactivado. Contacta al administrador." },
+          { error: apiT(request, "apiLocationDeactivated") },
           { status: 403 }
         );
       }
@@ -150,7 +151,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error("Login error:", error);
     return NextResponse.json(
-      { error: "Internal server error" },
+      { error: apiT(request, "internalServerError") },
       { status: 500 }
     );
   }

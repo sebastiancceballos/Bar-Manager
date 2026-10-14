@@ -1,5 +1,8 @@
 "use client";
 
+import { useI18n } from "@/app/i18n-provider";
+import { fmtDate, fmtDateTime } from "@/lib/format-date";
+
 import { ProtectedLayout } from "@/app/components/ProtectedLayout";
 import { Navigation } from "@/app/components/Navigation";
 import { useEffect, useState } from "react";
@@ -26,6 +29,8 @@ interface CashSession {
 }
 
 export default function CajaPage() {
+  const { t, locale } = useI18n();
+
   const [open, setOpen] = useState<CashSession | null>(null);
   const [history, setHistory] = useState<CashSession[]>([]);
   const [loading, setLoading] = useState(true);
@@ -107,7 +112,7 @@ export default function CajaPage() {
       <Navigation />
       <div className="min-h-screen bg-background">
         <div className="max-w-2xl mx-auto px-4 py-12 space-y-8">
-          <h1 className="text-4xl font-bold text-foreground">Caja</h1>
+          <h1 className="text-4xl font-bold text-foreground">{t("cash")}</h1>
 
           {error && (
             <div className="bg-error/10 border border-error text-error text-sm px-3 py-2 rounded">
@@ -116,63 +121,63 @@ export default function CajaPage() {
           )}
 
           {loading ? (
-            <p className="text-gray-400">Cargando…</p>
+            <p className="text-gray-400">{t("loading")}</p>
           ) : open ? (
             <div className="card space-y-4">
               <span className="text-xs font-bold uppercase px-2 py-1 rounded-full bg-success/10 text-success">
-                Turno abierto
+                {t("shiftOpen")}
               </span>
               <p className="text-sm text-gray-400">
-                Abierto por {open.opened_by_name} ·{" "}
-                {new Date(open.opened_at).toLocaleString("es-CO")}
+                {t("openedByLabel")} {open.opened_by_name} ·{" "}
+                {fmtDateTime(open.opened_at, locale)}
               </p>
               <p className="text-lg">
-                Base: <strong>{formatCOP(Number(open.opening_amount))}</strong>
+                {t("baseAmountLabel")}: <strong>{formatCOP(Number(open.opening_amount))}</strong>
               </p>
               <div className="space-y-3 border-t border-border pt-4">
                 <label className="block text-sm font-medium">
-                  Monto contado al cerrar
+                  {t("countedOnClose")}
                 </label>
                 <input
                   type="text"
                   inputMode="numeric"
                   className="input w-full"
-                  placeholder="Ej: 350.000"
+                  placeholder={t("exampleAmount350k")}
                   value={closingAmount}
                   onChange={(e) =>
                     setClosingAmount(onMoneyKeyInput(e.target.value))
                   }
                 />
-                <label className="block text-sm font-medium">Notas</label>
+                <label className="block text-sm font-medium">{t("notes")}</label>
                 <input
                   type="text"
                   className="input w-full"
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
-                  placeholder="Opcional"
+                  placeholder={t("optional")}
                 />
                 <button
                   onClick={handleClose}
                   disabled={submitting || !closingAmount}
                   className="btn btn-primary w-full disabled:opacity-50"
                 >
-                  {submitting ? "Cerrando..." : "Cerrar turno y hacer arqueo"}
+                  {submitting ? t("closing") : t("closeCashSession")}
                 </button>
               </div>
             </div>
           ) : (
             <div className="card space-y-4">
               <span className="text-xs font-bold uppercase px-2 py-1 rounded-full bg-warning/10 text-warning">
-                Sin turno abierto
+                {t("noShiftOpen")}
               </span>
               <label className="block text-sm font-medium">
-                Monto inicial en caja
+                {t("openingAmount")}
               </label>
               <input
                 type="text"
                 inputMode="numeric"
                 className="input w-full"
-                placeholder="Ej: 100.000"
+                placeholder={t("exampleAmount100k")}
                 value={openingAmount}
                 onChange={(e) =>
                   setOpeningAmount(onMoneyKeyInput(e.target.value))
@@ -183,14 +188,14 @@ export default function CajaPage() {
                 disabled={submitting}
                 className="btn btn-primary w-full disabled:opacity-50"
               >
-                {submitting ? "Abriendo..." : "Abrir turno de caja"}
+                {submitting ? t("opening") : t("openCashSession")}
               </button>
             </div>
           )}
 
           {history.length > 0 && (
             <div>
-              <h2 className="text-xl font-semibold mb-3">Historial de turnos</h2>
+              <h2 className="text-xl font-semibold mb-3">{t("shiftHistory")}</h2>
               <div className="space-y-3">
                 {history.map((h) => (
                   <div
@@ -199,11 +204,11 @@ export default function CajaPage() {
                   >
                     <div>
                       <p className="text-sm text-gray-400">
-                        {new Date(h.opened_at).toLocaleDateString("es-CO")} ·{" "}
+                        {fmtDate(h.opened_at, locale)} ·{" "}
                         {h.opened_by_name} → {h.closed_by_name}
                       </p>
                       <p className="text-xs text-gray-500">
-                        Notas: {h.notes || "—"}
+                        {t("notes")}: {h.notes || "—"}
                       </p>
                     </div>
                     <div className="text-left sm:text-right">
@@ -220,8 +225,8 @@ export default function CajaPage() {
                         {formatCOP(Number(h.difference || 0))}
                       </p>
                       <p className="text-xs text-gray-500">
-                        Contado {formatCOP(Number(h.closing_amount || 0))} /
-                        Esperado {formatCOP(Number(h.expected_amount || 0))}
+                        {t("counted")} {formatCOP(Number(h.closing_amount || 0))} /
+                        {t("expected")} {formatCOP(Number(h.expected_amount || 0))}
                       </p>
                     </div>
                   </div>

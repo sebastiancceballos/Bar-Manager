@@ -1,11 +1,12 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getAuthUser } from "@/lib/auth";
 import { getAccessibleLocations, resolveLocationId } from "@/lib/org";
+import { apiT } from "@/lib/api-i18n";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     const user = await getAuthUser();
-    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!user) return NextResponse.json({ error: apiT(request, "apiUnauthorized") }, { status: 401 });
 
     const locations = await getAccessibleLocations(user.id, user.role);
     const activeLocationId = await resolveLocationId(user.id, user.role);
@@ -16,6 +17,6 @@ export async function GET() {
     );
   } catch (error) {
     console.error("GET me/locations:", error);
-    return NextResponse.json({ error: "Error interno" }, { status: 500 });
+    return NextResponse.json({ error: apiT(request, "apiInternalError") }, { status: 500 });
   }
 }

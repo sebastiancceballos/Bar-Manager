@@ -4,6 +4,7 @@ import { toErrorResponse } from "@/lib/errors";
 import { sql } from "@/lib/db";
 import { assertOwnsTable } from "@/lib/tenant";
 import { normalizeTableNumber } from "@/lib/table-number";
+import { apiT } from "@/lib/api-i18n";
 
 export async function PUT(
   request: NextRequest,
@@ -12,7 +13,7 @@ export async function PUT(
   try {
     const user = await getAuthUser();
     if (!user || (user.role !== "admin" && user.role !== "owner")) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+      return NextResponse.json({ error: apiT(request, "apiUnauthorized") }, { status: 403 });
     }
 
     const { id } = await params;
@@ -31,7 +32,7 @@ export async function PUT(
       table_number = normalizeTableNumber(body.table_number);
       if (!table_number) {
         return NextResponse.json(
-          { error: "Número de mesa inválido" },
+          { error: apiT(request, "apiInvalidTableNumber") },
           { status: 400 }
         );
       }
@@ -49,7 +50,7 @@ export async function PUT(
         `;
         if (dup[0]) {
           return NextResponse.json(
-            { error: `Ya existe la mesa ${table_number} en este bar` },
+            { error: apiT(request, "apiTableExistsNum", { number: table_number }) },
             { status: 409 }
           );
         }
@@ -69,14 +70,14 @@ export async function PUT(
     `;
 
     if (!tables[0]) {
-      return NextResponse.json({ error: "Mesa no encontrada" }, { status: 404 });
+      return NextResponse.json({ error: apiT(request, "apiTableNotFound") }, { status: 404 });
     }
 
     return NextResponse.json({ table: tables[0] }, { status: 200 });
   } catch (error: any) {
     if (error?.code === "23505") {
       return NextResponse.json(
-        { error: "Ya existe una mesa con ese número en este bar" },
+        { error: apiT(request, "apiTableNumberExists") },
         { status: 409 }
       );
     }
@@ -85,13 +86,13 @@ export async function PUT(
 }
 
 export async function DELETE(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const user = await getAuthUser();
     if (!user || (user.role !== "admin" && user.role !== "owner")) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+      return NextResponse.json({ error: apiT(request, "apiUnauthorized") }, { status: 403 });
     }
 
     const { id } = await params;
@@ -101,7 +102,7 @@ export async function DELETE(
 
     await sql`DELETE FROM tables WHERE id = ${tableId}`;
 
-    return NextResponse.json({ message: "Table deleted" }, { status: 200 });
+    return NextResponse.json({ message: apiT(request, "apiTableDeleted") }, { status: 200 });
   } catch (error) {
     return toErrorResponse(error);
   }

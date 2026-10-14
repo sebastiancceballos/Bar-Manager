@@ -5,6 +5,7 @@ import { assertOwnsCashSession } from "@/lib/tenant";
 import { canManageCashSession } from "@/lib/permissions";
 import { sql } from "@/lib/db";
 import { logAudit } from "@/lib/audit";
+import { apiT } from "@/lib/api-i18n";
 
 export async function PATCH(
   request: NextRequest,
@@ -13,7 +14,7 @@ export async function PATCH(
   try {
     const user = await getAuthUser();
     if (!user || !canManageCashSession(user.role)) {
-      return NextResponse.json({ error: "Sin permiso para cerrar el turno de caja" }, { status: 403 });
+      return NextResponse.json({ error: apiT(request, "apiNoPermissionCloseShift") }, { status: 403 });
     }
 
     const { id } = await params;
@@ -23,13 +24,13 @@ export async function PATCH(
     if (guard.error) return guard.error;
     const sessions = await sql`SELECT * FROM cash_sessions WHERE id = ${sessionId}`;
     const session = sessions[0];
-    if (!session) return NextResponse.json({ error: "Turno no encontrado" }, { status: 404 });
-    if (session.closed_at) return NextResponse.json({ error: "Este turno ya está cerrado" }, { status: 400 });
+    if (!session) return NextResponse.json({ error: apiT(request, "apiShiftNotFound") }, { status: 404 });
+    if (session.closed_at) return NextResponse.json({ error: apiT(request, "apiShiftAlreadyClosed") }, { status: 400 });
 
     const { closingAmount, notes } = await request.json();
     const counted = Number(closingAmount);
     if (isNaN(counted) || counted < 0) {
-      return NextResponse.json({ error: "Monto contado inválido" }, { status: 400 });
+      return NextResponse.json({ error: apiT(request, "apiInvalidCountedAmount") }, { status: 400 });
     }
 
     // Efectivo esperado = monto inicial + ventas en efectivo del local durante el turno.

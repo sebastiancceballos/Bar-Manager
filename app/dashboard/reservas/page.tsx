@@ -1,5 +1,9 @@
 "use client";
 
+import { useI18n } from "@/app/i18n-provider";
+import type { Locale } from "@/lib/i18n";
+import { fmtDateTime } from "@/lib/format-date";
+
 import { ProtectedLayout } from "@/app/components/ProtectedLayout";
 import { Navigation } from "@/app/components/Navigation";
 import { useEffect, useState } from "react";
@@ -21,11 +25,11 @@ interface TableOption {
   capacity: number;
 }
 
-const STATUS_LABELS: Record<string, string> = {
-  confirmada: "Confirmada",
-  cancelada: "Cancelada",
-  completada: "Completada",
-  no_show: "No llegó",
+const STATUS_LABELS_KEYS: Record<string, string> = {
+  confirmada: "reservationConfirmed",
+  cancelada: "reservationCancelled",
+  completada: "reservationCompleted",
+  no_show: "reservationNoShow",
 };
 
 const STATUS_STYLES: Record<string, string> = {
@@ -46,8 +50,8 @@ function parseAsLocalWallClock(value: string): Date {
   return new Date(parseInt(year), parseInt(month) - 1, parseInt(day), parseInt(hour), parseInt(minute));
 }
 
-function formatReservationTime(value: string): string {
-  return parseAsLocalWallClock(value).toLocaleString("es-CO", {
+function formatReservationTime(value: string, locale: Locale): string {
+  return fmtDateTime(parseAsLocalWallClock(value), locale, {
     dateStyle: "short",
     timeStyle: "short",
   });
@@ -69,6 +73,8 @@ function getTodayDate(): string {
 }
 
 export default function ReservasPage() {
+  const { t, locale } = useI18n();
+
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [tables, setTables] = useState<TableOption[]>([]);
   const [loading, setLoading] = useState(true);
@@ -127,7 +133,7 @@ export default function ReservasPage() {
     setError(null);
 
     if (!reservationDate || !reservationHour) {
-      setError("Debes seleccionar una fecha y una franja horaria.");
+      setError(t("selectDateAndSlot"));
       return;
     }
 
@@ -135,12 +141,12 @@ export default function ReservasPage() {
     const chosen = parseAsLocalWallClock(reservationTime);
 
     if (chosen < new Date()) {
-      setError("No puedes hacer una reserva en una fecha u hora que ya pasó.");
+      setError(t("pastDateTimeError"));
       return;
     }
 
     if (exceedsCapacity) {
-      setError(`La Mesa ${selectedTable!.table_number} tiene capacidad máxima de ${selectedTable!.capacity} personas. Tu reserva es para ${partySizeNum}.`);
+      setError(`${t("table")} ${selectedTable!.table_number} ${t("tableMaxCapacity")} ${selectedTable!.capacity} ${t("peopleSuffix")}. ${t("yourReservationIsFor")} ${partySizeNum}.`);
       return;
     }
 
@@ -193,11 +199,11 @@ export default function ReservasPage() {
         <div className="max-w-3xl mx-auto px-4 py-8 space-y-6">
           <div className="flex justify-between items-center">
             <div>
-              <h1 className="text-3xl font-bold text-foreground">Reservas</h1>
-              <p className="text-sm text-gray-400 mt-1">Próximas reservas de mesa</p>
+              <h1 className="text-3xl font-bold text-foreground">{t("reservations")}</h1>
+              <p className="text-sm text-gray-400 mt-1">{t("reservations")}</p>
             </div>
             <button onClick={() => setShowForm(!showForm)} className="btn btn-primary">
-              {showForm ? "Cancelar" : "Nueva Reserva"}
+              {showForm ? t("cancel") : t("newReservation")}
             </button>
           </div>
 
@@ -211,7 +217,7 @@ export default function ReservasPage() {
             <form onSubmit={handleCreate} className="card space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium mb-2">Nombre del cliente</label>
+                  <label className="block text-sm font-medium mb-2">{t("guestName")}</label>
                   <input
                     className="input w-full"
                     required
@@ -221,7 +227,7 @@ export default function ReservasPage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium mb-2">Teléfono (solo números)</label>
+                  <label className="block text-sm font-medium mb-2">{t("phoneNumbersOnly")}</label>
                   <input
                     className="input w-full"
                     type="tel"
@@ -234,7 +240,7 @@ export default function ReservasPage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium mb-2">Número de personas</label>
+                  <label className="block text-sm font-medium mb-2">{t("partySize")}</label>
                   <input
                     type="number"
                     min="1"
@@ -245,13 +251,13 @@ export default function ReservasPage() {
                   />
                   {exceedsCapacity && (
                     <p className="text-xs text-error mt-1">
-                      ⚠️ Supera la capacidad de la Mesa {selectedTable!.table_number} ({selectedTable!.capacity} personas máx.)
+                      {t("exceedsCapacityOf")} {selectedTable!.table_number} ({selectedTable!.capacity} {t("maxPeopleSuffix")})
                     </p>
                   )}
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium mb-2">Fecha</label>
+                  <label className="block text-sm font-medium mb-2">{t("date")}</label>
                   <input
                     type="date"
                     required
@@ -263,14 +269,14 @@ export default function ReservasPage() {
                 </div>
 
                 <div className="md:col-span-2">
-                  <label className="block text-sm font-medium mb-2">Franja horaria</label>
+                  <label className="block text-sm font-medium mb-2">{t("timeSlot")}</label>
                   <select
                     required
                     className="input w-full"
                     value={reservationHour}
                     onChange={(e) => setReservationHour(e.target.value)}
                   >
-                    <option value="">Selecciona una hora</option>
+                    <option value="">{t("time")}</option>
                     {getTimeSlots().map((slot) => {
                       const h = parseInt(slot.split(":")[0]);
                       const period = h < 12 ? "a.m." : "p.m.";
@@ -283,21 +289,21 @@ export default function ReservasPage() {
                     })}
                   </select>
                   <p className="text-xs text-gray-500 mt-1">
-                    Horario de atención: {AVAILABLE_HOURS[0]}:00 – {AVAILABLE_HOURS[AVAILABLE_HOURS.length - 1]}:30
+                    {t("businessHours")}: {AVAILABLE_HOURS[0]}:00 – {AVAILABLE_HOURS[AVAILABLE_HOURS.length - 1]}:30
                   </p>
                 </div>
 
                 <div className="md:col-span-2">
-                  <label className="block text-sm font-medium mb-2">Mesa (opcional)</label>
+                  <label className="block text-sm font-medium mb-2">{t("tableOptional")}</label>
                   <select
                     className="input w-full"
                     value={tableId}
                     onChange={(e) => setTableId(e.target.value)}
                   >
-                    <option value="">Sin asignar todavía</option>
-                    {tables.map((t) => (
-                      <option key={t.id} value={t.id}>
-                        Mesa {t.table_number} (máx. {t.capacity} personas)
+                    <option value="">{t("none")}</option>
+                    {tables.map((tbl) => (
+                      <option key={tbl.id} value={tbl.id}>
+                        {t("table")} {tbl.table_number} ({t("maxAbbrev")} {tbl.capacity} {t("peopleSuffix")})
                       </option>
                     ))}
                   </select>
@@ -305,10 +311,10 @@ export default function ReservasPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-2">Notas</label>
+                <label className="block text-sm font-medium mb-2">{t("notes")}</label>
                 <input
                   className="input w-full"
-                  placeholder="Ej: mesa junto a la ventana"
+                  placeholder={t("tableWindowPlaceholder")}
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
                 />
@@ -319,7 +325,7 @@ export default function ReservasPage() {
                 disabled={submitting || exceedsCapacity}
                 className="btn btn-primary w-full disabled:opacity-50"
               >
-                {submitting ? "Guardando..." : "Guardar Reserva"}
+                {submitting ? t("savingEllipsis") : t("saveReservation")}
               </button>
             </form>
           )}
@@ -327,29 +333,29 @@ export default function ReservasPage() {
           {loading ? (
             <div className="card animate-pulse h-40" />
           ) : reservations.length === 0 ? (
-            <div className="card text-center text-gray-400 py-12">No hay reservas próximas</div>
+            <div className="card text-center text-gray-400 py-12">{t("noData")}</div>
           ) : (
             <div className="space-y-3">
               {reservations.map((r) => (
                 <div key={r.id} className="card-sm flex flex-col sm:flex-row justify-between sm:items-center gap-4">
                   <div className="min-w-0">
-                    <p className="font-semibold break-words">{r.customer_name} · {r.party_size} personas</p>
+                    <p className="font-semibold break-words">{r.customer_name} · {r.party_size} {t("peopleSuffix")}</p>
                     <p className="text-sm text-gray-400">
-                      {formatReservationTime(r.reservation_time)}
-                      {r.table_number ? ` · Mesa ${r.table_number}` : ""}
+                      {formatReservationTime(r.reservation_time, locale)}
+                      {r.table_number ? ` · ${t("table")} ${r.table_number}` : ""}
                       {r.phone ? ` · ${r.phone}` : ""}
                     </p>
                     {r.notes && <p className="text-xs text-gray-500 mt-1">{r.notes}</p>}
                   </div>
                   <div className="flex flex-col sm:items-end gap-2">
                     <span className={`self-start sm:self-auto text-xs font-bold uppercase px-2 py-1 rounded-full ${STATUS_STYLES[r.status]}`}>
-                      {STATUS_LABELS[r.status]}
+                      {t(STATUS_LABELS_KEYS[r.status])}
                     </span>
                     {r.status === "confirmada" && (
                       <div className="flex flex-wrap gap-1.5">
-                        <button onClick={() => handleStatusChange(r.id, "completada")} className="btn btn-sm btn-outline text-xs">Llegó</button>
-                        <button onClick={() => handleStatusChange(r.id, "no_show")} className="btn btn-sm btn-outline text-xs">No llegó</button>
-                        <button onClick={() => handleStatusChange(r.id, "cancelada")} className="btn btn-sm bg-error/10 text-error text-xs">Cancelar</button>
+                        <button onClick={() => handleStatusChange(r.id, "completada")} className="btn btn-sm btn-outline text-xs">{t("arrived")}</button>
+                        <button onClick={() => handleStatusChange(r.id, "no_show")} className="btn btn-sm btn-outline text-xs">{t("pending")}</button>
+                        <button onClick={() => handleStatusChange(r.id, "cancelada")} className="btn btn-sm bg-error/10 text-error text-xs">{t("cancel")}</button>
                       </div>
                     )}
                   </div>

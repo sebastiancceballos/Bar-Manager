@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { sql } from "@/lib/db";
+import { apiT } from "@/lib/api-i18n";
 
 // Público, pero por diseño solo se puede consultar con el UUID impredecible
 // (public_token), nunca con el número de ficho secuencial. Así un cliente no
@@ -20,7 +21,7 @@ export async function GET(
     const order = orders[0];
 
     if (!order) {
-      return NextResponse.json({ error: "Pedido no encontrado" }, { status: 404 });
+      return NextResponse.json({ error: apiT(request, "apiOrderNotFound") }, { status: 404 });
     }
 
     const items = await sql`
@@ -44,6 +45,6 @@ export async function GET(
     );
   } catch (error) {
     console.error("Get tracking error:", error);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return NextResponse.json({ error: apiT(request, "internalServerError") }, { status: 500 });
   }
 }

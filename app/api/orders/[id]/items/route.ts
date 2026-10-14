@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthUser } from "@/lib/auth";
 import { assertOwnsOrder } from "@/lib/tenant";
-import { sql } from "@/lib/db";
+import { apiT } from "@/lib/api-i18n";
+import { toErrorResponse } from "@/lib/errors";
+import { addItemToOrder, parseQuantity } from "@/lib/services/order-items";
 
 export async function POST(
   request: NextRequest,
@@ -9,114 +11,43 @@ export async function POST(
 ) {
   try {
     const user = await getAuthUser();
-
     if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return NextResponse.json({ error: apiT(request, "apiUnauthorized") }, { status: 401 });
     }
 
     const { id } = await params;
     const orderId = parseInt(id, 10);
     const orderGuard = await assertOwnsOrder(orderId, user);
     if (orderGuard.error) return orderGuard.error;
-    const { productId, quantity } = await request.json();
 
-    if (!productId || !quantity) {
+    const body = await request.json().catch(() => ({}));
+    const productId = Number(body?.productId);
+    if (!Number.isInteger(productId) || productId <= 0 || body?.quantity === undefined) {
       return NextResponse.json(
-        { error: "Product ID and quantity are required" },
+        { error: apiT(request, "apiProductIdQuantityRequired") },
+        { status: 400 }
+      );
+    }
+    const quantity = parseQuantity(body.quantity);
+    if (quantity === null) {
+      return NextResponse.json(
+        { error: apiT(request, "apiInvalidQuantityRange") },
         { status: 400 }
       );
     }
 
-    // Get product to get price
-    const products = await sql`SELECT * FROM products WHERE id = ${parseInt(productId)}`;
-    const product = products[0];
-
-    if (!product) {
-      return NextResponse.json({ error: "Product not found" }, { status: 404 });
-    }
-
-    // --- BLOQUEO DE VENTA SIN STOCK ---
-    const currentStock = product.stock || 0;
-    if (currentStock < quantity) {
-      return NextResponse.json(
-        { error: `¡Sin Stock! Solo quedan ${currentStock} unidades de ${product.name}. Por favor reponer.` },
-        { status: 400 }
-      );
-    }
-    // ----------------------------------
-
-    // Check if item already exists
-    const existingItems = await sql`
-      SELECT * FROM order_items 
-      WHERE order_id = ${parseInt(id)} AND product_id = ${parseInt(productId)}
-    `;
-
-    if (existingItems.length > 0) {
-      // Update quantity
-      await sql`
-        UPDATE order_items 
-        SET quantity = quantity + ${quantity}
-        WHERE order_id = ${parseInt(id)} AND product_id = ${parseInt(productId)}
-      `;
-    } else {
-      // Create new item
-      await sql`
-        INSERT INTO order_items (order_id, product_id, quantity, price)
-        VALUES (${parseInt(id)}, ${parseInt(productId)}, ${quantity}, ${product.price})
-      `;
-    }
-
-    // Update order total
-    const totalResult = await sql`
-      SELECT COALESCE(SUM(price * quantity), 0) as total 
-      FROM order_items 
-      WHERE order_id = ${parseInt(id)}
-    `;
-    const total = parseFloat(totalResult[0]?.total || 0);
-
-    await sql`
-      UPDATE orders 
-      SET total_amount = ${total}, updated_at = NOW(), modified_by = ${user.id}
-      WHERE id = ${parseInt(id)}
-    `;
-
-    // --- LOGICA DE TRAZABILIDAD ---
-    // Descontar stock automáticamente al agregar al pedido
-    await sql`
-      UPDATE products 
-      SET stock = COALESCE(stock, 0) - ${quantity}
-      WHERE id = ${parseInt(productId)}
-    `;
-
-    // Registrar el movimiento de salida por venta
-    const reason = `Venta en mesa (Orden #${id})`;
-    await sql`
-      INSERT INTO stock_movements (product_id, quantity, type, reason, created_by)
-      VALUES (${parseInt(productId)}, ${quantity}, 'sale', ${reason}, ${user.id})
-    `;
-    // ------------------------------
-
-    // Get updated order with items
-    const orders = await sql`SELECT * FROM orders WHERE id = ${parseInt(id)}`;
-    const order = orders[0];
-
-    const items = await sql`
-      SELECT oi.*, p.name as product_name, p.category
-      FROM order_items oi
-      JOIN products p ON oi.product_id = p.id
-      WHERE oi.order_id = ${parseInt(id)}
-    `;
-    order.items = items.map(item => ({
-      ...item,
-      product: { name: item.product_name, price: item.price, category: item.category }
-    }));
-
-    return NextResponse.json({ order }, { status: 200 });
-  } catch (error) {
-    console.error("Add item error:", error);
+    // El inventario NO se toca aquí: se descuenta una sola vez, al cobrar.
+    const { order, stockWarning } = await addItemToOrder({
+      orderId,
+      productId,
+      quantity,
+      userId: user.id,
+    });
     return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 }
+      stockWarning ? { order, stockWarning } : { order },
+      { status: 200 }
     );
+  } catch (error) {
+    return toErrorResponse(error);
   }
 }

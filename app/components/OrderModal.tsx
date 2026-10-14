@@ -1,5 +1,7 @@
 "use client";
 
+import { useI18n } from "@/app/i18n-provider";
+
 import { useEffect, useState } from "react";
 import { Skeleton } from "./Skeleton";
 import { useAuth } from "@/app/providers";
@@ -51,7 +53,7 @@ interface OrderModalProps {
   tableNumber: string;
   order: Order | null;
   onClose: () => void;
-  onUpdate: () => void;
+  onUpdate: () => void | Promise<void>;
   /** Actualiza estado en el mapa de mesas al instante */
   onOrderStatusChange?: (tableId: number, status: string) => void;
   open: boolean;
@@ -62,10 +64,10 @@ const formatCOP = (value: number) =>
   new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", minimumFractionDigits: 0 }).format(value);
 
 const PAYMENT_METHODS = [
-  { value: "efectivo", label: "Efectivo" },
-  { value: "tarjeta", label: "Tarjeta" },
-  { value: "transferencia", label: "Transferencia" },
-  { value: "otro", label: "Otro" },
+  { value: "efectivo", labelKey: "cashPayment" },
+  { value: "tarjeta", labelKey: "card" },
+  { value: "transferencia", labelKey: "transfer" },
+  { value: "otro", labelKey: "other" },
 ];
 
 export function OrderModal({
@@ -78,12 +80,15 @@ export function OrderModal({
   open,
   availableTables = [],
 }: OrderModalProps) {
+  const { t } = useI18n();
+
   const { user } = useAuth();
   const [products, setProducts] = useState<Product[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>("");
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [warning, setWarning] = useState<string | null>(null);
 
   const [showSplit, setShowSplit] = useState(false);
   const [splitParts, setSplitParts] = useState(2);
@@ -172,6 +177,7 @@ export function OrderModal({
     try {
       setUpdating(true);
       setError(null);
+      setWarning(null);
       const response = await fetch(`/api/orders/${orderId}/items`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -179,14 +185,16 @@ export function OrderModal({
       });
 
       if (response.ok) {
-        onUpdate();
+        const data = await response.json().catch(() => ({}));
+        setWarning(data?.stockWarning?.message || null);
+        await onUpdate();
       } else {
-        const data = await response.json();
-        setError(data.error || "Error al agregar item");
+        const data = await response.json().catch(() => ({}));
+        setError(data.error || t("errorAddItem"));
       }
     } catch (error) {
       console.error("Failed to add item:", error);
-      setError("Error de conexión al agregar item");
+      setError(t("connectionErrorAddItem"));
     } finally {
       setUpdating(false);
     }
@@ -202,7 +210,7 @@ export function OrderModal({
       });
 
       if (response.ok) {
-        onUpdate();
+        await onUpdate();
       }
     } catch (error) {
       console.error("Failed to remove item:", error);
@@ -223,14 +231,14 @@ export function OrderModal({
       });
 
       if (response.ok) {
-        onUpdate();
+        await onUpdate();
       } else {
         const data = await response.json();
-        setError(data.error || "Error al reducir item");
+        setError(data.error || t("errorDecrementItem"));
       }
     } catch (error) {
       console.error("Failed to decrement item:", error);
-      setError("Error de conexión");
+      setError(t("connectionError"));
     } finally {
       setUpdating(false);
     }
@@ -260,14 +268,14 @@ export function OrderModal({
       });
       const data = await response.json();
       if (!response.ok) {
-        setError(data.error || "No se pudo cambiar el estado");
+        setError(data.error || t("errorStatusChange"));
         return;
       }
-      // Actualización inmediata del color en el mapa
+      // Immediate color update on the map
       onOrderStatusChange?.(tableId, newStatus);
-      onUpdate();
+      await onUpdate();
     } catch {
-      setError("Error de conexión al cambiar estado");
+      setError(t("connectionErrorStatusChange"));
     } finally {
       setStatusUpdating(false);
     }
@@ -285,7 +293,7 @@ export function OrderModal({
       payment_method: order.payment_method,
       items: (order.items || []).map((it: any) => ({
         id: it.id,
-        product_name: it.product?.name || it.product_name || "Producto",
+        product_name: it.product?.name || it.product_name || t("product"),
         quantity: it.quantity,
         price: it.price,
         notes: it.notes,
@@ -305,18 +313,18 @@ export function OrderModal({
     const tip = parseMoneyInput(tipAmount);
     const discount = parseMoneyInput(discountAmount);
     const subtotal = Number(order.total_amount) || 0;
-    // Estimación en cliente (el servidor recalcula IVA exacto)
+    // Client-side estimate (the server recalculates the exact tax)
     const estimatedTotal = Math.max(0, subtotal - discount) + tip;
     const received = parseMoneyInput(amountReceived);
 
     if (paymentMethod === "efectivo") {
       if (!amountReceived || received <= 0) {
-        setPaymentError("Indica con cuánto paga el cliente");
+        setPaymentError(t("enterAmountPaid"));
         return;
       }
       if (received < estimatedTotal) {
         setPaymentError(
-          `El monto recibido (${formatCOP(received)}) es menor al total (${formatCOP(estimatedTotal)})`
+          `${t("amountReceivedBelowTotal")}: ${formatCOP(received)} < ${formatCOP(estimatedTotal)}`
         );
         return;
       }
@@ -346,7 +354,7 @@ export function OrderModal({
           ...paid,
           items: (paid.items || order.items || []).map((it: any) => ({
             id: it.id,
-            product_name: it.product?.name || it.product_name || it.name || "Producto",
+            product_name: it.product?.name || it.product_name || it.name || t("product"),
             quantity: it.quantity,
             price: it.price,
             notes: it.notes,
@@ -360,13 +368,13 @@ export function OrderModal({
         });
         setShowPayment(false);
         setPaidSuccess(true);
-        onUpdate();
+        await onUpdate();
       } else {
-        setPaymentError(data.error || "Error al cobrar la orden");
+        setPaymentError(data.error || t("errorCharge"));
       }
     } catch (error) {
       console.error("Failed to close order:", error);
-      setPaymentError("Error de conexión al cobrar");
+      setPaymentError(t("connectionErrorCharge"));
     } finally {
       setUpdating(false);
     }
@@ -395,7 +403,7 @@ export function OrderModal({
         body: JSON.stringify({ parts: splitParts }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "No se pudo dividir");
+      if (!res.ok) throw new Error(data.error || t("splitFailed"));
       setSplits(data.splits || []);
       setShowSplit(true);
     } catch (e) {
@@ -416,7 +424,7 @@ export function OrderModal({
         body: JSON.stringify({ paymentMethod: method }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Error al cobrar parte");
+      if (!res.ok) throw new Error(data.error || t("errorChargingSplit"));
       setSplits(data.splits || []);
       if (data.orderClosed) {
         const paid = {
@@ -428,7 +436,7 @@ export function OrderModal({
           payment_method: method,
           items: (order.items || []).map((it: any) => ({
             id: it.id,
-            product_name: it.product?.name || it.product_name || "Producto",
+            product_name: it.product?.name || it.product_name || t("product"),
             quantity: it.quantity,
             price: it.price,
             notes: it.notes,
@@ -436,7 +444,7 @@ export function OrderModal({
         };
         setLastPaidOrder(paid);
         setPaidSuccess(true);
-        onUpdate();
+        await onUpdate();
       }
     } catch (e) {
       setSplitError(e instanceof Error ? e.message : "Error");
@@ -456,7 +464,7 @@ export function OrderModal({
         body: JSON.stringify({ cancel: true }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "No se pudo cancelar");
+      if (!res.ok) throw new Error(data.error || t("couldNotCancel"));
       setSplits([]);
       setShowSplit(false);
     } catch (e) {
@@ -480,14 +488,14 @@ export function OrderModal({
       const data = await response.json();
       if (response.ok) {
         setShowTransfer(false);
-        onUpdate();
+        await onUpdate();
         onClose();
       } else {
-        setTransferError(data.error || "Error al transferir la mesa");
+        setTransferError(data.error || t("errorTransfer"));
       }
     } catch (error) {
       console.error("Failed to transfer order:", error);
-      setTransferError("Error de conexión al transferir");
+      setTransferError(t("connectionErrorTransfer"));
     } finally {
       setUpdating(false);
     }
@@ -499,7 +507,7 @@ export function OrderModal({
     <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
       <div className="bg-card border border-border rounded-t-2xl sm:rounded-lg max-w-2xl w-full max-h-[92dvh] sm:max-h-[90vh] overflow-y-auto">
         <div className="sticky top-0 bg-card border-b border-border px-4 sm:px-6 py-4 flex items-center justify-between">
-          <h2 className="text-2xl font-bold text-foreground">Mesa {tableNumber}</h2>
+          <h2 className="text-2xl font-bold text-foreground">{t("table")} {tableNumber}</h2>
           <button
             onClick={onClose}
             className="min-w-[44px] min-h-[44px] flex items-center justify-center text-gray-400 hover:text-foreground transition-smooth -mr-2"
@@ -515,13 +523,19 @@ export function OrderModal({
             </div>
           )}
 
+          {warning && !error && (
+            <div className="bg-warning/10 border border-warning text-warning px-4 py-3 rounded-lg text-sm">
+              ⚠️ {warning}
+            </div>
+          )}
+
           {/* Current Order */}
           {order && (
             <div>
-              <h3 className="text-lg font-semibold mb-4">Orden Actual</h3>
+              <h3 className="text-lg font-semibold mb-4">{t("currentOrder")}</h3>
               <div className="space-y-2 mb-4">
                 {order.items.length === 0 ? (
-                  <p className="text-gray-400">No hay items en la orden</p>
+                  <p className="text-gray-400">{t("emptyOrder")}</p>
                 ) : (
                   order.items.map((item) => (
                     <div
@@ -538,7 +552,7 @@ export function OrderModal({
                         <button
                           onClick={() => handleDecrementItem(item.id)}
                           disabled={updating}
-                          title="Restar 1 unidad"
+                          title={t("subtractOneUnit")}
                           className="min-w-[44px] min-h-[44px] rounded-lg bg-warning/10 text-warning hover:bg-warning/20 disabled:opacity-50 flex items-center justify-center font-semibold"
                         >
                           −
@@ -546,7 +560,7 @@ export function OrderModal({
                         <button
                           onClick={() => handleRemoveItem(item.id)}
                           disabled={updating}
-                          title="Eliminar todo"
+                          title={t("removeAll")}
                           className="min-w-[44px] min-h-[44px] rounded-lg bg-error/10 text-error hover:bg-error/20 disabled:opacity-50 flex items-center justify-center font-semibold"
                         >
                           ✕
@@ -559,14 +573,14 @@ export function OrderModal({
 
               <div className="bg-background p-4 rounded mb-4 border border-border">
                 <div className="flex items-center justify-between mb-2">
-                  <p className="text-gray-400">Total</p>
+                  <p className="text-gray-400">{t("total")}</p>
                   {order.status === "bill_requested" ? (
                     <span className="text-xs font-bold uppercase px-2 py-1 rounded bg-warning/20 text-warning border border-warning/40">
-                      Cuenta pedida
+                      {t("billRequested")}
                     </span>
                   ) : (
                     <span className="text-xs font-bold uppercase px-2 py-1 rounded bg-secondary/20 text-secondary border border-secondary/40">
-                      En curso
+                      {t("inProgress")}
                     </span>
                   )}
                 </div>
@@ -577,7 +591,7 @@ export function OrderModal({
 
               {/* Estados manuales */}
               <div className="flex flex-col gap-2 mb-3">
-                <p className="text-xs text-gray-400 uppercase tracking-wide">Estado de la cuenta</p>
+                <p className="text-xs text-gray-400 uppercase tracking-wide">{t("billStatus")}</p>
                 <div className="flex flex-wrap gap-2">
                   {canRequestBill && (
                     <button
@@ -590,7 +604,7 @@ export function OrderModal({
                           : "btn-outline"
                       }`}
                     >
-                      {statusUpdating ? "..." : order.status === "bill_requested" ? "✓ Cuenta pedida" : "Cuenta pedida"}
+                      {statusUpdating ? "..." : order.status === "bill_requested" ? t("billRequested") : t("billRequested")}
                     </button>
                   )}
                   {canCharge && (
@@ -603,15 +617,15 @@ export function OrderModal({
                           ? "btn-primary"
                           : "btn-outline"
                       }`}
-                      title="Volver a en curso"
+                      title={t("backToInProgress")}
                     >
-                      En curso
+                      {t("inProgress")}
                     </button>
                   )}
                 </div>
                 {!canCharge && isWaiter && (
                   <p className="text-xs text-warning">
-                    Solo caja puede cobrar y cerrar la mesa.
+                    {t("onlyCashierCanCharge")}
                   </p>
                 )}
               </div>
@@ -623,9 +637,9 @@ export function OrderModal({
                     onClick={handlePrintTicket}
                     disabled={updating || !order.items?.length}
                     className="btn btn-outline flex-1 min-w-[120px] disabled:opacity-50"
-                    title="Imprimir precuenta o ticket"
+                    title={t("printTicket")}
                   >
-                    🖨 Imprimir
+                    🖨 {t("print")}
                   </button>
                 )}
                 {canCharge && (
@@ -634,7 +648,7 @@ export function OrderModal({
                     disabled={updating || !order.items?.length}
                     className="btn btn-primary flex-1 min-w-[140px] disabled:opacity-50"
                   >
-                    {updating ? "Procesando..." : "Cobrar y Cerrar"}
+                    {updating ? t("loading") : t("chargeAndClose")}
                   </button>
                 )}
                 {availableTables.length > 0 && (
@@ -646,9 +660,9 @@ export function OrderModal({
                     }}
                     disabled={updating}
                     className="btn btn-outline disabled:opacity-50"
-                    title="Transferir a otra mesa"
+                    title={t("transferToAnotherTable")}
                   >
-                    🔀 Transferir
+                    🔀 {t("transferVerb")}
                   </button>
                 )}
               </div>
@@ -657,7 +671,7 @@ export function OrderModal({
 
           {/* Add Items */}
           <div>
-            <h3 className="text-lg font-semibold mb-4">Agregar Items</h3>
+            <h3 className="text-lg font-semibold mb-4">{t("addItems")}</h3>
 
             {loading ? (
               <div className="grid grid-cols-2 gap-4">
@@ -701,12 +715,12 @@ export function OrderModal({
                           <div className={`text-[10px] px-1.5 py-0.5 rounded font-bold uppercase ${
                             isOutOfStock ? "bg-red-500/20 text-red-400" : "bg-primary/10 text-primary"
                           }`}>
-                            Stock: {product.stock || 0}
+                            {t("stock")}: {product.stock || 0}
                           </div>
                         </div>
                         <div className={`text-sm font-semibold ${isOutOfStock ? "text-gray-600" : "text-primary"}`}>
                           {formatCOP(Number(product.price))}
-                          {isOutOfStock && <span className="ml-2 text-xs font-normal">(AGOTADO)</span>}
+                          {isOutOfStock && <span className="ml-2 text-xs font-normal">{t("outOfStockUpper")}</span>}
                         </div>
                       </button>
                     );
@@ -726,12 +740,12 @@ export function OrderModal({
           <div className="bg-card border border-border rounded-t-2xl sm:rounded-xl max-w-sm w-full p-6 space-y-4 shadow-xl">
             <div className="text-center space-y-2">
               <p className="text-3xl" aria-hidden>✓</p>
-              <h3 className="text-xl font-bold text-success">Mesa cerrada</h3>
+              <h3 className="text-xl font-bold text-success">{t("tableClosed")}</h3>
               <p className="text-sm text-gray-400">
-                Mesa {tableNumber} · {formatCOP(Number(lastPaidOrder.total_amount) || 0)}
+                {t("table")} {tableNumber} · {formatCOP(Number(lastPaidOrder.total_amount) || 0)}
               </p>
               <p className="text-base font-medium text-foreground pt-2">
-                ¿Deseas imprimir la factura?
+                {t("wantToPrintInvoice")}
               </p>
             </div>
             <button
@@ -741,7 +755,7 @@ export function OrderModal({
                 downloadInvoice(lastPaidOrder, { skipConfirm: true });
               }}
             >
-              Sí, imprimir
+              {t("yesPrint")}
             </button>
             <button
               type="button"
@@ -752,7 +766,7 @@ export function OrderModal({
                 onClose();
               }}
             >
-              No, gracias
+              {t("noThanks")}
             </button>
           </div>
         </div>
@@ -762,7 +776,7 @@ export function OrderModal({
         <div className="fixed inset-0 bg-black/70 flex items-end sm:items-center justify-center z-[110] p-0 sm:p-4">
           <div className="bg-card border border-border rounded-t-2xl sm:rounded-lg max-w-md w-full max-h-[92dvh] flex flex-col shadow-xl">
             <div className="flex justify-between items-center p-4 pb-2 border-b border-border shrink-0">
-              <h3 className="text-xl font-bold">Cobrar Mesa {tableNumber}</h3>
+              <h3 className="text-xl font-bold">{t("chargeTable")} {tableNumber}</h3>
               <button type="button" onClick={() => setShowPayment(false)} className="min-w-[44px] min-h-[44px] flex items-center justify-center text-gray-400 hover:text-foreground text-2xl leading-none -mr-2">&times;</button>
             </div>
 
@@ -774,7 +788,7 @@ export function OrderModal({
             )}
 
             <div>
-              <label className="block text-sm font-medium mb-2">Método de pago</label>
+              <label className="block text-sm font-medium mb-2">{t("paymentMethodLabel")}</label>
               <div className="grid grid-cols-2 gap-2">
                 {PAYMENT_METHODS.map((m) => (
                   <button
@@ -782,14 +796,14 @@ export function OrderModal({
                     onClick={() => setPaymentMethod(m.value)}
                     className={`btn btn-sm ${paymentMethod === m.value ? "btn-primary" : "btn-outline"}`}
                   >
-                    {m.label}
+                    {t(m.labelKey)}
                   </button>
                 ))}
               </div>
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-2">Propina</label>
+              <label className="block text-sm font-medium mb-2">{t("notes")}</label>
               <input
                 type="text"
                 inputMode="numeric"
@@ -801,7 +815,7 @@ export function OrderModal({
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-2">Descuento (COP)</label>
+              <label className="block text-sm font-medium mb-2">{t("discount")} (COP)</label>
               <input
                 type="text"
                 inputMode="numeric"
@@ -815,11 +829,11 @@ export function OrderModal({
             {parseMoneyInput(discountAmount) > 0 && (
               <div className="space-y-3 bg-background p-3 rounded-lg border border-border">
                 <div>
-                  <label className="block text-sm font-medium mb-2">Motivo del descuento</label>
+                  <label className="block text-sm font-medium mb-2">{t("discountReasonLabel")}</label>
                   <input
                     type="text"
                     className="input w-full"
-                    placeholder="Ej: cliente frecuente, error del mesero..."
+                    placeholder={t("discountReasonPlaceholder")}
                     value={discountReason}
                     onChange={(e) => setDiscountReason(e.target.value)}
                   />
@@ -827,19 +841,19 @@ export function OrderModal({
                 {!isAdmin && (
                   <>
                     <p className="text-xs text-gray-400">
-                      Los descuentos necesitan autorización de un admin. Pídele que ingrese sus credenciales:
+                      {t("adminDiscountNotice")}
                     </p>
                     <input
                       type="email"
                       className="input w-full"
-                      placeholder="Email del admin"
+                      placeholder={t("adminEmailPlaceholder")}
                       value={authorizerEmail}
                       onChange={(e) => setAuthorizerEmail(e.target.value)}
                     />
                     <input
                       type="password"
                       className="input w-full"
-                      placeholder="Contraseña del admin"
+                      placeholder={t("adminPasswordPlaceholder")}
                       value={authorizerPassword}
                       onChange={(e) => setAuthorizerPassword(e.target.value)}
                     />
@@ -850,23 +864,23 @@ export function OrderModal({
 
             <div className="bg-background p-4 rounded border border-border text-sm space-y-2">
               <div className="flex justify-between text-gray-400">
-                <span>Subtotal</span>
+                <span>{t("subtotal")}</span>
                 <span>{formatCOP(Number(order.total_amount))}</span>
               </div>
               {(parseMoneyInput(discountAmount) || 0) > 0 && (
                 <div className="flex justify-between text-warning">
-                  <span>Descuento</span>
+                  <span>{t("discount")}</span>
                   <span>-{formatCOP(parseMoneyInput(discountAmount) || 0)}</span>
                 </div>
               )}
               {(parseMoneyInput(tipAmount) || 0) > 0 && (
                 <div className="flex justify-between text-gray-400">
-                  <span>Propina</span>
+                  <span>{t("notes")}</span>
                   <span>{formatCOP(parseMoneyInput(tipAmount) || 0)}</span>
                 </div>
               )}
               <div className="flex justify-between font-bold text-foreground text-base pt-1 border-t border-border">
-                <span>Total a pagar</span>
+                <span>{t("total")}</span>
                 <span>
                   {formatCOP(
                     Math.max(
@@ -877,33 +891,31 @@ export function OrderModal({
                 </span>
               </div>
               <p className="text-xs text-gray-500">
-                Si el bar tiene IVA, el servidor lo suma al confirmar.
+                {t("taxNote")}
               </p>
             </div>
 
             {paymentMethod === "efectivo" && (
               <div className="space-y-3">
-                <label className="text-sm text-gray-400">¿Con cuánto paga el cliente?</label>
+                <label className="text-sm text-gray-400">{t("howMuchDoesCustomerPay")}</label>
                 <input
                   type="text"
                   inputMode="numeric"
                   className="input w-full text-lg font-semibold tracking-wide"
-                  placeholder="Ej: 50.000"
+                  placeholder={t("exampleAmount50k")}
                   value={amountReceived}
                   onChange={(e) => setAmountReceived(onMoneyKeyInput(e.target.value))}
                 />
                 <div className="space-y-1.5">
                   <p className="text-xs text-gray-400 leading-relaxed">
-                    <span className="font-semibold text-foreground/80">Botones rápidos:</span>{" "}
-                    <strong>Exacto</strong> pone el total a pagar.
-                    Los botones <strong>+1.000</strong>, <strong>+5.000</strong>, etc. suman billetes
-                    al monto (puedes pulsar varias veces). El vuelto se calcula solo.
+                    <span className="font-semibold text-foreground/80">{t("quickButtons")}</span>{" "}
+                    <strong>{t("exact")}</strong> {t("quickButtonsExactHint")} <strong>+1.000</strong>, <strong>+5.000</strong>{t("quickButtonsRest")}
                   </p>
                   <div className="flex flex-wrap gap-2">
                     <button
                       type="button"
                       className="btn btn-outline btn-sm"
-                      title="Poner el total exacto a pagar"
+                      title={t("setExactTotal")}
                       onClick={() => {
                         const exact =
                           Math.max(
@@ -913,14 +925,14 @@ export function OrderModal({
                         setAmountReceived(formatMoneyInput(exact));
                       }}
                     >
-                      Exacto
+                      {t("exact")}
                     </button>
                     {COP_DENOMS.map((d) => (
                       <button
                         key={d}
                         type="button"
                         className="btn btn-outline btn-sm"
-                        title={`Sumar ${formatMoneyInput(d)} al monto recibido`}
+                        title={`${t("addAmountPrefix")} ${formatMoneyInput(d)} ${t("addAmountSuffix")}`}
                         onClick={() =>
                           setAmountReceived(
                             formatMoneyInput(parseMoneyInput(amountReceived) + d)
@@ -945,7 +957,7 @@ export function OrderModal({
                         : "bg-error/10 border-error/30 text-error"
                     }`}
                   >
-                    <p className="text-xs uppercase tracking-wide opacity-80">Vuelto a devolver</p>
+                    <p className="text-xs uppercase tracking-wide opacity-80">{t("amountToReturn")}</p>
                     <p className="text-2xl font-black">
                       {formatCOP(
                         Math.max(
@@ -973,7 +985,7 @@ export function OrderModal({
                 disabled={updating}
                 className="btn btn-primary w-full min-h-[48px] text-base font-semibold disabled:opacity-50"
               >
-                {updating ? "Procesando..." : "Confirmar cobro"}
+                {updating ? t("loading") : t("confirmCharge")}
               </button>
             </div>
           </div>
@@ -986,7 +998,7 @@ export function OrderModal({
         <div className="fixed inset-0 bg-black/70 flex items-end sm:items-center justify-center z-[110] p-0 sm:p-4">
           <div className="bg-card border border-border rounded-t-2xl sm:rounded-lg max-w-md w-full max-h-[92dvh] flex flex-col">
             <div className="flex justify-between items-center p-4 border-b border-border">
-              <h3 className="text-lg font-bold">Dividir cuenta — Mesa {tableNumber}</h3>
+              <h3 className="text-lg font-bold">{t("splitBill")} — {t("table")} {tableNumber}</h3>
               <button type="button" className="min-w-[44px] min-h-[44px] flex items-center justify-center text-2xl text-gray-400 -mr-2" onClick={() => setShowSplit(false)}>&times;</button>
             </div>
             <div className="overflow-y-auto flex-1 p-4 space-y-4">
@@ -994,12 +1006,11 @@ export function OrderModal({
                 <div className="bg-error/10 border border-error text-error text-sm px-3 py-2 rounded">{splitError}</div>
               )}
               <p className="text-sm text-gray-400">
-                Total orden: <strong className="text-foreground">{formatCOP(Number(order.total_amount) || 0)}</strong>.
-                El residuo de centavos/pesos queda a favor de la casa.
+                {t("orderTotal")}: <strong className="text-foreground">{formatCOP(Number(order.total_amount) || 0)}</strong>. {t("splitRemainderNote")}
               </p>
               {(!splits || splits.length === 0) && (
                 <div className="space-y-3">
-                  <label className="text-sm">Número de comensales (partes)</label>
+                  <label className="text-sm">{t("numberOfGuestsToSplit")}</label>
                   <input
                     type="number"
                     min={2}
@@ -1014,7 +1025,7 @@ export function OrderModal({
                     disabled={splitBusy}
                     onClick={handleCreateSplit}
                   >
-                    {splitBusy ? "Creando..." : "Crear partes"}
+                    {splitBusy ? t("creating") : t("createSplits")}
                   </button>
                 </div>
               )}
@@ -1023,11 +1034,11 @@ export function OrderModal({
                   {splits.map((s: any) => (
                     <li key={s.split_index} className="border border-border rounded-lg p-3 flex flex-col gap-2">
                       <div className="flex justify-between text-sm">
-                        <span>Parte {s.split_index}</span>
+                        <span>{t("splitPart")} {s.split_index}</span>
                         <strong>{formatCOP(Number(s.amount))}</strong>
                       </div>
                       {s.paid ? (
-                        <span className="text-xs text-success">Pagado ({s.payment_method})</span>
+                        <span className="text-xs text-success">{t("paid")} ({s.payment_method})</span>
                       ) : (
                         <div className="grid grid-cols-2 gap-2">
                           {["efectivo", "tarjeta", "transferencia", "otro"].map((m) => (
@@ -1051,7 +1062,7 @@ export function OrderModal({
                     disabled={splitBusy}
                     onClick={handleCancelSplit}
                   >
-                    Cancelar división (si nadie pagó)
+                    {t("cancelSplitIfUnpaid")}
                   </button>
                 </ul>
               )}
@@ -1065,7 +1076,7 @@ export function OrderModal({
         <div className="fixed inset-0 bg-black/70 flex items-end sm:items-center justify-center z-[110] p-0 sm:p-4">
           <div className="bg-card border border-border rounded-t-2xl sm:rounded-lg max-w-sm w-full p-6 space-y-4 safe-area-pb">
             <div className="flex justify-between items-center">
-              <h3 className="text-xl font-bold">Transferir Mesa {tableNumber}</h3>
+              <h3 className="text-xl font-bold">{t("transferTable")} {tableNumber}</h3>
               <button onClick={() => setShowTransfer(false)} className="min-w-[44px] min-h-[44px] flex items-center justify-center text-gray-400 hover:text-foreground text-2xl -mr-2">&times;</button>
             </div>
 
@@ -1075,15 +1086,15 @@ export function OrderModal({
               </div>
             )}
 
-            <label className="block text-sm font-medium mb-2">Mover la orden a:</label>
+            <label className="block text-sm font-medium mb-2">{t("moveOrderTo")}</label>
             <select
               className="input w-full"
               value={transferTargetId}
               onChange={(e) => setTransferTargetId(e.target.value)}
             >
-              <option value="">Selecciona una mesa</option>
-              {availableTables.map((t) => (
-                <option key={t.id} value={t.id}>Mesa {t.table_number}</option>
+              <option value="">{t("table")}</option>
+              {availableTables.map((tbl) => (
+                <option key={tbl.id} value={tbl.id}>{t("table")} {tbl.table_number}</option>
               ))}
             </select>
 
@@ -1092,7 +1103,7 @@ export function OrderModal({
               disabled={updating || !transferTargetId}
               className="btn btn-primary w-full disabled:opacity-50"
             >
-              {updating ? "Transfiriendo..." : "Confirmar transferencia"}
+              {updating ? t("loading") : t("transferConfirm")}
             </button>
           </div>
         </div>

@@ -3,17 +3,18 @@ import { getAuthUser } from "@/lib/auth";
 import { toErrorResponse } from "@/lib/errors";
 import { resolveLocationId } from "@/lib/org";
 import { sql } from "@/lib/db";
+import { apiT } from "@/lib/api-i18n";
 
-export async function GET(_request: NextRequest) {
+export async function GET(request: NextRequest) {
   try {
     const user = await getAuthUser();
     if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return NextResponse.json({ error: apiT(request, "apiUnauthorized") }, { status: 401 });
     }
 
     const locId = await resolveLocationId(user.id, user.role);
     if (!locId) {
-      return NextResponse.json({ error: "Sin bar asignado" }, { status: 400 });
+      return NextResponse.json({ error: apiT(request, "apiNoLocationAssigned") }, { status: 400 });
     }
 
     const products = await sql`
@@ -32,19 +33,19 @@ export async function POST(request: NextRequest) {
   try {
     const user = await getAuthUser();
     if (!user || (user.role !== "admin" && user.role !== "owner")) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+      return NextResponse.json({ error: apiT(request, "apiUnauthorized") }, { status: 403 });
     }
 
     const { name, category, price, imageUrl, available } = await request.json();
 
     if (!name || !category || price === undefined) {
-      return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+      return NextResponse.json({ error: apiT(request, "apiMissingRequiredFields") }, { status: 400 });
     }
 
     const locationId = await resolveLocationId(user.id, user.role);
     if (!locationId) {
       return NextResponse.json(
-        { error: "Admin does not have a location assigned" },
+        { error: apiT(request, "apiAdminNoLocation") },
         { status: 400 }
       );
     }

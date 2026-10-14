@@ -1,5 +1,7 @@
 "use client";
 
+import { useI18n } from "@/app/i18n-provider";
+
 import { ProtectedLayout } from "@/app/components/ProtectedLayout";
 import { Navigation } from "@/app/components/Navigation";
 import { useEffect, useState, useCallback } from "react";
@@ -38,6 +40,7 @@ const formatCOP = (value: number) =>
   new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", minimumFractionDigits: 0 }).format(value);
 
 function SelfServiceLinkCard() {
+  const { t } = useI18n();
   const [url, setUrl] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
@@ -57,10 +60,10 @@ function SelfServiceLinkCard() {
   return (
     <div className="card border-border p-6">
       <h2 className="text-xs font-bold uppercase tracking-widest text-foreground/60 mb-3">
-        Autoservicio para clientes
+        {t("selfServiceClients")}
       </h2>
       <p className="text-sm text-foreground/70 mb-3">
-        Comparte este enlace (o genera un QR con él) para que tus clientes pidan desde su celular.
+        {t("selfServiceClientsHelp")}
       </p>
       <div className="flex items-center gap-2">
         <input readOnly value={url} className="flex-1 bg-background border border-border rounded-lg px-3 py-2 text-xs truncate" />
@@ -72,7 +75,7 @@ function SelfServiceLinkCard() {
           }}
           className="min-h-[40px] px-3 bg-primary text-white rounded-lg text-xs font-semibold"
         >
-          {copied ? "¡Copiado!" : "Copiar"}
+          {copied ? t("copied") : t("copy")}
         </button>
       </div>
     </div>
@@ -80,6 +83,8 @@ function SelfServiceLinkCard() {
 }
 
 export default function DashboardPage() {
+  const { t } = useI18n();
+
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [lowStockProducts, setLowStockProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -138,7 +143,7 @@ export default function DashboardPage() {
   if (user?.role === "waiter") {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-foreground">Redirigiendo...</div>
+        <div className="text-foreground">{t("loading")}</div>
       </div>
     );
   }
@@ -150,7 +155,7 @@ export default function DashboardPage() {
         <div className="max-w-7xl mx-auto px-4 py-12">
           
           <h1 className="text-4xl font-bold text-foreground mb-10">
-            Panel de Administración
+            {t("adminPanel")}
           </h1>
 
           {loading ? (
@@ -171,14 +176,14 @@ export default function DashboardPage() {
                   <div className="flex items-center gap-2 mb-6 text-primary">
                     <Package size={20} />
                     <h2 className="text-xs font-bold uppercase tracking-widest leading-tight">
-                      PROXIMOS PRODUCTOS A ESTAR AGOTADOS:
+                      {t("lowStockTitle")}:
                     </h2>
                   </div>
                   
                   <div className="space-y-3">
                     {lowStockProducts.length === 0 ? (
                       <div className="py-8 text-center border border-dashed border-border rounded-xl">
-                        <p className="text-gray-500 text-sm italic">Inventario al día ✨</p>
+                        <p className="text-gray-500 text-sm italic">{t("inventoryOk")}</p>
                       </div>
                     ) : (
                       lowStockProducts.map(p => (
@@ -190,7 +195,7 @@ export default function DashboardPage() {
                           <div className={`shrink-0 px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-tighter ${
                             p.stock <= 0 ? "bg-red-500/20 text-red-400" : "bg-amber-500/20 text-amber-400"
                           }`}>
-                            {p.stock <= 0 ? "Agotado" : `${p.stock} Unid.`}
+                            {p.stock <= 0 ? t("outOfStock") : `${p.stock} ${t("unitsAbbrev")}`}
                           </div>
                         </div>
                       ))
@@ -208,7 +213,7 @@ export default function DashboardPage() {
                     <div className="absolute -right-2 -top-2 text-success/10 group-hover:text-success/20 transition-smooth">
                       <DollarSign size={80} />
                     </div>
-                    <p className="text-gray-400 text-sm mb-1">Ingresos Hoy</p>
+                    <p className="text-gray-400 text-sm mb-1">{t("revenueTodayLabel")}</p>
                     <p className="text-3xl font-bold text-success relative z-10">
                       {formatCOP(Number(stats?.totalRevenue || 0))}
                     </p>
@@ -217,7 +222,7 @@ export default function DashboardPage() {
                     <div className="absolute -right-2 -top-2 text-primary/10 group-hover:text-primary/20 transition-smooth">
                       <ClipboardList size={80} />
                     </div>
-                    <p className="text-gray-400 text-sm mb-1">Órdenes Hoy</p>
+                    <p className="text-gray-400 text-sm mb-1">{t("ordersTodayLabel")}</p>
                     <p className="text-3xl font-bold text-foreground relative z-10">
                       {stats?.ordersToday || 0}
                     </p>
@@ -226,7 +231,7 @@ export default function DashboardPage() {
                     <div className="absolute -right-2 -top-2 text-secondary/10 group-hover:text-secondary/20 transition-smooth">
                       <TableProperties size={80} />
                     </div>
-                    <p className="text-gray-400 text-sm mb-1">Mesas Ocupadas</p>
+                    <p className="text-gray-400 text-sm mb-1">{t("tablesOccupied")}</p>
                     <p className="text-3xl font-bold text-secondary relative z-10">
                       {stats?.tablesOccupied || 0}
                     </p>
@@ -235,7 +240,7 @@ export default function DashboardPage() {
                     <div className="absolute -right-2 -top-2 text-foreground/5 group-hover:text-foreground/10 transition-smooth">
                       <Users2 size={80} />
                     </div>
-                    <p className="text-gray-400 text-sm mb-1">Total Mesas</p>
+                    <p className="text-gray-400 text-sm mb-1">{t("totalTables")}</p>
                     <p className="text-3xl font-bold text-foreground relative z-10">
                       {stats?.totalTables || 0}
                     </p>
@@ -252,9 +257,9 @@ export default function DashboardPage() {
                       <Package size={36} />
                     </div>
                     <div>
-                      <h3 className="text-2xl font-bold text-foreground mb-2">Productos</h3>
+                      <h3 className="text-2xl font-bold text-foreground mb-2">{t("products")}</h3>
                       <p className="text-gray-400 text-sm leading-relaxed">
-                        Inventario, precios y categorías del menú
+                        {t("productsCardDesc")}
                       </p>
                     </div>
                   </Link>
@@ -267,9 +272,9 @@ export default function DashboardPage() {
                       <TableProperties size={36} />
                     </div>
                     <div>
-                      <h3 className="text-2xl font-bold text-foreground mb-2">Mesas</h3>
+                      <h3 className="text-2xl font-bold text-foreground mb-2">{t("tables")}</h3>
                       <p className="text-gray-400 text-sm leading-relaxed">
-                        Layout de mesas y ocupación en vivo
+                        {t("tablesCardDesc")}
                       </p>
                     </div>
                   </Link>
@@ -282,9 +287,9 @@ export default function DashboardPage() {
                       <BarChart3 size={36} />
                     </div>
                     <div>
-                      <h3 className="text-2xl font-bold text-foreground mb-2">Reportes</h3>
+                      <h3 className="text-2xl font-bold text-foreground mb-2">{t("reports")}</h3>
                       <p className="text-gray-400 text-sm leading-relaxed">
-                        Ventas detalladas y cierres de caja
+                        {t("reportsCardDesc")}
                       </p>
                     </div>
                   </Link>
@@ -297,9 +302,9 @@ export default function DashboardPage() {
                       <Users size={36} />
                     </div>
                     <div>
-                      <h3 className="text-2xl font-bold text-foreground mb-2">Usuarios</h3>
+                      <h3 className="text-2xl font-bold text-foreground mb-2">{t("users")}</h3>
                       <p className="text-gray-400 text-sm leading-relaxed">
-                        Gestión de administradores y meseros
+                        {t("usersCardDesc")}
                       </p>
                     </div>
                   </Link>
@@ -314,8 +319,8 @@ export default function DashboardPage() {
                       <Beer size={24} />
                     </div>
                     <div>
-                      <h3 className="text-lg font-bold text-foreground">Gestionar Bares</h3>
-                      <p className="text-gray-400 text-xs">Administración global del proyecto</p>
+                      <h3 className="text-lg font-bold text-foreground">{t("manageBars")}</h3>
+                      <p className="text-gray-400 text-xs">{t("globalAdmin")}</p>
                     </div>
                   </Link>
                 )}

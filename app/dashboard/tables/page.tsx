@@ -1,5 +1,7 @@
 "use client";
 
+import { useI18n } from "@/app/i18n-provider";
+
 import { ProtectedLayout } from "@/app/components/ProtectedLayout";
 import { Navigation } from "@/app/components/Navigation";
 import { useEffect, useState, useRef, useCallback } from "react";
@@ -40,9 +42,12 @@ interface Order {
 }
 
 export default function TablesPage() {
+  const { t } = useI18n();
+
   const [tables, setTables] = useState<Table[]>([]);
   const [orders, setOrders] = useState<Record<number, Order>>({});
   const [loading, setLoading] = useState(true);
+  const [refreshError, setRefreshError] = useState<string | null>(null);
   const [selectedTableId, setSelectedTableId] = useState<number | null>(null);
   const [showOrderModal, setShowOrderModal] = useState(false);
   const [draggingTable, setDraggingTable] = useState<number | null>(null);
@@ -70,6 +75,16 @@ export default function TablesPage() {
         fetch("/api/orders"),
       ]);
 
+      if (tablesRes.status === 401 || ordersRes.status === 401) {
+        setRefreshError(t("sessionExpired"));
+        return;
+      }
+      if (!tablesRes.ok || !ordersRes.ok) {
+        setRefreshError(t("refreshFailed"));
+      } else {
+        setRefreshError(null);
+      }
+
       if (tablesRes.ok) {
         const data = await tablesRes.json();
         setTables(data.tables);
@@ -88,10 +103,11 @@ export default function TablesPage() {
       }
     } catch (error) {
       console.error("Failed to fetch data:", error);
+      setRefreshError(t("refreshFailed"));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     fetchData();
@@ -177,8 +193,8 @@ export default function TablesPage() {
     setShowOrderModal(true);
   };
 
-  const handleOrderUpdate = () => {
-    fetchData();
+  const handleOrderUpdate = async () => {
+    await fetchData();
   };
 
   /** Pinta la mesa al instante al cambiar estado (cuenta pedida / en curso) */
@@ -218,7 +234,7 @@ export default function TablesPage() {
   };
 
   const handleDeleteTable = async (tableId: number) => {
-    if (!confirm("Eliminar esta mesa?")) return;
+    if (!confirm(t("deleteTableConfirm"))) return;
 
     try {
       await fetch(`/api/tables/${tableId}`, { method: "DELETE" });
@@ -240,12 +256,17 @@ export default function TablesPage() {
       <Navigation />
       <div className="min-h-screen bg-background">
         <div className="max-w-7xl mx-auto px-4 py-8">
+          {refreshError && (
+            <div className="mb-4 bg-warning/10 border border-warning text-warning px-4 py-3 rounded-lg text-sm">
+              ⚠️ {refreshError}
+            </div>
+          )}
           <div className="flex justify-between items-center mb-6">
             <div>
-              <h1 className="text-3xl font-bold text-foreground">Mesas</h1>
+              <h1 className="text-3xl font-bold text-foreground">{t("tables")}</h1>
               {isAdmin && (
                 <p className="text-sm text-gray-400 mt-1">
-                  Arrastra las mesas para reorganizar el layout
+                  {t("dragTablesHint")}
                 </p>
               )}
             </div>
@@ -254,17 +275,17 @@ export default function TablesPage() {
                 onClick={() => setShowAddForm(true)}
                 className="btn-primary"
               >
-                + Nueva Mesa
+                + {t("newTable")}
               </button>
             )}
           </div>
 
           {showAddForm && isAdmin && (
             <div className="card mb-6">
-              <h2 className="text-lg font-semibold mb-4">Agregar Mesa</h2>
+              <h2 className="text-lg font-semibold mb-4">{t("addTable")}</h2>
               <form onSubmit={handleAddTable} className="flex gap-4 items-end">
                 <div>
-                  <label className="block text-sm mb-1">Numero</label>
+                  <label className="block text-sm mb-1">{t("numberLabel")}</label>
                   <input
                     type="text"
                     value={newTable.table_number}
@@ -275,7 +296,7 @@ export default function TablesPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm mb-1">Capacidad</label>
+                  <label className="block text-sm mb-1">{t("capacity")}</label>
                   <input
                     type="number"
                     value={newTable.capacity || ""}
@@ -287,14 +308,14 @@ export default function TablesPage() {
                   />
                 </div>
                 <button type="submit" className="btn-primary">
-                  Agregar
+                  {t("add")}
                 </button>
                 <button
                   type="button"
                   onClick={() => setShowAddForm(false)}
                   className="btn-secondary"
                 >
-                  Cancelar
+                  {t("cancel")}
                 </button>
               </form>
             </div>
@@ -333,7 +354,7 @@ export default function TablesPage() {
                       {table.table_number}
                     </span>
                     <span className="text-xs text-gray-400">
-                      {table.capacity} pers.
+                      {table.capacity} {t("peopleAbbrev")}
                     </span>
                     {isOccupied && (
                       <span className={`text-xs font-semibold mt-1 ${amountClass}`}>
@@ -342,7 +363,7 @@ export default function TablesPage() {
                     )}
                     {billRequested && (
                       <span className="text-[10px] font-bold uppercase text-warning mt-0.5">
-                        Cuenta
+                        {t("billLabel")}
                       </span>
                     )}
                   </div>
@@ -350,7 +371,7 @@ export default function TablesPage() {
               })}
               {tables.length === 0 && (
                 <div className="col-span-2 text-center text-gray-400 py-12">
-                  <p className="mb-4">No hay mesas configuradas</p>
+                  <p className="mb-4">{t("noTables")}</p>
                 </div>
               )}
             </div>
@@ -412,7 +433,7 @@ export default function TablesPage() {
                       {table.table_number}
                     </span>
                     <span className="text-xs text-gray-400">
-                      {table.capacity} pers.
+                      {table.capacity} {t("peopleAbbrev")}
                     </span>
                     {isOccupied && (
                       <span className={`text-xs font-semibold mt-1 ${amountClass}`}>
@@ -421,7 +442,7 @@ export default function TablesPage() {
                     )}
                     {billRequested && (
                       <span className="text-[10px] font-bold uppercase text-warning mt-0.5">
-                        Cuenta
+                        {t("billLabel")}
                       </span>
                     )}
 
@@ -444,13 +465,13 @@ export default function TablesPage() {
               {tables.length === 0 && (
                 <div className="absolute inset-0 flex items-center justify-center">
                   <div className="text-center text-gray-400">
-                    <p className="mb-4">No hay mesas configuradas</p>
+                    <p className="mb-4">{t("noTables")}</p>
                     {isAdmin && (
                       <button
                         onClick={() => setShowAddForm(true)}
                         className="btn-primary"
                       >
-                        Agregar primera mesa
+                        {t("addFirstTable")}
                       </button>
                     )}
                   </div>
@@ -463,15 +484,15 @@ export default function TablesPage() {
           <div className="flex flex-wrap gap-6 mt-4 text-sm text-gray-400">
             <div className="flex items-center gap-2">
               <div className="w-4 h-4 rounded-full border-2 border-border bg-card"></div>
-              <span>Disponible</span>
+              <span>{t("available")}</span>
             </div>
             <div className="flex items-center gap-2">
               <div className="w-4 h-4 rounded-full border-2 border-secondary bg-secondary/20"></div>
-              <span>Ocupada</span>
+              <span>{t("occupied")}</span>
             </div>
             <div className="flex items-center gap-2">
               <div className="w-4 h-4 rounded-full border-2 border-warning bg-warning/20"></div>
-              <span>Cuenta pedida</span>
+              <span>{t("billRequested")}</span>
             </div>
           </div>
 

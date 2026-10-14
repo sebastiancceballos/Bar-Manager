@@ -1,6 +1,7 @@
 "use client";
 
 import { useAuth } from "@/app/providers";
+import { useI18n } from "@/app/i18n-provider";
 import { Beer } from "lucide-react";
 
 export default function DashboardLayout({
@@ -9,6 +10,7 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const { user, isLoading } = useAuth();
+  const { t } = useI18n();
 
   if (isLoading) {
     return (
@@ -17,7 +19,7 @@ export default function DashboardLayout({
           <Beer className="w-12 h-12 text-primary animate-bounce" />
           <div className="absolute inset-0 w-12 h-12 border-4 border-primary/20 border-t-primary rounded-full animate-spin"></div>
         </div>
-        <div className="text-foreground font-medium animate-pulse">Iniciando sesión...</div>
+        <div className="text-foreground font-medium animate-pulse">{t("loading")}</div>
       </div>
     );
   }

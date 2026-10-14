@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { sql } from "@/lib/db";
+import { apiT } from "@/lib/api-i18n";
 
 // Público a propósito: el cliente escanea un QR y no tiene sesión.
 // Solo expone lo que un menú necesita mostrar; nada sensible (stock,
@@ -13,7 +14,7 @@ export async function GET(
     const locId = parseInt(locationId);
 
     if (!locId || Number.isNaN(locId)) {
-      return NextResponse.json({ error: "Bar inválido" }, { status: 400 });
+      return NextResponse.json({ error: apiT(request, "apiInvalidLocation") }, { status: 400 });
     }
 
     const locationRows = await sql`
@@ -24,12 +25,12 @@ export async function GET(
     const location = locationRows[0];
 
     if (!location) {
-      return NextResponse.json({ error: "Bar no encontrado" }, { status: 404 });
+      return NextResponse.json({ error: apiT(request, "apiLocationNotFound") }, { status: 404 });
     }
 
     if (!location.self_service_enabled) {
       return NextResponse.json(
-        { error: "El autoservicio no está disponible en este bar" },
+        { error: apiT(request, "apiSelfServiceNotAvailable") },
         { status: 403 }
       );
     }
@@ -47,6 +48,6 @@ export async function GET(
     );
   } catch (error) {
     console.error("Get self-service menu error:", error);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return NextResponse.json({ error: apiT(request, "internalServerError") }, { status: 500 });
   }
 }

@@ -2,21 +2,22 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAuthUser } from "@/lib/auth";
 import { ACTIVE_LOCATION_COOKIE, userCanAccessLocation } from "@/lib/org";
 import { cookies } from "next/headers";
+import { apiT } from "@/lib/api-i18n";
 
 export async function POST(request: NextRequest) {
   try {
     const user = await getAuthUser();
-    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!user) return NextResponse.json({ error: apiT(request, "apiUnauthorized") }, { status: 401 });
 
     const { locationId } = await request.json();
     const id = parseInt(locationId, 10);
     if (!id || Number.isNaN(id)) {
-      return NextResponse.json({ error: "locationId inválido" }, { status: 400 });
+      return NextResponse.json({ error: apiT(request, "apiInvalidLocationId") }, { status: 400 });
     }
 
     const ok = await userCanAccessLocation(user.id, user.role, id);
     if (!ok) {
-      return NextResponse.json({ error: "No tienes acceso a esa sucursal" }, { status: 403 });
+      return NextResponse.json({ error: apiT(request, "apiNoAccessToLocation") }, { status: 403 });
     }
 
     const cookieStore = await cookies();
@@ -31,6 +32,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ activeLocationId: id }, { status: 200 });
   } catch (error) {
     console.error("POST active-location:", error);
-    return NextResponse.json({ error: "Error interno" }, { status: 500 });
+    return NextResponse.json({ error: apiT(request, "apiInternalError") }, { status: 500 });
   }
 }

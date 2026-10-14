@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { sql } from "@/lib/db";
 import { logAudit } from "@/lib/audit";
+import { apiT } from "@/lib/api-i18n";
 
 // NOTA: este endpoint quedó sin usar por defecto. La limpieza de pedidos
 // vencidos ahora se hace "al vuelo" dentro de GET /api/self-service/orders
@@ -24,10 +25,10 @@ export async function GET(request: NextRequest) {
 
   if (!secret) {
     console.error("CRON_SECRET no configurado; rechazando por seguridad.");
-    return NextResponse.json({ error: "Not configured" }, { status: 500 });
+    return NextResponse.json({ error: apiT(request, "apiNotConfigured") }, { status: 500 });
   }
   if (authHeader !== `Bearer ${secret}`) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return NextResponse.json({ error: apiT(request, "apiUnauthorized") }, { status: 401 });
   }
 
   try {
@@ -52,6 +53,6 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ cancelled: cancelled.length }, { status: 200 });
   } catch (error) {
     console.error("Cron cancel-stale-orders error:", error);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return NextResponse.json({ error: apiT(request, "internalServerError") }, { status: 500 });
   }
 }

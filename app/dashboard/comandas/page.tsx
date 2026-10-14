@@ -1,5 +1,7 @@
 "use client";
 
+import { useI18n } from "@/app/i18n-provider";
+
 import { ProtectedLayout } from "@/app/components/ProtectedLayout";
 import { Navigation } from "@/app/components/Navigation";
 import { useEffect, useState, useCallback, useMemo, useRef } from "react";
@@ -47,12 +49,12 @@ interface UnifiedOrder {
 
 const STATUS_FLOW: Record<
   ItemStatus,
-  { next: ItemStatus | null; label: string; actionLabel: string }
+  { next: ItemStatus | null; labelKey: string; actionKey: string }
 > = {
-  pendiente: { next: "preparando", label: "Pendiente", actionLabel: "Empezar" },
-  preparando: { next: "listo", label: "Preparando", actionLabel: "Marcar listo" },
-  listo: { next: "entregado", label: "Listo", actionLabel: "Entregar" },
-  entregado: { next: null, label: "Entregado", actionLabel: "" },
+  pendiente: { next: "preparando", labelKey: "statusPending", actionKey: "actionStart" },
+  preparando: { next: "listo", labelKey: "statusPreparing", actionKey: "markReady" },
+  listo: { next: "entregado", labelKey: "ready", actionKey: "actionDeliver" },
+  entregado: { next: null, labelKey: "delivered", actionKey: "" },
 };
 
 const STATUS_STYLES: Record<ItemStatus, string> = {
@@ -62,20 +64,23 @@ const STATUS_STYLES: Record<ItemStatus, string> = {
   entregado: "bg-gray-700/30 text-gray-500 border-gray-700/50",
 };
 
-const SS_STATUS_LABEL: Record<string, string> = {
-  PAID: "Pagado — por preparar",
-  PREPARING: "En preparación",
-  READY: "Listo — esperando entrega",
+const SS_STATUS_LABEL_KEYS: Record<string, string> = {
+  PAID: "orderPaid",
+  PREPARING: "orderPreparing",
+  READY: "ssReady",
 };
 
-function timeAgo(dateStr: string): string {
+function timeAgo(dateStr: string, t: (key: string) => string): string {
   const diffMs = Date.now() - new Date(dateStr).getTime();
   const mins = Math.max(0, Math.floor(diffMs / 60000));
-  if (mins < 1) return "recién";
-  if (mins === 1) return "hace 1 min";
-  if (mins < 60) return `hace ${mins} min`;
+  const prefix = t("timeAgoPrefix");
+  const suffix = t("timeAgoSuffix");
+  const wrap = (core: string) => [prefix, core, suffix].filter(Boolean).join(" ");
+  if (mins < 1) return t("justNow");
+  if (mins === 1) return t("oneMinAgo");
+  if (mins < 60) return wrap(`${mins} min`);
   const hours = Math.floor(mins / 60);
-  return `hace ${hours}h ${mins % 60}min`;
+  return wrap(`${hours}h ${mins % 60}min`);
 }
 
 function mapDineIn(raw: any): UnifiedOrder {
@@ -114,7 +119,7 @@ function mapSelfService(raw: any): UnifiedOrder {
     source: "self_service",
     ticket_number: raw.ticket_number,
     client_name: raw.client_name,
-    waiter_name: raw.client_name ? `Cliente: ${raw.client_name}` : "Autoservicio",
+    waiter_name: raw.client_name || null,
     total_amount: Number(raw.total_amount) || 0,
     created_at: raw.created_at,
     ssStatus: ss,
@@ -133,6 +138,8 @@ function mapSelfService(raw: any): UnifiedOrder {
 }
 
 export default function ComandasPage() {
+  const { t } = useI18n();
+
   const [orders, setOrders] = useState<UnifiedOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [updatingItemId, setUpdatingItemId] = useState<number | null>(null);
@@ -319,10 +326,10 @@ export default function ComandasPage() {
   ).length;
 
   const FILTERS: { key: FilterTab; label: string }[] = [
-    { key: "activas", label: "Activas" },
-    { key: "mesas", label: "Mesas" },
-    { key: "autoservicio", label: "Autoservicio" },
-    { key: "todas", label: "Todas" },
+    { key: "activas", label: t("filterActive") },
+    { key: "mesas", label: t("tables") },
+    { key: "autoservicio", label: t("filterSelfService") },
+    { key: "todas", label: t("filterAll") },
   ];
 
   return (
@@ -332,22 +339,21 @@ export default function ComandasPage() {
         <div className="max-w-7xl mx-auto px-4 py-8">
           <div className="flex flex-wrap justify-between items-center gap-4 mb-6">
             <div>
-              <h1 className="text-3xl font-bold text-foreground">Comandas</h1>
+              <h1 className="text-3xl font-bold text-foreground">{t("comandas")}</h1>
               <p className="text-sm text-gray-400 mt-1">
-                Mesas y autoservicio en un solo panel · actualización en vivo
+                {t("comandasSubtitle")}
               </p>
             </div>
 
             <div className="flex items-center gap-3 flex-wrap">
               {totalPending > 0 && (
                 <span className="text-xs font-semibold px-3 py-1.5 rounded-full bg-warning/10 text-warning border border-warning/30">
-                  {totalPending} comanda{totalPending !== 1 ? "s" : ""} activa
-                  {totalPending !== 1 ? "s" : ""}
+                  {totalPending} {totalPending !== 1 ? t("activeTicketMany") : t("activeTicketOne")}
                 </span>
               )}
               <button
                 onClick={() => setSoundEnabled((s) => !s)}
-                title={soundEnabled ? "Silenciar notificaciones" : "Activar sonido"}
+                title={soundEnabled ? t("muteNotifications") : t("enableSound")}
                 className="btn btn-outline btn-sm px-3"
               >
                 {soundEnabled ? "🔔" : "🔕"}
@@ -378,8 +384,8 @@ export default function ComandasPage() {
             </div>
           ) : visibleOrders.length === 0 ? (
             <div className="text-center py-20 text-gray-400">
-              <p className="text-lg">No hay comandas en esta vista</p>
-              <p className="text-sm mt-2">Los pedidos de mesa y fichos pagados aparecerán aquí</p>
+              <p className="text-lg">{t("noOrders")}</p>
+              <p className="text-sm mt-2">{t("ordersWillAppear")}</p>
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -389,13 +395,13 @@ export default function ComandasPage() {
                   (i) => i.status === "pendiente" || i.status === "preparando"
                 );
                 const title = isSS
-                  ? `Ficho ${order.ticket_number || "#" + order.id}`
-                  : `Mesa ${order.table_number}`;
+                  ? `${t("ticketLabel")} ${order.ticket_number || "#" + order.id}`
+                  : `${t("table")} ${order.table_number}`;
                 const ssActionLabel =
                   order.ssStatus === "PAID"
-                    ? "Empezar preparación"
+                    ? t("startPreparing")
                     : order.ssStatus === "PREPARING"
-                      ? "Marcar listo"
+                      ? t("markReady")
                       : null;
 
                 return (
@@ -416,15 +422,15 @@ export default function ComandasPage() {
                                 : "bg-card text-gray-400 border-border"
                             }`}
                           >
-                            {isSS ? "Autoservicio" : "Mesa"}
+                            {isSS ? t("selfService") : t("table")}
                           </span>
                         </div>
                         <p className="text-xs text-gray-400 mt-1">
-                          {timeAgo(order.created_at)} · {order.waiter_name || "—"}
+                          {timeAgo(order.created_at, t)} · {order.waiter_name ? (isSS && order.client_name ? `${t("customerLabel")}: ${order.waiter_name}` : order.waiter_name) : isSS ? t("selfService") : "—"}
                         </p>
                         {isSS && order.ssStatus && (
                           <p className="text-xs text-primary mt-1 font-medium">
-                            {SS_STATUS_LABEL[order.ssStatus] || order.ssStatus}
+                            {t(SS_STATUS_LABEL_KEYS[order.ssStatus]) || order.ssStatus}
                           </p>
                         )}
                       </div>
@@ -462,7 +468,7 @@ export default function ComandasPage() {
                                 <span
                                   className={`inline-block mt-1 text-[10px] font-bold uppercase px-2 py-0.5 rounded-full border ${STATUS_STYLES[item.status]}`}
                                 >
-                                  {cfg.label}
+                                  {t(cfg.labelKey)}
                                 </span>
                               )}
                             </div>
@@ -472,7 +478,7 @@ export default function ComandasPage() {
                                 disabled={isUpdating}
                                 className="btn btn-sm btn-outline whitespace-nowrap disabled:opacity-50 shrink-0"
                               >
-                                {isUpdating ? "..." : cfg.actionLabel}
+                                {isUpdating ? "..." : cfg.actionKey ? t(cfg.actionKey) : ""}
                               </button>
                             )}
                           </div>
@@ -487,7 +493,7 @@ export default function ComandasPage() {
                           disabled={busyOrderId === order.id}
                           className="btn btn-primary btn-sm w-full disabled:opacity-50"
                         >
-                          {busyOrderId === order.id ? "Actualizando..." : ssActionLabel}
+                          {busyOrderId === order.id ? t("updating") : ssActionLabel}
                         </button>
                       </div>
                     )}
@@ -495,7 +501,7 @@ export default function ComandasPage() {
                     {isSS && order.ssStatus === "READY" && (
                       <div className="p-3 border-t border-border">
                         <p className="text-xs text-center text-success font-medium">
-                          ✓ Listo — el cajero puede entregarlo
+                          ✓ {t("readyCashierCanDeliver")}
                         </p>
                       </div>
                     )}
@@ -508,8 +514,8 @@ export default function ComandasPage() {
                           className="btn btn-primary btn-sm w-full disabled:opacity-50"
                         >
                           {updatingItemId === -1
-                            ? "Actualizando..."
-                            : "Marcar todo listo"}
+                            ? t("updating")
+                            : t("markAllReady")}
                         </button>
                       </div>
                     )}

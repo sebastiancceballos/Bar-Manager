@@ -2,14 +2,16 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAuthUser } from "@/lib/auth";
 import { resolveLocationId } from "@/lib/org";
 import { sql } from "@/lib/db";
+import { apiT, getApiLocale } from "@/lib/api-i18n";
+import { intlLocale } from "@/lib/format-date";
 
 export async function GET(request: NextRequest) {
   try {
     const user = await getAuthUser();
-    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!user) return NextResponse.json({ error: apiT(request, "apiUnauthorized") }, { status: 401 });
 
     const locId = await resolveLocationId(user.id, user.role);
-    if (!locId) return NextResponse.json({ error: "Sin bar asignado" }, { status: 400 });
+    if (!locId) return NextResponse.json({ error: apiT(request, "apiNoLocationAssigned") }, { status: 400 });
 
     const reservations = await sql`
       SELECT r.*, t.table_number
@@ -23,7 +25,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ reservations }, { status: 200 });
   } catch (error) {
     console.error("Reservations GET error:", error);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return NextResponse.json({ error: apiT(request, "internalServerError") }, { status: 500 });
   }
 }
 
@@ -34,15 +36,15 @@ const RESERVATION_BUFFER_HOURS = 2;
 export async function POST(request: NextRequest) {
   try {
     const user = await getAuthUser();
-    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!user) return NextResponse.json({ error: apiT(request, "apiUnauthorized") }, { status: 401 });
 
     const locId = await resolveLocationId(user.id, user.role);
-    if (!locId) return NextResponse.json({ error: "Sin bar asignado" }, { status: 400 });
+    if (!locId) return NextResponse.json({ error: apiT(request, "apiNoLocationAssigned") }, { status: 400 });
 
     const { customerName, phone, partySize, reservationTime, tableId, notes } = await request.json();
 
     if (!customerName || !reservationTime) {
-      return NextResponse.json({ error: "Nombre y fecha/hora son obligatorios" }, { status: 400 });
+      return NextResponse.json({ error: apiT(request, "apiNameDateTimeRequired") }, { status: 400 });
     }
 
     // Regla de negocio: no se puede reservar la misma mesa dos veces cerca
@@ -61,13 +63,13 @@ export async function POST(request: NextRequest) {
 
       if (conflicts.length > 0) {
         const conflict = conflicts[0];
-        const conflictTime = new Date(conflict.reservation_time).toLocaleString("es-CO", {
+        const conflictTime = new Date(conflict.reservation_time).toLocaleString(intlLocale(getApiLocale(request)), {
           dateStyle: "short",
           timeStyle: "short",
         });
         return NextResponse.json(
           {
-            error: `Esa mesa ya tiene una reserva de ${conflict.customer_name} a las ${conflictTime}. Debe haber al menos ${RESERVATION_BUFFER_HOURS} horas de diferencia entre reservas de la misma mesa.`,
+            error: apiT(request, "apiReservationConflict", { name: conflict.customer_name, time: conflictTime, hours: RESERVATION_BUFFER_HOURS }),
           },
           { status: 409 }
         );
@@ -83,6 +85,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ reservation: created[0] }, { status: 201 });
   } catch (error) {
     console.error("Reservations POST error:", error);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return NextResponse.json({ error: apiT(request, "internalServerError") }, { status: 500 });
   }
 }

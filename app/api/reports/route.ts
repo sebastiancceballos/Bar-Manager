@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAuthUser } from "@/lib/auth";
 import { resolveLocationId } from "@/lib/org";
 import { toErrorResponse } from "@/lib/errors";
+import { apiT } from "@/lib/api-i18n";
 import {
   reportOrgSummary,
   reportByWaiter,
@@ -15,7 +16,7 @@ export async function GET(request: NextRequest) {
   try {
     const user = await getAuthUser();
     if (!user || (user.role !== "admin" && user.role !== "owner")) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+      return NextResponse.json({ error: apiT(request, "apiUnauthorized") }, { status: 403 });
     }
 
     const { searchParams } = new URL(request.url);
@@ -24,7 +25,7 @@ export async function GET(request: NextRequest) {
 
     const locId = await resolveLocationId(user.id, user.role);
     if (!locId) {
-      return NextResponse.json({ error: "Sin bar asignado" }, { status: 400 });
+      return NextResponse.json({ error: apiT(request, "apiNoLocationAssigned") }, { status: 400 });
     }
 
     if (type === "org_summary") {

@@ -3,6 +3,7 @@ import { getAuthUser } from "@/lib/auth";
 import { toErrorResponse } from "@/lib/errors";
 import { sql } from "@/lib/db";
 import { assertOwnsProduct } from "@/lib/tenant";
+import { apiT } from "@/lib/api-i18n";
 
 export async function PUT(
   request: NextRequest,
@@ -11,7 +12,7 @@ export async function PUT(
   try {
     const user = await getAuthUser();
     if (!user || (user.role !== "admin" && user.role !== "owner")) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+      return NextResponse.json({ error: apiT(request, "apiUnauthorized") }, { status: 403 });
     }
 
     const { id } = await params;
@@ -35,7 +36,7 @@ export async function PUT(
     `;
 
     if (!products[0]) {
-      return NextResponse.json({ error: "Producto no encontrado" }, { status: 404 });
+      return NextResponse.json({ error: apiT(request, "apiProductNotFound") }, { status: 404 });
     }
 
     return NextResponse.json({ product: products[0] }, { status: 200 });
@@ -45,13 +46,13 @@ export async function PUT(
 }
 
 export async function DELETE(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const user = await getAuthUser();
     if (!user || (user.role !== "admin" && user.role !== "owner")) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+      return NextResponse.json({ error: apiT(request, "apiUnauthorized") }, { status: 403 });
     }
 
     const { id } = await params;
@@ -61,7 +62,7 @@ export async function DELETE(
 
     await sql`DELETE FROM products WHERE id = ${productId}`;
 
-    return NextResponse.json({ message: "Product deleted" }, { status: 200 });
+    return NextResponse.json({ message: apiT(request, "apiProductDeleted") }, { status: 200 });
   } catch (error) {
     return toErrorResponse(error);
   }

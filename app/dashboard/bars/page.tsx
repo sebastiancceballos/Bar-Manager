@@ -1,5 +1,7 @@
 "use client";
 
+import { useI18n } from "@/app/i18n-provider";
+
 import { ProtectedLayout } from "@/app/components/ProtectedLayout";
 import { Navigation } from "@/app/components/Navigation";
 import { useEffect, useState } from "react";
@@ -13,6 +15,8 @@ interface Location {
 }
 
 export default function BarsManagementPage() {
+  const { t } = useI18n();
+
   const [locations, setLocations] = useState<Location[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -65,7 +69,7 @@ export default function BarsManagementPage() {
 
       if (!res.ok) {
         const data = await res.json();
-        setError(data.error || "Error al guardar");
+        setError(data.error || t("errorSaving"));
         return;
       }
 
@@ -74,7 +78,7 @@ export default function BarsManagementPage() {
       setFormData({ name: "", address: "" });
       fetchLocations();
     } catch (err) {
-      setError("Error de conexion");
+      setError(t("connectionError"));
     }
   };
 
@@ -86,7 +90,7 @@ export default function BarsManagementPage() {
   };
 
   const handleDelete = async (id: number) => {
-    if (!confirm("Estas seguro de eliminar este bar?")) return;
+    if (!confirm(t("confirmDeleteBar"))) return;
 
     setDeleting(id);
     setError(null);
@@ -96,13 +100,13 @@ export default function BarsManagementPage() {
       const data = await res.json();
 
       if (!res.ok) {
-        setError(data.error || "Error al eliminar");
+        setError(data.error || t("errorDeleting"));
         return;
       }
 
       fetchLocations();
     } catch (err) {
-      setError("Error de conexion");
+      setError(t("connectionError"));
     } finally {
       setDeleting(null);
     }
@@ -118,7 +122,7 @@ export default function BarsManagementPage() {
   if (user?.role !== "owner") {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-foreground">Redirigiendo...</div>
+        <div className="text-foreground">{t("redirecting")}</div>
       </div>
     );
   }
@@ -129,9 +133,9 @@ export default function BarsManagementPage() {
       <div className="min-h-screen bg-background">
         <div className="max-w-4xl mx-auto px-4 py-12">
           <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-8">
-            <h1 className="text-3xl sm:text-4xl font-bold text-foreground">Gestionar Bares</h1>
+            <h1 className="text-3xl sm:text-4xl font-bold text-foreground">{t("manageBars")}</h1>
             <button onClick={openNewForm} className="btn-primary">
-              + Nuevo Bar
+              {t("newBarButton")}
             </button>
           </div>
 
@@ -144,34 +148,34 @@ export default function BarsManagementPage() {
           {showForm && (
             <div className="card mb-8">
               <h2 className="text-xl font-semibold mb-4">
-                {editingLocation ? "Editar Bar" : "Crear Nuevo Bar"}
+                {editingLocation ? t("editBar") : t("createNewBar")}
               </h2>
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium mb-2">Nombre del Bar</label>
+                  <label className="block text-sm font-medium mb-2">{t("barNameLabel")}</label>
                   <input
                     type="text"
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                     className="input w-full"
-                    placeholder="Ej: Bar Principal"
+                    placeholder={t("barNamePlaceholder")}
                     required
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-2">Direccion</label>
+                  <label className="block text-sm font-medium mb-2">{t("addressLabel")}</label>
                   <input
                     type="text"
                     value={formData.address}
                     onChange={(e) => setFormData({ ...formData, address: e.target.value })}
                     className="input w-full"
-                    placeholder="Ej: Calle Principal 123, Madrid"
+                    placeholder={t("addressExamplePlaceholder")}
                     required
                   />
                 </div>
                 <div className="flex gap-3">
                   <button type="submit" className="btn-primary">
-                    {editingLocation ? "Guardar Cambios" : "Crear Bar"}
+                    {editingLocation ? t("saveChanges") : t("createBar")}
                   </button>
                   <button
                     type="button"
@@ -182,7 +186,7 @@ export default function BarsManagementPage() {
                     }}
                     className="btn-secondary"
                   >
-                    Cancelar
+                    {t("cancel")}
                   </button>
                 </div>
               </form>
@@ -190,12 +194,12 @@ export default function BarsManagementPage() {
           )}
 
           {loading ? (
-            <div className="text-gray-400">Cargando bares...</div>
+            <div className="text-gray-400">{t("loadingBars")}</div>
           ) : locations.length === 0 ? (
             <div className="card text-center py-12">
-              <p className="text-gray-400 mb-4">No hay bares registrados</p>
+              <p className="text-gray-400 mb-4">{t("noData")}</p>
               <button onClick={openNewForm} className="btn-primary">
-                Crear tu primer bar
+                {t("createFirstBar")}
               </button>
             </div>
           ) : (
@@ -216,14 +220,14 @@ export default function BarsManagementPage() {
                       onClick={() => handleEdit(location)}
                       className="min-h-[44px] px-3 py-2 text-sm bg-primary/10 text-primary rounded hover:bg-primary/20 transition-smooth"
                     >
-                      Editar
+                      {t("edit")}
                     </button>
                     <button
                       onClick={() => handleDelete(location.id)}
                       disabled={deleting === location.id}
                       className="min-h-[44px] px-3 py-2 text-sm bg-red-500/10 text-red-500 rounded hover:bg-red-500/20 transition-smooth disabled:opacity-50"
                     >
-                      {deleting === location.id ? "Eliminando..." : "Eliminar"}
+                      {deleting === location.id ? t("deleting") : t("delete")}
                     </button>
                   </div>
                 </div>

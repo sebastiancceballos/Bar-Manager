@@ -3,21 +3,22 @@ import { getAuthUser } from "@/lib/auth";
 import { toErrorResponse } from "@/lib/errors";
 import { resolveLocationId } from "@/lib/org";
 import { sql } from "@/lib/db";
+import { apiT } from "@/lib/api-i18n";
 import {
   normalizeTableNumber,
   compareTableNumbers,
 } from "@/lib/table-number";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     const user = await getAuthUser();
     if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return NextResponse.json({ error: apiT(request, "apiUnauthorized") }, { status: 401 });
     }
 
     const locationId = await resolveLocationId(user.id, user.role);
     if (!locationId) {
-      return NextResponse.json({ error: "Sin bar asignado" }, { status: 400 });
+      return NextResponse.json({ error: apiT(request, "apiNoLocationAssigned") }, { status: 400 });
     }
 
     const rows = await sql`
@@ -47,7 +48,7 @@ export async function POST(request: NextRequest) {
   try {
     const user = await getAuthUser();
     if (!user || user.role !== "admin") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+      return NextResponse.json({ error: apiT(request, "apiUnauthorized") }, { status: 403 });
     }
 
     const body = await request.json();
@@ -58,14 +59,14 @@ export async function POST(request: NextRequest) {
 
     if (!table_number) {
       return NextResponse.json(
-        { error: "El número de mesa es obligatorio" },
+        { error: apiT(request, "apiTableNumberRequired") },
         { status: 400 }
       );
     }
 
     const locationId = await resolveLocationId(user.id, user.role);
     if (!locationId) {
-      return NextResponse.json({ error: "Sin bar asignado" }, { status: 400 });
+      return NextResponse.json({ error: apiT(request, "apiNoLocationAssigned") }, { status: 400 });
     }
 
     const existing = await sql`
@@ -76,7 +77,7 @@ export async function POST(request: NextRequest) {
     `;
     if (existing[0]) {
       return NextResponse.json(
-        { error: `Ya existe la mesa ${table_number} en este bar` },
+        { error: apiT(request, "apiTableExistsNum", { number: table_number }) },
         { status: 409 }
       );
     }
@@ -97,7 +98,7 @@ export async function POST(request: NextRequest) {
   } catch (error: any) {
     if (error?.code === "23505") {
       return NextResponse.json(
-        { error: "Ya existe una mesa con ese número en este bar" },
+        { error: apiT(request, "apiTableNumberExists") },
         { status: 409 }
       );
     }

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAuthUser } from "@/lib/auth";
 import { assertOwnsLocation } from "@/lib/tenant";
 import { sql } from "@/lib/db";
+import { apiT } from "@/lib/api-i18n";
 
 // Only owner can delete locations
 export async function DELETE(
@@ -12,11 +13,11 @@ export async function DELETE(
     const currentUser = await getAuthUser();
 
     if (!currentUser) {
-      return NextResponse.json({ error: "No autenticado" }, { status: 401 });
+      return NextResponse.json({ error: apiT(request, "apiNotAuthenticated") }, { status: 401 });
     }
 
     if (currentUser.role !== "owner") {
-      return NextResponse.json({ error: "Solo el owner puede eliminar bares" }, { status: 403 });
+      return NextResponse.json({ error: apiT(request, "apiOnlyOwnerDeleteLocations") }, { status: 403 });
     }
 
     const { id } = await params;
@@ -26,7 +27,7 @@ export async function DELETE(
 
 
     if (isNaN(locationId)) {
-      return NextResponse.json({ error: "ID invalido" }, { status: 400 });
+      return NextResponse.json({ error: apiT(request, "apiInvalidId") }, { status: 400 });
     }
 
     // Check if location has users assigned
@@ -35,7 +36,7 @@ export async function DELETE(
 
     if (usersCount > 0) {
       return NextResponse.json(
-        { error: `No se puede eliminar: hay ${usersCount} usuario(s) asignados a este bar` },
+        { error: apiT(request, "apiCannotDeleteHasUsers", { count: usersCount }) },
         { status: 400 }
       );
     }
@@ -46,17 +47,17 @@ export async function DELETE(
 
     if (tablesCount > 0) {
       return NextResponse.json(
-        { error: `No se puede eliminar: hay ${tablesCount} mesa(s) en este bar` },
+        { error: apiT(request, "apiCannotDeleteHasTables", { count: tablesCount }) },
         { status: 400 }
       );
     }
 
     await sql`DELETE FROM locations WHERE id = ${locationId}`;
 
-    return NextResponse.json({ message: "Bar eliminado correctamente" }, { status: 200 });
+    return NextResponse.json({ message: apiT(request, "apiLocationDeletedSuccess") }, { status: 200 });
   } catch (error) {
     console.error("Error deleting location:", error);
-    return NextResponse.json({ error: "Error interno del servidor" }, { status: 500 });
+    return NextResponse.json({ error: apiT(request, "internalServerError") }, { status: 500 });
   }
 }
 
@@ -69,11 +70,11 @@ export async function PUT(
     const currentUser = await getAuthUser();
 
     if (!currentUser) {
-      return NextResponse.json({ error: "No autenticado" }, { status: 401 });
+      return NextResponse.json({ error: apiT(request, "apiNotAuthenticated") }, { status: 401 });
     }
 
     if (currentUser.role !== "owner") {
-      return NextResponse.json({ error: "Solo el owner puede editar bares" }, { status: 403 });
+      return NextResponse.json({ error: apiT(request, "apiOnlyOwnerEditLocations") }, { status: 403 });
     }
 
     const { id } = await params;
@@ -85,7 +86,7 @@ export async function PUT(
     const { name, address } = body;
 
     if (!name || !address) {
-      return NextResponse.json({ error: "Nombre y direccion son requeridos" }, { status: 400 });
+      return NextResponse.json({ error: apiT(request, "apiNameAddressRequired") }, { status: 400 });
     }
 
     const result = await sql`
@@ -100,6 +101,6 @@ export async function PUT(
     return NextResponse.json({ location }, { status: 200 });
   } catch (error) {
     console.error("Error updating location:", error);
-    return NextResponse.json({ error: "Error interno del servidor" }, { status: 500 });
+    return NextResponse.json({ error: apiT(request, "internalServerError") }, { status: 500 });
   }
 }

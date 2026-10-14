@@ -1,5 +1,7 @@
 "use client";
 
+import { useI18n } from "@/app/i18n-provider";
+
 import { useEffect, useState } from "react";
 import { useAuth } from "@/app/providers";
 
@@ -10,6 +12,8 @@ type Loc = { id: number; name: string };
  * Visible si el usuario tiene más de un local accesible (admin multi-sucursal o superadmin).
  */
 export function LocationSwitcher() {
+  const { t } = useI18n();
+
   const { user, refreshUser } = useAuth();
   const [locations, setLocations] = useState<Loc[]>([]);
   const [activeId, setActiveId] = useState<number | null>(null);
@@ -65,14 +69,14 @@ export function LocationSwitcher() {
   return (
     <div className="flex items-center gap-2 w-full sm:w-auto">
       <label className="text-[10px] uppercase tracking-wide text-gray-500 shrink-0">
-        Sucursal
+        {t("location_")}
       </label>
       <select
         className="input min-h-[44px] py-1 px-2 text-sm w-full sm:max-w-[160px] md:max-w-[200px]"
         value={activeId ?? ""}
         disabled={saving}
         onChange={(e) => onChange(e.target.value)}
-        title="Cambiar sucursal activa"
+        title={t("changeActiveLocation")}
       >
         {locations.map((l) => (
           <option key={l.id} value={l.id}>

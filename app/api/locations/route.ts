@@ -2,19 +2,20 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAuthUser } from "@/lib/auth";
 import { sql } from "@/lib/db";
 import { getAccessibleLocations } from "@/lib/org";
+import { apiT } from "@/lib/api-i18n";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     const currentUser = await getAuthUser();
     if (!currentUser) {
-      return NextResponse.json({ error: "No autenticado" }, { status: 401 });
+      return NextResponse.json({ error: apiT(request, "apiNotAuthenticated") }, { status: 401 });
     }
 
     const locations = await getAccessibleLocations(currentUser.id, currentUser.role);
     return NextResponse.json({ locations }, { status: 200 });
   } catch (error) {
     console.error("Error fetching locations:", error);
-    return NextResponse.json({ error: "Error interno del servidor" }, { status: 500 });
+    return NextResponse.json({ error: apiT(request, "internalServerError") }, { status: 500 });
   }
 }
 
@@ -23,11 +24,11 @@ export async function POST(request: NextRequest) {
   try {
     const currentUser = await getAuthUser();
     if (!currentUser) {
-      return NextResponse.json({ error: "No autenticado" }, { status: 401 });
+      return NextResponse.json({ error: apiT(request, "apiNotAuthenticated") }, { status: 401 });
     }
     if (currentUser.role !== "owner") {
       return NextResponse.json(
-        { error: "Solo Superadmin puede crear sucursales" },
+        { error: apiT(request, "apiOnlySuperadminCreateLocations") },
         { status: 403 }
       );
     }
@@ -36,14 +37,14 @@ export async function POST(request: NextRequest) {
     const { name, address, organizationId } = body;
 
     if (!name || !address) {
-      return NextResponse.json({ error: "Nombre y dirección son requeridos" }, { status: 400 });
+      return NextResponse.json({ error: apiT(request, "apiNameAddressRequired") }, { status: 400 });
     }
 
     let orgId: number | null =
       organizationId != null ? parseInt(String(organizationId), 10) : null;
 
     if (orgId && Number.isNaN(orgId)) {
-      return NextResponse.json({ error: "organizationId inválido" }, { status: 400 });
+      return NextResponse.json({ error: apiT(request, "apiInvalidOrganizationId") }, { status: 400 });
     }
 
     // Si no mandan org, crear una con el nombre del bar
@@ -57,7 +58,7 @@ export async function POST(request: NextRequest) {
     } else {
       const exists = await sql`SELECT id FROM organizations WHERE id = ${orgId} LIMIT 1`;
       if (!exists[0]) {
-        return NextResponse.json({ error: "Organización no encontrada" }, { status: 404 });
+        return NextResponse.json({ error: apiT(request, "apiOrgNotFound") }, { status: 404 });
       }
     }
 
@@ -72,8 +73,7 @@ export async function POST(request: NextRequest) {
     console.error("Error creating location:", error);
     return NextResponse.json(
       {
-        error:
-          "Error al crear sucursal. ¿Corriste scripts/11_organizations.sql en Neon?",
+        error: apiT(request, "apiErrorCreatingLocationMigration"),
       },
       { status: 500 }
     );
