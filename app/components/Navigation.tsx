@@ -7,7 +7,7 @@ import { LanguageToggle } from "@/app/components/LanguageToggle";
 import { useI18n } from "@/app/i18n-provider";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Onboarding } from "./Onboarding";
 import {
   Menu,
@@ -28,7 +28,6 @@ import {
   Receipt,
   Building2,
   History,
-  MoreHorizontal,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -39,6 +38,8 @@ type NavLink = {
   className?: string;
 };
 
+const MAX_VISIBLE_LINKS = 5;
+
 export function Navigation() {
   const { user, logout } = useAuth();
   const { t } = useI18n();
@@ -46,6 +47,8 @@ export function Navigation() {
   const pathname = usePathname();
   const [barName, setBarName] = useState<string | null>(null);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const menuButtonRef = useRef<HTMLButtonElement>(null);
 
   const handleLogout = async () => {
     await logout();
@@ -71,6 +74,32 @@ export function Navigation() {
   useEffect(() => {
     setIsMenuOpen(false);
   }, [pathname]);
+
+  useEffect(() => {
+    if (!isMenuOpen) return;
+    const handlePointerDown = (e: PointerEvent) => {
+      const target = e.target as Node;
+      if (
+        menuRef.current?.contains(target) ||
+        menuButtonRef.current?.contains(target)
+      ) {
+        return;
+      }
+      setIsMenuOpen(false);
+    };
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setIsMenuOpen(false);
+        menuButtonRef.current?.focus();
+      }
+    };
+    document.addEventListener("pointerdown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isMenuOpen]);
 
   const navLinks: NavLink[] = [
     ...(isOwner
@@ -106,6 +135,13 @@ export function Navigation() {
             icon: ClipboardList,
             className: "nav-comandas",
           },
+          // Reportes queda visible porque el tour de bienvenida lo resalta.
+          {
+            href: "/dashboard/reports",
+            label: t("reports"),
+            icon: BarChart3,
+            className: "nav-reports",
+          },
           { href: "/dashboard/caja", label: t("cash"), icon: Wallet },
           {
             href: "/dashboard/orders",
@@ -116,12 +152,6 @@ export function Navigation() {
             href: "/dashboard/reservas",
             label: t("reservations"),
             icon: CalendarClock,
-          },
-          {
-            href: "/dashboard/reports",
-            label: t("reports"),
-            icon: BarChart3,
-            className: "nav-reports",
           },
           {
             href: "/dashboard/auditoria",
@@ -189,6 +219,9 @@ export function Navigation() {
       : []),
   ];
 
+  const visibleLinks = navLinks.slice(0, MAX_VISIBLE_LINKS);
+  const overflowLinks = navLinks.slice(MAX_VISIBLE_LINKS);
+
   /** Accesos rápidos en barra inferior (móvil) */
   const bottomLinks: NavLink[] = isCashier
     ? [
@@ -221,152 +254,168 @@ export function Navigation() {
   const showBottomNav = bottomLinks.length > 0;
   const isActive = (href: string) =>
     pathname === href || (href !== "/dashboard" && pathname.startsWith(href + "/"));
+  const overflowHasActive = overflowLinks.some((link) => isActive(link.href));
 
   return (
     <>
       <nav className="sticky top-0 z-50 glass border-b border-border">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-14 md:h-16">
-            <div className="flex-shrink-0 flex items-center">
-              <Link
-                href={isOwner ? "/dashboard/owner" : "/dashboard"}
-                className="flex items-center gap-2 text-xl font-bold text-primary"
-              >
-                <Beer className="w-6 h-6" />
-                <span className="hidden sm:inline">
-                  {isOwner ? "Bar Manager" : barName || "Bar Manager"}
-                </span>
-                <span className="sm:hidden">
-                  {isOwner
-                    ? "BarMgr"
-                    : barName?.split(" ")[0] || "BarMgr"}
-                </span>
-              </Link>
-            </div>
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
+          <div className="relative flex items-center justify-between gap-3 h-14 md:h-16">
+            <Link
+              href={isOwner ? "/dashboard/owner" : "/dashboard"}
+              className="flex min-w-0 flex-shrink items-center gap-2 text-lg sm:text-xl font-bold text-primary"
+            >
+              <Beer className="w-6 h-6 flex-shrink-0" />
+              <span className="hidden sm:inline truncate max-w-[10rem] lg:max-w-[14rem]">
+                {isOwner ? "Bar Manager" : barName || "Bar Manager"}
+              </span>
+            </Link>
 
-            {/* Desktop links */}
-            <div className="hidden md:flex items-center gap-1 lg:gap-2 flex-wrap justify-end">
-              {navLinks.map((link) => {
-                const Icon = link.icon;
-                return (
-                  <Link
-                    key={link.href}
-                    href={link.href}
-                    className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-sm font-medium transition-smooth ${link.className || ""} ${
-                      isActive(link.href)
-                        ? "bg-primary/20 text-primary"
-                        : "text-gray-400 hover:text-foreground hover:bg-card"
-                    }`}
-                  >
-                    <Icon className="w-4 h-4" />
-                    <span className="hidden lg:inline">{link.label}</span>
-                  </Link>
-                );
-              })}
-              <div className="ml-2">
-                <LocationSwitcher />
-              </div>
-              <LanguageToggle className="ml-1" />
-              <button
-                onClick={handleLogout}
-                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-sm font-medium text-error hover:bg-error/10"
-                title={t("logout")}
+            <div className="flex items-center gap-0.5 sm:gap-1">
+              <ul
+                className={`items-center gap-0.5 sm:gap-1 ${showBottomNav ? "hidden md:flex" : "flex"}`}
               >
-                <LogOut className="w-4 h-4" />
-              </button>
-            </div>
+                {visibleLinks.map((link) => {
+                  const Icon = link.icon;
+                  const active = isActive(link.href);
+                  return (
+                    <li key={link.href}>
+                      <Link
+                        href={link.href}
+                        title={link.label}
+                        aria-current={active ? "page" : undefined}
+                        className={`flex items-center gap-1.5 p-2 lg:px-3 rounded-lg text-sm font-medium whitespace-nowrap transition-smooth ${link.className || ""} ${
+                          active
+                            ? "bg-primary/20 text-primary"
+                            : "text-gray-400 hover:text-foreground hover:bg-card"
+                        }`}
+                      >
+                        <Icon className="w-5 h-5 lg:w-4 lg:h-4" />
+                        <span className="sr-only lg:not-sr-only">
+                          {link.label}
+                        </span>
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ul>
 
-            {/* Mobile: menú hamburguesa (siempre; bottom nav es atajo) */}
-            <div className="md:hidden flex items-center gap-2">
               <button
+                ref={menuButtonRef}
                 type="button"
                 onClick={() => setIsMenuOpen((v) => !v)}
-                className="p-2 rounded-lg text-foreground hover:bg-card"
+                aria-expanded={isMenuOpen}
+                aria-controls="nav-overflow-menu"
                 aria-label={isMenuOpen ? t("closeMenu") : t("openMenu")}
+                title={t("more")}
+                className={`relative ml-1 flex items-center gap-1.5 p-2 lg:px-3 rounded-lg text-sm font-medium border transition-smooth ${
+                  isMenuOpen || overflowHasActive
+                    ? "border-primary/40 bg-primary/20 text-primary"
+                    : "border-border text-foreground hover:bg-card"
+                }`}
               >
                 {isMenuOpen ? (
-                  <X className="w-6 h-6" />
+                  <X className="w-5 h-5" />
                 ) : (
-                  <Menu className="w-6 h-6" />
+                  <Menu className="w-5 h-5" />
+                )}
+                <span className="hidden lg:inline">{t("more")}</span>
+                {overflowHasActive && !isMenuOpen && (
+                  <span
+                    className="absolute top-1 right-1 h-2 w-2 rounded-full bg-primary"
+                    aria-hidden
+                  />
                 )}
               </button>
             </div>
-          </div>
-        </div>
 
-        <AnimatePresence>
-          {isMenuOpen && (
-            <motion.div
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: "auto", opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              className="md:hidden glass border-t border-border overflow-hidden"
-            >
-              <div className="px-3 pt-2 pb-3 space-y-1">
-                {navLinks.map((link) => {
-                  const Icon = link.icon;
-                  return (
-                    <Link
-                      key={link.href}
-                      href={link.href}
-                      className={`flex items-center gap-3 px-3 py-3 rounded-lg text-base font-medium ${link.className || ""} ${
-                        isActive(link.href)
-                          ? "bg-primary/20 text-primary shadow-lg shadow-primary/10"
-                          : "text-gray-400 hover:text-foreground hover:bg-card"
-                      }`}
-                    >
-                      <Icon className="w-5 h-5" />
-                      {link.label}
-                    </Link>
-                  );
-                })}
-              </div>
-
-              <div className="pt-4 pb-3 border-t border-border">
-                <div className="flex items-center px-5">
-                  <div className="flex-shrink-0">
-                    <div className="h-10 w-10 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold">
+            <AnimatePresence>
+              {isMenuOpen && (
+                <motion.div
+                  ref={menuRef}
+                  id="nav-overflow-menu"
+                  initial={{ opacity: 0, y: -8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -8 }}
+                  transition={{ duration: 0.15 }}
+                  className="absolute right-0 top-full mt-2 w-[calc(100vw-1.5rem)] max-w-sm max-h-[calc(100dvh-5rem)] overflow-y-auto rounded-xl border border-border bg-background/95 backdrop-blur shadow-2xl shadow-black/40"
+                >
+                  <div className="flex items-center gap-3 px-4 py-3 border-b border-border">
+                    <div className="h-10 w-10 flex-shrink-0 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold">
                       {user?.name?.[0]?.toUpperCase()}
                     </div>
-                  </div>
-                  <div className="ml-3">
-                    <div className="text-base font-medium text-foreground">
-                      {user?.name}
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold text-foreground">
+                        {user?.name}
+                      </p>
+                      <p className="truncate text-xs text-gray-400">
+                        {user?.role
+                          ? t(`role_${user.role}`, roleLabel(user.role))
+                          : ""}
+                      </p>
                     </div>
-                    <div className="text-sm font-medium text-gray-400">
-                      {user?.role ? t(`role_${user.role}`, roleLabel(user.role)) : ""}
-                    </div>
                   </div>
-                </div>
-                <div className="mt-3 px-5">
-                  <LocationSwitcher />
-                </div>
-                <div className="mt-3 px-5">
-                  <LanguageToggle />
-                </div>
-                <div className="mt-3 px-2">
-                  <button
-                    onClick={() => {
-                      window.dispatchEvent(new CustomEvent("start-tour"));
-                      setIsMenuOpen(false);
-                    }}
-                    className="flex w-full items-center gap-3 px-3 py-3 rounded-lg text-base font-medium text-primary hover:bg-primary/10 transition-smooth"
-                  >
-                    <HelpCircle className="w-5 h-5" />
-                    {t("guide")}
-                  </button>
-                  <button
-                    onClick={handleLogout}
-                    className="flex w-full items-center gap-3 px-3 py-3 rounded-lg text-base font-medium text-error hover:bg-error/10 transition-smooth"
-                  >
-                    <LogOut className="w-5 h-5" />
-                    {t("logout")}
-                  </button>
-                </div>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+
+                  <ul className="p-2 space-y-0.5">
+                    {/* En móvil sin bottom nav los 5 primeros ya están arriba;
+                        con bottom nav se ocultan arriba, así que se listan aquí. */}
+                    {(showBottomNav ? navLinks : overflowLinks).map((link) => {
+                      const Icon = link.icon;
+                      const active = isActive(link.href);
+                      const isPrimary = visibleLinks.includes(link);
+                      return (
+                        <li
+                          key={link.href}
+                          className={isPrimary ? "md:hidden" : undefined}
+                        >
+                          <Link
+                            href={link.href}
+                            aria-current={active ? "page" : undefined}
+                            className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-smooth ${
+                              active
+                                ? "bg-primary/20 text-primary"
+                                : "text-gray-300 hover:text-foreground hover:bg-card"
+                            }`}
+                          >
+                            <Icon className="w-5 h-5" />
+                            {link.label}
+                          </Link>
+                        </li>
+                      );
+                    })}
+                  </ul>
+
+                  <div className="border-t border-border p-3 space-y-3">
+                    <LocationSwitcher />
+                    <LanguageToggle />
+                  </div>
+
+                  <div className="border-t border-border p-2 space-y-0.5">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        window.dispatchEvent(new CustomEvent("start-tour"));
+                        setIsMenuOpen(false);
+                      }}
+                      className="flex w-full items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-primary hover:bg-primary/10 transition-smooth"
+                    >
+                      <HelpCircle className="w-5 h-5" />
+                      {t("guide")}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleLogout}
+                      className="flex w-full items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-error hover:bg-error/10 transition-smooth"
+                    >
+                      <LogOut className="w-5 h-5" />
+                      {t("logout")}
+                    </button>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        </div>
 
         <Onboarding />
       </nav>
