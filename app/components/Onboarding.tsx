@@ -27,7 +27,7 @@ const FEATURE_COPY: Record<string, FeatureCopy> = {
   "/dashboard/tables": {
     key: "tourTables",
     fallback:
-      "Organiza el layout de tus mesas, abre órdenes, divide cuentas y cobra desde aquí.",
+      "Organiza la distribución de tus mesas, abre órdenes, divide cuentas y cobra desde aquí.",
   },
   "/dashboard/comandas": {
     key: "tourComandas",
