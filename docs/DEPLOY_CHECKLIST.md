@@ -11,8 +11,14 @@ Ejecutar solo lo que **aún no** se haya corrido en ese entorno.
 Orden sugerido para entornos nuevos o incompletos:
 
 ### Esquema base (solo instalación nueva)
-- [ ] `scripts/01_create_schema_clean.sql` (o el flujo de esquema que uses en prod)
+- [ ] `scripts/01_create_schema.sql` (o el flujo de esquema que uses en prod)
 - [ ] `scripts/02_seed_data.sql` (solo demo; **no** en prod con datos reales)
+- [ ] `scripts/03_fix_passwords.sql` (solo demo)
+- [ ] `scripts/04_create_owner.sql` (o mejor `node scripts/create-owner.mjs`)
+
+> Nota: las migraciones se renumeraron (antes 11–17, ahora 10–16) sin cambiar su contenido.
+> Si un entorno ya corrió p. ej. `11_organizations.sql`, equivale al actual `10_organizations.sql`; no hay que volver a ejecutarlo.
+> Consultas de diagnóstico (no migraciones) están en `scripts/utils/`.
 
 ### Migraciones operativas (si faltan)
 - [ ] `scripts/05_add_modified_by.sql`
@@ -20,17 +26,17 @@ Orden sugerido para entornos nuevos o incompletos:
 - [ ] `scripts/07_add_comanda_status.sql`
 - [ ] `scripts/08_operational_features.sql`
 - [ ] `scripts/09_self_service.sql`
-- [ ] `scripts/11_organizations.sql`
-- [ ] `scripts/13_perf_indexes.sql`
-- [ ] `scripts/14_must_change_password.sql`
-- [ ] `scripts/15_order_splits.sql`
-- [ ] `scripts/16_locations_active_and_inventory.sql`
-- [ ] `scripts/17_tables_unique_number.sql` (mesas: número único por bar)  
+- [ ] `scripts/10_organizations.sql`
+- [ ] `scripts/12_perf_indexes.sql`
+- [ ] `scripts/13_must_change_password.sql`
+- [ ] `scripts/14_order_splits.sql`
+- [ ] `scripts/15_locations_active_and_inventory.sql`
+- [ ] `scripts/16_tables_unique_number.sql` (mesas: número único por bar)  
   - Si falla por duplicados: revisar  
     `SELECT location_id, table_number, COUNT(*) FROM tables GROUP BY 1, 2 HAVING COUNT(*) > 1;`
 
 ### Datos de cliente (solo si aplica)
-- [ ] `scripts/12_orgs_estadero_bardemo.sql` u orgs/locales específicos del cliente
+- [ ] `scripts/11_orgs_estadero_bardemo.sql` u orgs/locales específicos del cliente
 
 ### Comprobación rápida SQL
 ```sql

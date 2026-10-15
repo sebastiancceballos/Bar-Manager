@@ -2,7 +2,7 @@
 
 ## Deploy
 
-1. Neon: `scripts/11_organizations.sql` y, si aplica, `12_orgs_estadero_bardemo.sql`
+1. Neon: `scripts/10_organizations.sql` y, si aplica, `11_orgs_estadero_bardemo.sql`
 2. Desplegar este código
 3. Superadmin → **Organizaciones** (alta guiada + CRUD)
 4. Admin multi-sucursal: selector **Sucursal** en el header

@@ -6,7 +6,7 @@ import { apiT } from "@/lib/api-i18n";
 
 /**
  * Ya no ejecuta DDL. El esquema debe venir de migraciones
- * (scripts/16_locations_active_and_inventory.sql y anteriores).
+ * (scripts/15_locations_active_and_inventory.sql y anteriores).
  * Solo limpia stock negativo si las columnas existen.
  */
 export async function POST(request: NextRequest) {
@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         {
           error:
-            "Falta el esquema de inventario. Ejecuta en Neon: scripts/16_locations_active_and_inventory.sql (y migraciones de stock_movements si aplica).",
+            "Falta el esquema de inventario. Ejecuta en Neon: scripts/15_locations_active_and_inventory.sql (y migraciones de stock_movements si aplica).",
         },
         { status: 400 }
       );
