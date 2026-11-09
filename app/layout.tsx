@@ -10,8 +10,8 @@ export const metadata: Metadata = {
   title: "Bar Manager",
   description: "POS and operations for bars and restaurants",
   icons: {
-    icon: "/android-chrome-512x512 (2).ico",
-    apple: "/android-chrome-512x512 (2).ico",
+    icon: "/icon-512.png",
+    apple: "/icon-512.png",
   },
 };
 

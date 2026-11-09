@@ -14,8 +14,8 @@ self.addEventListener("push", (event) => {
   event.waitUntil(
     self.registration.showNotification(data.title || "Bar Manager", {
       body: data.body || "",
-      icon: "/android-chrome-512x512 (2).ico",
-      badge: "/android-chrome-512x512 (2).ico",
+      icon: "/icon-512.png",
+      badge: "/icon-512.png",
       tag: data.tag || "bar-manager",
       renotify: true,
       data: { url: data.url || "/" },

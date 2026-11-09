@@ -12,7 +12,6 @@ Sistema de gestión para bares y restaurantes (POS multi-sucursal): mesas, coman
 | Auth | JWT en cookie HTTP-only + bcryptjs |
 | Transacciones | Pool WebSocket (`lib/db-pool.ts` + `withTransaction`) |
 
-> **Nota:** la carpeta `prisma/` es legado y **no** se usa en runtime. El esquema vivo está en `scripts/*.sql`.
 
 ## Roles
 

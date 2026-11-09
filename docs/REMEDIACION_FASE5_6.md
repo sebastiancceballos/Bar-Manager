@@ -1,7 +1,7 @@
 # Fases 5 y 6
 
 ## Fase 5 — Dividir cuenta
-- SQL: `scripts/15_order_splits.sql`
+- SQL: `scripts/14_order_splits.sql`
 - `lib/order-split.ts` — computeSplit / houseRemainder
 - `POST/GET /api/orders/[id]/split`
 - `PATCH /api/orders/[id]/split/[splitIndex]`

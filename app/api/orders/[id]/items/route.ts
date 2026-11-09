@@ -37,11 +37,16 @@ export async function POST(
     }
 
     // El inventario NO se toca aquí: se descuenta una sola vez, al cobrar.
+    const notesRaw = body?.notes;
+    const notes =
+      typeof notesRaw === "string" ? notesRaw.trim().slice(0, 300) : undefined;
+
     const { order, stockWarning } = await addItemToOrder({
       orderId,
       productId,
       quantity,
       userId: user.id,
+      notes: notes || null,
     });
     return NextResponse.json(
       stockWarning ? { order, stockWarning } : { order },
