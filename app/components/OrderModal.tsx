@@ -19,6 +19,7 @@ interface OrderItem {
   product_id: number;
   quantity: number;
   price: number;
+  notes?: string | null;
   product: {
     name: string;
     price: number;
@@ -89,6 +90,7 @@ export function OrderModal({
   const [updating, setUpdating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [warning, setWarning] = useState<string | null>(null);
+  const [itemNotesDraft, setItemNotesDraft] = useState<Record<number, string>>({});
 
   const [showSplit, setShowSplit] = useState(false);
   const [splitParts, setSplitParts] = useState(2);
@@ -144,6 +146,19 @@ export function OrderModal({
   const filteredProducts = products.filter(
     (p) => p.category === selectedCategory
   );
+
+
+  // Mantener borradores de notas alineados con las líneas del pedido
+  useEffect(() => {
+    if (!order?.items) return;
+    setItemNotesDraft((prev) => {
+      const next: Record<number, string> = {};
+      for (const it of order.items) {
+        next[it.id] = prev[it.id] !== undefined ? prev[it.id] : (it.notes || "");
+      }
+      return next;
+    });
+  }, [order?.items]);
 
   const handleAddItem = async (productId: number) => {
     if (!order) {
@@ -214,6 +229,50 @@ export function OrderModal({
       }
     } catch (error) {
       console.error("Failed to remove item:", error);
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+
+  const handleIncrementItem = async (itemId: number) => {
+    if (!order) return;
+    try {
+      setUpdating(true);
+      const response = await fetch(`/api/orders/${order.id}/items/${itemId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "increment" }),
+      });
+      if (response.ok) await onUpdate();
+    } catch (error) {
+      console.error("Failed to increment item:", error);
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  const handleSaveItemNotes = async (itemId: number) => {
+    if (!order) return;
+    const notes = (itemNotesDraft[itemId] ?? "").trim();
+    const current = order.items.find((i) => i.id === itemId);
+    const prev = (current?.notes || "").trim();
+    if (notes === prev) return;
+    try {
+      setUpdating(true);
+      const response = await fetch(`/api/orders/${order.id}/items/${itemId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "set_notes", notes: notes || null }),
+      });
+      if (response.ok) await onUpdate();
+      else {
+        const data = await response.json().catch(() => ({}));
+        setError(data.error || t("error"));
+      }
+    } catch (error) {
+      console.error("Failed to save notes:", error);
+      setError(t("connectionError"));
     } finally {
       setUpdating(false);
     }
@@ -537,37 +596,67 @@ export function OrderModal({
                 {order.items.length === 0 ? (
                   <p className="text-gray-400">{t("emptyOrder")}</p>
                 ) : (
-                  order.items.map((item) => (
+                  <>
+                    <p className="text-xs text-foreground/50 mb-2">{t("differentNotesHint")}</p>
+                    {order.items.map((item) => (
                     <div
                       key={item.id}
-                      className="flex items-center justify-between bg-background p-3 rounded"
+                      className="bg-background p-3 rounded border border-border/60 space-y-2"
                     >
-                      <div>
-                        <p className="font-medium">{item.product.name}</p>
-                        <p className="text-sm text-gray-400">
-                          x{item.quantity} - {formatCOP(Number(item.price) * item.quantity)}
-                        </p>
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="min-w-0">
+                          <p className="font-medium truncate">{item.product.name}</p>
+                          <p className="text-sm text-gray-400">
+                            x{item.quantity} - {formatCOP(Number(item.price) * item.quantity)}
+                          </p>
+                        </div>
+                        <div className="flex gap-1 shrink-0">
+                          <button
+                            onClick={() => handleDecrementItem(item.id)}
+                            disabled={updating}
+                            title={t("subtractOneUnit")}
+                            className="min-w-[44px] min-h-[44px] rounded-lg bg-warning/10 text-warning hover:bg-warning/20 disabled:opacity-50 flex items-center justify-center font-semibold"
+                          >
+                            −
+                          </button>
+                          <button
+                            onClick={() => handleIncrementItem(item.id)}
+                            disabled={updating}
+                            title={t("add")}
+                            className="min-w-[44px] min-h-[44px] rounded-lg bg-primary/10 text-primary hover:bg-primary/20 disabled:opacity-50 flex items-center justify-center font-semibold"
+                          >
+                            +
+                          </button>
+                          <button
+                            onClick={() => handleRemoveItem(item.id)}
+                            disabled={updating}
+                            title={t("removeAll")}
+                            className="min-w-[44px] min-h-[44px] rounded-lg bg-error/10 text-error hover:bg-error/20 disabled:opacity-50 flex items-center justify-center font-semibold"
+                          >
+                            ✕
+                          </button>
+                        </div>
                       </div>
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => handleDecrementItem(item.id)}
-                          disabled={updating}
-                          title={t("subtractOneUnit")}
-                          className="min-w-[44px] min-h-[44px] rounded-lg bg-warning/10 text-warning hover:bg-warning/20 disabled:opacity-50 flex items-center justify-center font-semibold"
-                        >
-                          −
-                        </button>
-                        <button
-                          onClick={() => handleRemoveItem(item.id)}
-                          disabled={updating}
-                          title={t("removeAll")}
-                          className="min-w-[44px] min-h-[44px] rounded-lg bg-error/10 text-error hover:bg-error/20 disabled:opacity-50 flex items-center justify-center font-semibold"
-                        >
-                          ✕
-                        </button>
-                      </div>
+                      <input
+                        type="text"
+                        maxLength={300}
+                        value={itemNotesDraft[item.id] ?? item.notes ?? ""}
+                        onChange={(e) =>
+                          setItemNotesDraft((prev) => ({ ...prev, [item.id]: e.target.value }))
+                        }
+                        onBlur={() => handleSaveItemNotes(item.id)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.currentTarget.blur();
+                          }
+                        }}
+                        placeholder={t("lineNotesPlaceholder")}
+                        disabled={updating}
+                        className="input text-sm py-2"
+                      />
                     </div>
-                  ))
+                    ))}
+                  </>
                 )}
               </div>
 

@@ -62,8 +62,12 @@ export async function addItemToOrder(opts: {
   productId: number;
   quantity: number;
   userId: number;
+  /** Nota opcional por línea (mismo criterio que autoservicio). */
+  notes?: string | null;
 }) {
   const { orderId, productId, quantity, userId } = opts;
+  const notes =
+    typeof opts.notes === "string" && opts.notes.trim() ? opts.notes.trim().slice(0, 300) : null;
   let warning: { productId: number; productName: string; stock: number; reserved: number } | null = null;
 
   const order = await withTransaction(async (client) => {
@@ -85,20 +89,11 @@ export async function addItemToOrder(opts: {
       });
     }
 
-    const existing = (
-      await client.query(
-        `SELECT id FROM order_items WHERE order_id = $1 AND product_id = $2 ORDER BY id LIMIT 1`,
-        [orderId, productId]
-      )
-    ).rows[0];
-    if (existing) {
-      await client.query(`UPDATE order_items SET quantity = quantity + $1 WHERE id = $2`, [quantity, existing.id]);
-    } else {
-      await client.query(
-        `INSERT INTO order_items (order_id, product_id, quantity, price) VALUES ($1, $2, $3, $4)`,
-        [orderId, productId, quantity, product.price]
-      );
-    }
+    // Como autoservicio: cada alta desde el menú crea una línea nueva.
+    await client.query(
+      `INSERT INTO order_items (order_id, product_id, quantity, price, notes) VALUES ($1, $2, $3, $4, $5)`,
+      [orderId, productId, quantity, product.price, notes]
+    );
     await recalcTotal(client, orderId, userId);
 
     const reserved = Number(
@@ -167,6 +162,58 @@ export async function setItemKitchenStatus(opts: { orderId: number; itemId: numb
       [status, itemId, orderId]
     );
     if (!r.rowCount) throw new AppError("Item not found", 404, "APP_ERROR", "apiItemNotFound");
+    return loadOrderWithItems(client, orderId);
+  });
+}
+
+
+
+/** Suma 1 a la cantidad de una línea (tope MAX_ITEM_QUANTITY). */
+export async function incrementItemQuantity(opts: {
+  orderId: number;
+  itemId: number;
+  userId: number;
+}) {
+  const { orderId, itemId, userId } = opts;
+  return withTransaction(async (client) => {
+    await lockOrder(client, orderId, true);
+    const item = (
+      await client.query(
+        `SELECT id, quantity FROM order_items WHERE id = $1 AND order_id = $2`,
+        [itemId, orderId]
+      )
+    ).rows[0];
+    if (!item) throw new AppError("Item not found", 404, "APP_ERROR", "apiItemNotFound");
+    const q = Number(item.quantity) || 0;
+    if (q >= MAX_ITEM_QUANTITY) {
+      throw new AppError("Cantidad máxima", 400, "APP_ERROR", "apiInvalidQuantityRange");
+    }
+    await client.query(`UPDATE order_items SET quantity = quantity + 1 WHERE id = $1`, [itemId]);
+    await recalcTotal(client, orderId, userId);
+    return loadOrderWithItems(client, orderId);
+  });
+}
+
+/** Actualiza la nota de una línea (mismo campo que autoservicio). */
+export async function updateItemNotes(opts: {
+  orderId: number;
+  itemId: number;
+  notes: string | null;
+  userId: number;
+}) {
+  const { orderId, itemId, userId } = opts;
+  const notes =
+    typeof opts.notes === "string" && opts.notes.trim() ? opts.notes.trim().slice(0, 300) : null;
+
+  return withTransaction(async (client) => {
+    await lockOrder(client, orderId, true);
+    const item = (
+      await client.query(`SELECT id FROM order_items WHERE id = $1 AND order_id = $2`, [itemId, orderId])
+    ).rows[0];
+    if (!item) throw new AppError("Item not found", 404, "APP_ERROR", "apiItemNotFound");
+
+    await client.query(`UPDATE order_items SET notes = $1 WHERE id = $2`, [notes, itemId]);
+    await recalcTotal(client, orderId, userId);
     return loadOrderWithItems(client, orderId);
   });
 }
