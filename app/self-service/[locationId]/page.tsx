@@ -305,7 +305,7 @@ export default function SelfServicePage({
               animate={{ y: 0 }}
               exit={{ y: "100%" }}
               transition={{ type: "spring", damping: 30, stiffness: 300 }}
-              className="fixed bottom-0 left-0 right-0 z-50 bg-card rounded-t-2xl max-h-[85vh] flex flex-col"
+              className="fixed bottom-0 left-0 right-0 z-50 bg-card rounded-t-2xl max-h-[90dvh] flex flex-col overflow-hidden"
             >
               <div className="flex items-center justify-between p-4 border-b border-border shrink-0">
                 <h2 className="font-bold text-lg">{t("yourOrder")}</h2>
@@ -317,17 +317,18 @@ export default function SelfServicePage({
                 </button>
               </div>
 
-              {/* min-h-0 es clave para que overflow-y funcione dentro de flex */}
-              <div className="overflow-y-auto flex-1 min-h-0 p-4 flex flex-col gap-3">
-                <p className="text-xs text-foreground/50 -mt-1">
+              {/* Cuerpo con scroll real: productos + nombre/notas generales siempre alcanzables */}
+              <div className="overflow-y-auto overscroll-contain flex-1 min-h-0 p-4 pb-8 flex flex-col gap-3 touch-pan-y">
+                <p className="text-xs text-foreground/50 -mt-1 shrink-0">
                   {t("differentNotesHint")}
                 </p>
                 {cart.map((line, index) => (
-                  <div key={index} className="bg-background rounded-lg p-3 border border-border">
+                  <div key={index} className="bg-background rounded-lg p-3 border border-border shrink-0">
                     <div className="flex items-center justify-between">
                       <span className="font-medium">{line.name}</span>
                       <div className="flex items-center gap-2">
                         <button
+                          type="button"
                           onClick={() => updateQuantity(index, -1)}
                           className="min-w-[44px] min-h-[44px] flex items-center justify-center bg-card rounded-full"
                         >
@@ -335,6 +336,7 @@ export default function SelfServicePage({
                         </button>
                         <span className="w-6 text-center font-semibold">{line.quantity}</span>
                         <button
+                          type="button"
                           onClick={() => updateQuantity(index, 1)}
                           className="min-w-[44px] min-h-[44px] flex items-center justify-center bg-card rounded-full"
                         >
@@ -351,20 +353,27 @@ export default function SelfServicePage({
                   </div>
                 ))}
 
-                <input
-                  value={clientName}
-                  onChange={(e) => setClientName(e.target.value)}
-                  placeholder={t("yourNameOptional")}
-                  className="w-full bg-background border border-border rounded-lg px-3 py-3 text-base"
-                />
-                <textarea
-                  value={customerNotes}
-                  onChange={(e) => setCustomerNotes(e.target.value)}
-                  placeholder={t("orderNotesOptional")}
-                  className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm"
-                  rows={2}
-                />
-                {error && <p className="text-error text-sm">{error}</p>}
+                {/* Bloque final: siempre después de los ítems, con margen para no quedar bajo el footer */}
+                <div className="shrink-0 space-y-3 pt-2 mt-1 border-t border-border">
+                  <input
+                    value={clientName}
+                    onChange={(e) => setClientName(e.target.value)}
+                    placeholder={t("yourNameOptional")}
+                    className="w-full bg-background border border-border rounded-lg px-3 py-3 text-base"
+                  />
+                  <textarea
+                    value={customerNotes}
+                    onChange={(e) => setCustomerNotes(e.target.value)}
+                    onFocus={(e) => {
+                      // Asegura que el campo quede visible al enfocar (móvil / muchos ítems)
+                      e.currentTarget.scrollIntoView({ block: "center", behavior: "smooth" });
+                    }}
+                    placeholder={t("orderNotesOptional")}
+                    className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm"
+                    rows={3}
+                  />
+                  {error && <p className="text-error text-sm">{error}</p>}
+                </div>
               </div>
 
               {/* Footer fijo: total + confirmar siempre visibles */}
